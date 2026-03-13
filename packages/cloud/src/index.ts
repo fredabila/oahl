@@ -13,12 +13,23 @@ app.use(express.json());
 const PROVIDER_API_KEY = process.env.PROVIDER_API_KEY || 'dev_provider_key';
 const AGENT_API_KEY = process.env.AGENT_API_KEY || 'dev_agent_key';
 
-const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+let rawRedisUrl = (process.env.REDIS_URL || 'redis://localhost:6379').trim().replace(/^['"]|['"]$/g, '');
+
+// Ensure the URL has a valid protocol
+if (!rawRedisUrl.startsWith('redis://') && !rawRedisUrl.startsWith('rediss://')) {
+  // If it contains a password (e.g. password@host:port), format it correctly
+  if (rawRedisUrl.includes('@')) {
+    rawRedisUrl = 'redis://default:' + rawRedisUrl;
+  } else {
+    rawRedisUrl = 'redis://' + rawRedisUrl;
+  }
+}
+
 const redisOptions: any = {
-  url: redisUrl
+  url: rawRedisUrl
 };
 
-if (redisUrl.startsWith('rediss://')) {
+if (rawRedisUrl.startsWith('rediss://') || rawRedisUrl.includes('redislabs.com') || rawRedisUrl.includes('upstash.io')) {
   redisOptions.socket = {
     tls: true,
     rejectUnauthorized: false
