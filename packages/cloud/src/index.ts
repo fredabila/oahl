@@ -14,13 +14,11 @@ const PROVIDER_API_KEY = process.env.PROVIDER_API_KEY || '123456';
 const AGENT_API_KEY = process.env.AGENT_API_KEY || '123456';
 
 let rawRedisUrl = (process.env.REDIS_URL || 'redis://localhost:6379')
-  .replace(/\s+/g, '') // Aggressively remove ALL whitespace (spaces, tabs, newlines) anywhere in the string
-  .replace(/^['"]|['"]$/g, '') // Remove surrounding quotes
-  .replace(/!+$/, ''); // Remove accidental trailing exclamation marks
+  .replace(/\s+/g, '') 
+  .replace(/^['"]|['"]$/g, '') 
+  .replace(/!+$/, '');
 
-// Ensure the URL has a valid protocol
 if (!rawRedisUrl.startsWith('redis://') && !rawRedisUrl.startsWith('rediss://')) {
-  // If it contains a password (e.g. password@host:port), format it correctly
   if (rawRedisUrl.includes('@')) {
     rawRedisUrl = 'redis://default:' + rawRedisUrl;
   } else {
@@ -28,20 +26,12 @@ if (!rawRedisUrl.startsWith('redis://') && !rawRedisUrl.startsWith('rediss://'))
   }
 }
 
-const redisOptions: any = {
-  url: rawRedisUrl
-};
-
-// ONLY apply TLS settings if the protocol is explicitly rediss://
+const redisOptions: any = { url: rawRedisUrl };
 if (rawRedisUrl.startsWith('rediss://')) {
-  redisOptions.socket = {
-    tls: true,
-    rejectUnauthorized: false
-  };
+  redisOptions.socket = { tls: true, rejectUnauthorized: false };
 }
 
 const redisClient = createClient(redisOptions);
-
 redisClient.on('error', (err) => console.log('Redis Client Error', err));
 
 // Middleware: Authenticate Providers (Hardware Nodes)
@@ -71,6 +61,37 @@ app.post('/v1/provider/nodes/register', authProvider, async (req, res) => {
   nodeData.last_seen = Date.now();
   await redisClient.set(`node:${nodeData.node_id}`, JSON.stringify(nodeData), { EX: 300 });
   console.log(`[Cloud] 🟢 Node registered: ${nodeData.node_id}`);
+  res.json({ status: "success" });
+});
+
+/**
+ * 1b. NODE POLLING (For commands)
+ * Nodes call this to see if there are any pending commands.
+ */
+app.get('/v1/provider/nodes/:id/poll', authProvider, async (req, res) => {
+  const nodeId = req.params.id;
+  try {
+    // Wait for a command for up to 30 seconds (Long Polling)
+    const command = await redisClient.brPop(`commands:${nodeId}`, 30);
+    if (command) {
+      res.json(JSON.parse(command.element));
+    } else {
+      res.status(204).end(); // No content
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * 1c. NODE RESULTS (For returning execution results)
+ */
+app.post('/v1/provider/nodes/results', authProvider, async (req, res) => {
+  const { requestId, result } = req.body;
+  if (!requestId) return res.status(400).json({ error: "Missing requestId" });
+  
+  await redisClient.lPush(`result:${requestId}`, JSON.stringify(result));
+  await redisClient.expire(`result:${requestId}`, 60); // Expire results after 60s
   res.json({ status: "success" });
 });
 
@@ -148,7 +169,6 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
   if (!sessionStr) return res.status(404).json({ error: "Session not found" });
   const session = JSON.parse(sessionStr);
 
-  // Push the command to the Node's specific command queue (mailbox)
   const requestId = "cmd-" + Date.now();
   const relayPayload = JSON.stringify({
     requestId,
@@ -158,11 +178,12 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
     params: command.params
   });
 
+  // Push to node's queue
   await redisClient.lPush(`commands:${session.node_id}`, relayPayload);
 
-  // Wait for result in a specific result key (blocked for up to 10s)
+  // Wait for result (timeout 20s)
   try {
-    const result = await redisClient.brPop(`result:${requestId}`, 15);
+    const result = await redisClient.brPop(`result:${requestId}`, 20);
     if (result) {
       res.json(JSON.parse(result.element));
     } else {

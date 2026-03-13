@@ -1,6 +1,5 @@
 import express from 'express';
 import { Adapter, SessionManager, PolicyEngine } from '@oahl/core';
-import { createClient } from 'redis';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -63,40 +62,56 @@ async function getAdapterForDevice(deviceId: string): Promise<Adapter | undefine
 
 // --- CLOUD RELAY LISTENER (The Mailbox) ---
 async function startCloudRelay(config: any, adapters: Adapter[]) {
-  if (!config.redis_url) return;
+  if (!config.cloud_url || !config.provider_api_key) return;
 
-  const redisClient = createClient({ url: config.redis_url });
-  await redisClient.connect();
-  console.log(`[Cloud Relay] 📬 Connected to command mailbox via Redis`);
+  console.log(`[Cloud Relay] 📬 Starting HTTP Command Listener (Polling)...`);
 
   while (true) {
     try {
-      // Listen for commands specifically for this node
-      const command = await redisClient.brPop(`commands:${config.node_id}`, 0);
-      if (command) {
-        const payload = JSON.parse(command.element);
+      // Poll the Cloud Registry for any pending commands
+      const response = await fetch(`${config.cloud_url}/v1/provider/nodes/${config.node_id}/poll`, {
+        headers: {
+          'Authorization': `Bearer ${config.provider_api_key}`
+        }
+      });
+
+      if (response.status === 200) {
+        const payload = await response.json();
         console.log(`[Cloud Relay] 📥 Received command: ${payload.capability} for device ${payload.deviceId}`);
 
-        // 1. Ensure a session exists (or create one for the marketplace request)
-        let session = sessionManager.getSession(payload.sessionId);
-        if (!session) {
-           session = sessionManager.startSession(payload.deviceId);
-           // We might want to force the sessionId to match the cloud's sessionId
-        }
-
-        // 2. Find adapter and execute
+        // Find adapter and execute
         const adapter = await getAdapterForDevice(payload.deviceId);
         if (adapter) {
-          const result = await adapter.execute(payload.deviceId, payload.capability, payload.params || {});
-          
-          // 3. Send result back to the cloud's result key
-          await redisClient.lPush(`result:${payload.requestId}`, JSON.stringify(result));
-          console.log(`[Cloud Relay] 📤 Sent result back for ${payload.requestId}`);
+          try {
+            const result = await adapter.execute(payload.deviceId, payload.capability, payload.params || {});
+            
+            // Send result back to cloud
+            await fetch(`${config.cloud_url}/v1/provider/nodes/results`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.provider_api_key}`
+              },
+              body: JSON.stringify({
+                requestId: payload.requestId,
+                result: result
+              })
+            });
+            console.log(`[Cloud Relay] 📤 Sent result back for ${payload.requestId}`);
+          } catch (execErr: any) {
+            console.error(`[Cloud Relay] ❌ Execution failed: ${execErr.message}`);
+          }
         }
+      } else if (response.status === 204) {
+        // No commands waiting, just loop again
+      } else {
+        const errText = await response.text();
+        console.error(`[Cloud Relay] ❌ Polling error (${response.status}): ${errText}`);
+        await new Promise(r => setTimeout(r, 5000)); // Wait before retry
       }
     } catch (err: any) {
-      console.error(`[Cloud Relay] ❌ Error: ${err.message}`);
-      await new Promise(r => setTimeout(r, 1000));
+      console.error(`[Cloud Relay] ❌ Connection error: ${err.message}`);
+      await new Promise(r => setTimeout(r, 5000));
     }
   }
 }
@@ -159,7 +174,11 @@ app.get('/devices', async (req, res) => {
 // Start everything
 async function start() {
   for (const adapter of adapters) {
-    await adapter.initialize().catch(console.error);
+    try {
+      await adapter.initialize();
+    } catch (err: any) {
+      console.error(`[Adapters] ❌ Failed to initialize adapter: ${err.message}`);
+    }
   }
   
   startCloudHeartbeat(config, adapters);
