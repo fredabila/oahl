@@ -1,19 +1,31 @@
 import express from 'express';
+import cors from 'cors';
 import { createClient } from 'redis';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 // Ensure secrets are set in production
 const PROVIDER_API_KEY = process.env.PROVIDER_API_KEY || 'dev_provider_key';
 const AGENT_API_KEY = process.env.AGENT_API_KEY || 'dev_agent_key';
 
-const redisClient = createClient({
-  url: process.env.REDIS_URL || 'redis://localhost:6379'
-});
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+const redisOptions: any = {
+  url: redisUrl
+};
+
+if (redisUrl.startsWith('rediss://')) {
+  redisOptions.socket = {
+    tls: true,
+    rejectUnauthorized: false
+  };
+}
+
+const redisClient = createClient(redisOptions);
 
 redisClient.on('error', (err) => console.log('Redis Client Error', err));
 

@@ -4,95 +4,125 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const cors_1 = __importDefault(require("cors"));
+const redis_1 = require("redis");
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const app = (0, express_1.default)();
+app.use((0, cors_1.default)());
 app.use(express_1.default.json());
-// In-memory registry for our MVP
-// In production, this would be Redis or a Database (PostgreSQL/MongoDB)
-const registeredNodes = new Map();
-const activeSessions = new Map();
-console.log("☁️ OAHL Cloud Registry booting up...");
+// Ensure secrets are set in production
+const PROVIDER_API_KEY = process.env.PROVIDER_API_KEY || 'dev_provider_key';
+const AGENT_API_KEY = process.env.AGENT_API_KEY || 'dev_agent_key';
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+const redisOptions = {
+    url: redisUrl
+};
+if (redisUrl.startsWith('rediss://')) {
+    redisOptions.socket = {
+        tls: true,
+        rejectUnauthorized: false
+    };
+}
+const redisClient = (0, redis_1.createClient)(redisOptions);
+redisClient.on('error', (err) => console.log('Redis Client Error', err));
+// Middleware: Authenticate Providers (Hardware Nodes)
+const authProvider = (req, res, next) => {
+    const apiKey = req.headers['authorization']?.split(' ')[1];
+    if (apiKey !== PROVIDER_API_KEY) {
+        return res.status(401).json({ error: 'Unauthorized. Invalid Provider API Key.' });
+    }
+    next();
+};
+// Middleware: Authenticate AI Agents
+const authAgent = (req, res, next) => {
+    const apiKey = req.headers['authorization']?.split(' ')[1];
+    if (apiKey !== AGENT_API_KEY) {
+        return res.status(401).json({ error: 'Unauthorized. Invalid Agent API Key.' });
+    }
+    next();
+};
 /**
  * 1. NODE REGISTRATION
  * Hardware nodes call this to say "I am online and here is my hardware"
  */
-app.post('/v1/provider/nodes/register', (req, res) => {
+app.post('/v1/provider/nodes/register', authProvider, async (req, res) => {
     const nodeData = req.body;
     if (!nodeData.node_id) {
         return res.status(400).json({ error: "Missing node_id" });
     }
-    // Update our registry with this node's information and timestamp
     nodeData.last_seen = Date.now();
-    registeredNodes.set(nodeData.node_id, nodeData);
-    console.log(`[Cloud] 🟢 Node registered: ${nodeData.node_id} with ${nodeData.devices?.length || 0} devices.`);
+    // Store the node data in Redis. We set an expiration of 5 minutes.
+    // Nodes must "heartbeat" (re-register) every few minutes to stay visible.
+    await redisClient.set(`node:${nodeData.node_id}`, JSON.stringify(nodeData), {
+        EX: 300
+    });
+    console.log(`[Cloud] 🟢 Node registered: ${nodeData.node_id}`);
     res.json({ status: "success", message: "Node registered successfully" });
 });
 /**
  * 2. AGENT DISCOVERY
  * AI Agents call this to ask "What capabilities are available right now?"
  */
-app.get('/v1/capabilities', (req, res) => {
-    const capabilities = new Set();
-    const capabilityMap = [];
-    // Loop through all active nodes and aggregate capabilities
-    for (const [nodeId, node] of Array.from(registeredNodes.entries())) {
-        if (node.devices) {
-            for (const device of node.devices) {
-                if (device.capabilities) {
-                    device.capabilities.forEach((cap) => {
-                        if (!capabilities.has(cap)) {
-                            capabilities.add(cap);
-                            capabilityMap.push({
-                                name: cap,
-                                nodes_available: 1
-                            });
-                        }
-                        else {
-                            const existing = capabilityMap.find(c => c.name === cap);
-                            if (existing)
-                                existing.nodes_available++;
-                        }
-                    });
+app.get('/v1/capabilities', authAgent, async (req, res) => {
+    const keys = await redisClient.keys('node:*');
+    const capabilityMap = {};
+    for (const key of keys) {
+        const nodeStr = await redisClient.get(key);
+        if (nodeStr) {
+            const node = JSON.parse(nodeStr);
+            if (node.devices) {
+                for (const device of node.devices) {
+                    if (device.capabilities) {
+                        device.capabilities.forEach((cap) => {
+                            capabilityMap[cap] = (capabilityMap[cap] || 0) + 1;
+                        });
+                    }
                 }
             }
         }
     }
-    res.json({ available_capabilities: capabilityMap });
+    const result = Object.entries(capabilityMap).map(([name, count]) => ({
+        name,
+        nodes_available: count
+    }));
+    res.json({ available_capabilities: result });
 });
 /**
  * 3. AGENT REQUEST
  * AI Agents call this to request a specific hardware capability.
- * The Cloud finds a matching node.
  */
-app.post('/v1/requests', (req, res) => {
+app.post('/v1/requests', authAgent, async (req, res) => {
     const { capability, constraints } = req.body;
     if (!capability) {
         return res.status(400).json({ error: "Must specify a capability" });
     }
-    console.log(`[Cloud] 🤖 Agent requesting capability: ${capability}`);
-    // Simple matchmaking: Find the first node that has a device with this capability
+    const keys = await redisClient.keys('node:*');
     let matchedNode = null;
     let matchedDevice = null;
-    for (const [nodeId, node] of Array.from(registeredNodes.entries())) {
-        const device = node.devices?.find((d) => d.capabilities?.includes(capability));
-        if (device) {
-            matchedNode = node;
-            matchedDevice = device;
-            break;
+    for (const key of keys) {
+        const nodeStr = await redisClient.get(key);
+        if (nodeStr) {
+            const node = JSON.parse(nodeStr);
+            const device = node.devices?.find((d) => d.capabilities?.includes(capability));
+            if (device) {
+                matchedNode = node;
+                matchedDevice = device;
+                break;
+            }
         }
     }
     if (!matchedNode) {
-        console.log(`[Cloud] ❌ No available hardware found for: ${capability}`);
         return res.status(404).json({ error: "No available hardware for this capability" });
     }
-    // Generate a cloud session ID
     const sessionId = "cloud-sess-" + Math.random().toString(36).substring(7);
-    activeSessions.set(sessionId, {
+    await redisClient.set(`session:${sessionId}`, JSON.stringify({
         node_id: matchedNode.node_id,
         device_id: matchedDevice.id,
         capability: capability,
         status: 'assigned'
-    });
-    console.log(`[Cloud] ✅ Matched agent to node ${matchedNode.node_id} (Device: ${matchedDevice.id})`);
+    }), { EX: 3600 }); // Sessions expire after 1 hour
+    console.log(`[Cloud] ✅ Matched agent to node ${matchedNode.node_id}`);
     res.json({
         request_id: "req-" + Date.now(),
         session_id: sessionId,
@@ -100,7 +130,11 @@ app.post('/v1/requests', (req, res) => {
         assigned_node: matchedNode.node_id
     });
 });
-const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => {
-    console.log(`☁️ OAHL Cloud Service running on port ${PORT}`);
-});
+async function start() {
+    await redisClient.connect();
+    const PORT = process.env.PORT || 8000;
+    app.listen(PORT, () => {
+        console.log(`☁️ OAHL Cloud Service running on port ${PORT}`);
+    });
+}
+start().catch(console.error);
