@@ -38,9 +38,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const core_1 = require("@oahl/core");
-const adapter_mock_1 = require("@oahl/adapter-mock");
-const adapter_usb_camera_1 = require("@oahl/adapter-usb-camera");
-const adapter_rtl_sdr_1 = require("@oahl/adapter-rtl-sdr");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const app = (0, express_1.default)();
@@ -67,11 +64,36 @@ else {
 // Initialize core components
 const sessionManager = new core_1.SessionManager();
 const policyEngine = new core_1.PolicyEngine();
-const adapters = [
-    new adapter_mock_1.MockAdapter(),
-    new adapter_usb_camera_1.UsbCameraAdapter(),
-    new adapter_rtl_sdr_1.RtlSdrAdapter()
-];
+const adapters = [];
+// Dynamic Plugin Loading
+if (config.plugins && Array.isArray(config.plugins)) {
+    for (const pluginName of config.plugins) {
+        try {
+            console.log(`[Plugins] 🔌 Loading adapter: ${pluginName}...`);
+            // Attempt to load from node_modules
+            let PluginClass;
+            try {
+                // First try relative path (for local development)
+                const localPath = path.resolve(process.cwd(), 'node_modules', pluginName, 'dist', 'index.js');
+                PluginClass = require(localPath).default || require(localPath);
+            }
+            catch {
+                // Then try normal require
+                PluginClass = require(pluginName).default || require(pluginName);
+            }
+            if (PluginClass) {
+                adapters.push(new PluginClass());
+                console.log(`[Plugins] ✅ ${pluginName} loaded successfully.`);
+            }
+        }
+        catch (err) {
+            console.error(`[Plugins] ❌ Failed to load adapter ${pluginName}: ${err.message}`);
+        }
+    }
+}
+if (adapters.length === 0) {
+    console.warn("[Plugins] ⚠️ No adapters were loaded. Your node will have no capabilities.");
+}
 // Helper to find adapter for a device
 async function getAdapterForDevice(deviceId) {
     for (const adapter of adapters) {

@@ -41,6 +41,7 @@ const commander_1 = require("commander");
 const prompts_1 = __importDefault(require("prompts"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const child_process_1 = require("child_process");
 const program = new commander_1.Command();
 program
     .name('oahl')
@@ -81,6 +82,9 @@ program
         provider: {
             name: response.providerName
         },
+        plugins: [
+            "@oahl/adapter-mock"
+        ],
         devices: []
     };
     if (response.deviceType !== 'none') {
@@ -91,10 +95,12 @@ program
             adapter = 'usb-camera';
             capabilities = ['camera.capture', 'camera.stream'];
             localPath = '/dev/video0';
+            config.plugins.push("@oahl/adapter-usb-camera");
         }
         else if (response.deviceType === 'radio') {
             adapter = 'rtl-sdr';
             capabilities = ['radio.scan', 'radio.measure_power'];
+            config.plugins.push("@oahl/adapter-rtl-sdr");
         }
         else if (response.deviceType === 'mock') {
             adapter = 'mock-sensor';
@@ -138,6 +144,53 @@ program
     console.log(`   oahl start\n`);
 });
 program
+    .command('install <adapter>')
+    .description('Install a new hardware adapter plugin')
+    .action((adapter) => {
+    console.log(`📦 Installing adapter: ${adapter}...`);
+    try {
+        (0, child_process_1.execSync)(`npm install ${adapter}`, { stdio: 'inherit' });
+        // Add to config if exists
+        const configPath = path.resolve(process.cwd(), 'oahl-config.json');
+        if (fs.existsSync(configPath)) {
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            if (!config.plugins)
+                config.plugins = [];
+            if (!config.plugins.includes(adapter)) {
+                config.plugins.push(adapter);
+                fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+                console.log(`✅ Added ${adapter} to oahl-config.json plugins list.`);
+            }
+        }
+        console.log(`\n✨ Successfully installed ${adapter}. Restart your node to enable it.`);
+    }
+    catch (err) {
+        console.error(`\n❌ Failed to install adapter: ${err.message}`);
+    }
+});
+program
+    .command('remove <adapter>')
+    .description('Remove a hardware adapter plugin')
+    .action((adapter) => {
+    console.log(`🗑️ Removing adapter: ${adapter}...`);
+    try {
+        (0, child_process_1.execSync)(`npm uninstall ${adapter}`, { stdio: 'inherit' });
+        const configPath = path.resolve(process.cwd(), 'oahl-config.json');
+        if (fs.existsSync(configPath)) {
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            if (config.plugins) {
+                config.plugins = config.plugins.filter((p) => p !== adapter);
+                fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+                console.log(`✅ Removed ${adapter} from oahl-config.json plugins list.`);
+            }
+        }
+        console.log(`\n✨ Successfully removed ${adapter}.`);
+    }
+    catch (err) {
+        console.error(`\n❌ Failed to remove adapter: ${err.message}`);
+    }
+});
+program
     .command('start')
     .description('Start the local OAHL node daemon')
     .option('-p, --port <number>', 'Port to run the server on', '3000')
@@ -154,16 +207,11 @@ program
     // Pass environment variables to the server process
     process.env.PORT = options.port;
     try {
-        // In the workspace structure, server is in ../../server/dist/index.js relative to this file's dist
-        // If we are running from packages/cli/dist/index.js
         const serverPath = path.resolve(__dirname, '../../server/dist/index.js');
         if (fs.existsSync(serverPath)) {
             require(serverPath);
         }
         else {
-            // Fallback for different execution environments
-            console.error('❌ Error: Server build not found at ' + serverPath);
-            console.log('Trying alternative path...');
             const altPath = path.resolve(process.cwd(), 'node_modules/@oahl/server/dist/index.js');
             if (fs.existsSync(altPath)) {
                 require(altPath);
