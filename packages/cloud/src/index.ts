@@ -14,8 +14,7 @@ const PROVIDER_API_KEY = process.env.PROVIDER_API_KEY || 'dev_provider_key';
 const AGENT_API_KEY = process.env.AGENT_API_KEY || 'dev_agent_key';
 
 let rawRedisUrl = (process.env.REDIS_URL || 'redis://localhost:6379')
-  .trim()
-  .replace(/[\n\r]/g, '') // Remove accidental newlines
+  .replace(/\s+/g, '') // Aggressively remove ALL whitespace (spaces, tabs, newlines) anywhere in the string
   .replace(/^['"]|['"]$/g, '') // Remove surrounding quotes
   .replace(/!+$/, ''); // Remove accidental trailing exclamation marks
 
