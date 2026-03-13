@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/oahl-banner.svg" alt="OAHL Banner" width="100%" />
+</p>
+
 # Open Agent Hardware Layer (OAHL)
 
 Open Agent Hardware Layer is an open-source framework for exposing real hardware capabilities to AI agents through standardized APIs.
@@ -20,79 +24,49 @@ This project provides a common layer for:
 - **Capability:** A standardized action such as `camera.capture` or `radio.scan`. 
 - **Session:** A controlled allocation of a hardware resource for a specific request.
 - **Policy:** Rules that limit what can be done with a device or capability.
+- **Cloud Registry:** The central hub where local nodes register themselves so remote agents can discover and request hardware globally.
 
-## Features
+## Quick start (For Hardware Owners)
 
-- Standard hardware capability model
-- Pluggable adapter architecture
-- Local and hosted deployment support
-- Policy enforcement (max session duration, public/private)
-- Health checks
-- Agent-friendly API endpoints
-- Session lifecycle management
-- Event and result reporting
+You don't need to write any code to connect common hardware (like webcams or standard SDRs). 
 
-## Quick start
-
-### Install
+### 1. Install the CLI & Node Server
+Install the OAHL toolkit globally via npm:
 ```bash
-docker pull oahl/node:latest
+npm install -g @fredabila/oahl
 ```
 
-### Create a config (`oahl-config.json`)
-```json
-{
-  "node_id": "local-node-01",
-  "devices": [
-    {
-      "id": "cam-01",
-      "type": "camera",
-      "adapter": "usb-camera",
-      "local_path": "/dev/video0",
-      "capabilities": ["camera.capture"]
-    }
-  ]
-}
+### 2. Run the Setup Wizard
+```bash
+oahl init
 ```
+This interactive tool will ask you a few simple questions (like your lab name and what type of hardware you are plugging in) and automatically generate your `oahl-config.json` file with the correct safety policies and pre-built adapters.
 
-### Run
+### 3. Start your Node
+
+**Option A: Using NPM (Recommended for beginners)**
+If you have Node.js installed, simply run:
+```bash
+oahl start
+```
+*(This starts the local daemon, loads your configuration, and connects to the Cloud Registry).*
+
+**Option B: Using Docker**
+If you prefer running isolated containers:
 ```bash
 docker run -d \
   --name oahl-node \
   -p 8080:8080 \
   -v $(pwd)/oahl-config.json:/app/oahl-config.json \
+  --device=/dev/video0 \
   oahl/node:latest
 ```
 
-### Check health
-```bash
-curl http://localhost:8080/health
-```
+## Cloud Infrastructure
 
-### Example request
-```bash
-curl -X POST http://localhost:8080/execute \
-  -H "Content-Type: application/json" \
-  -d '{
-    "device_id": "cam-01",
-    "capability": "camera.capture",
-    "params": {
-      "resolution": "1080p",
-      "format": "jpg"
-    }
-  }'
-```
+The `@oahl/cloud` package contains the hosted infrastructure that connects agents and nodes. 
 
-## Who should use this
-
-- hardware owners
-- robotics labs
-- maker spaces
-- universities
-- SDR operators
-- IoT developers
-- agent developers
-- platforms building physical capability networks
+When your node starts up, it securely registers itself with the Cloud Registry. AI Agents connect to this Cloud Registry (not your node directly) to request access to capabilities.
 
 ## Documentation
 
@@ -104,10 +78,5 @@ See the `docs/` folder for:
 - [Agent Integration Guide](docs/agent-integration-guide.md)
 - [API Reference](docs/api-reference.md)
 
-## Safety notice
-
-This framework should only be used in lawful, authorized, and safe environments. High-risk hardware actions should be restricted by policy and, where appropriate, require human approval.
-
 ## License
-
 Apache 2.0 or MIT.

@@ -1,0 +1,22 @@
+{
+  "node_id": "local-node-01",
+  "provider": {
+    "name": "Local Lab"
+  },
+  "devices": [
+    {
+      "id": "camera-01",
+      "type": "camera",
+      "adapter": "usb-camera",
+      "capabilities": [
+        "camera.capture",
+        "camera.stream"
+      ],
+      "policy": {
+        "public": true,
+        "max_session_minutes": 30
+      },
+      "local_path": "/dev/video0"
+    }
+  ]
+}

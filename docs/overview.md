@@ -6,11 +6,18 @@ Current AI agents are trapped in software. They can browse the web, run code, an
 
 **OAHL** changes this by standardizing how hardware is exposed, requested, and utilized by agents.
 
-## The Vision: Hardware-as-a-Service for AI Agents
-Imagine an ecosystem similar to AWS or Stripe, but for physical hardware capabilities. 
-1. **Hardware Owners** (universities, labs, individuals) connect idle devices using the OAHL Node software. 
-2. The Node automatically wraps devices with **Adapters**, safely translating raw hardware signals into a uniform capability schema (e.g., `camera.capture`).
-3. **AI Agents** connect to the cloud control plane, querying a registry of available capabilities and requesting sessions on remote devices, without needing to know the specific brand, model, or driver of the physical hardware.
+## The Three Pillars of OAHL
+
+The project is split into three main components to make the ecosystem work securely and at scale:
+
+1. **The CLI (`@oahl/cli`)**: 
+   A command-line wizard for hardware owners. It makes connecting hardware a simple "plug and play" experience. Users run `oahl init`, answer a few questions, and the CLI automatically configures the correct adapters and safety policies. No coding required for standard hardware.
+
+2. **The Local Node (`@oahl/server`)**: 
+   The open-source daemon running on the hardware owner's machine (laptop, Raspberry Pi, server). It acts as a secure wrapper, intercepting API capability requests (like `camera.capture`) and running the actual physical device drivers locally.
+
+3. **The Cloud Registry (`@oahl/cloud`)**: 
+   The central matchmaking brain. Local nodes connect *outbound* to the cloud to announce they are online and list their capabilities. AI Agents ask the cloud for hardware, and the cloud dynamically routes the session to an available remote node. Agents never connect directly to the hardware owner's machine.
 
 ## Value Proposition
 - **For Hardware Owners:** Monetize or share idle hardware (cameras, SDRs, robotic arms) safely, backed by strict policies that prevent unauthorized or dangerous operations.
