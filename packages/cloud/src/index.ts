@@ -10,8 +10,8 @@ app.use(cors());
 app.use(express.json());
 
 // Ensure secrets are set in production
-const PROVIDER_API_KEY = process.env.PROVIDER_API_KEY || 'dev_provider_key';
-const AGENT_API_KEY = process.env.AGENT_API_KEY || 'dev_agent_key';
+const PROVIDER_API_KEY = process.env.PROVIDER_API_KEY || '123456';
+const AGENT_API_KEY = process.env.AGENT_API_KEY || '123456';
 
 let rawRedisUrl = (process.env.REDIS_URL || 'redis://localhost:6379')
   .replace(/\s+/g, '') // Aggressively remove ALL whitespace (spaces, tabs, newlines) anywhere in the string

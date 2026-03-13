@@ -5,7 +5,8 @@
   "plugins": [
     "@oahl/adapter-mock",
     "@oahl/adapter-usb-camera",
-    "@oahl/adapter-rtl-sdr"
+    "@oahl/adapter-rtl-sdr",
+    "@oahl/adapter-android"
   ],
   "provider": {
     "name": "My Personal Test Node"
@@ -15,7 +16,9 @@
       "id": "usb-cam-1",
       "type": "camera",
       "adapter": "usb-camera",
-      "capabilities": ["camera.capture"]
+      "capabilities": [
+        "camera.capture"
+      ]
     }
   ]
 }

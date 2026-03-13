@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Network, Server, Cpu, Activity, ShieldCheck, Zap, Code2, Terminal, CheckCircle2, Lock, Radio, Globe } from 'lucide-react';
 
-interface Capability {
-  name: string;
-  nodes_available: number;
+interface Device {
+  id: string;
+  type: string;
+  capabilities: string[];
+  provider: string;
+  node_id: string;
+  status: string;
 }
 
 function App() {
   const [apiKey, setApiKey] = useState('');
   const [cloudUrl, setCloudUrl] = useState('https://oahl.onrender.com');
-  const [capabilities, setCapabilities] = useState<Capability[]>([]);
+  const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'explorer' | 'code'>('explorer');
@@ -46,7 +50,7 @@ function App() {
       if (!res.ok) throw new Error('Unauthorized API Key or network error');
       
       const data = await res.json();
-      setCapabilities(data.available_capabilities || []);
+      setDevices(data.devices || []);
     } catch (err: any) {
       setError(err.message || 'Failed to connect to Cloud Registry');
     } finally {
@@ -255,7 +259,7 @@ function App() {
                 )}
 
                 {/* Empty State */}
-                {!loading && capabilities.length === 0 && !error && (
+                {!loading && devices.length === 0 && !error && (
                   <div className="flex flex-col items-center justify-center py-16 text-oahl-textMuted border border-dashed border-oahl-border bg-black/50">
                     <Activity className="w-10 h-10 mb-4 opacity-50" />
                     <p className="font-mono text-sm uppercase tracking-widest">Awaiting authentication</p>
@@ -263,29 +267,49 @@ function App() {
                 )}
 
                 {/* Results State */}
-                {capabilities.length > 0 && (
+                {devices.length > 0 && (
                   <div className="animate-fade-in">
                      <div className="flex items-center justify-between mb-6">
                         <div className="font-mono text-xs text-oahl-tech border border-oahl-tech/30 bg-oahl-tech/10 px-3 py-1 flex items-center gap-2">
                           <div className="w-2 h-2 bg-oahl-tech rounded-full animate-pulse"></div>
-                          CAPABILITIES FOUND: {capabilities.length}
+                          HARDWARE DEVICES FOUND: {devices.length}
                         </div>
                      </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {capabilities.map((cap) => (
-                        <div key={cap.name} className="border border-oahl-border bg-black p-6 hover:border-oahl-accent transition-colors group relative overflow-hidden">
+                      {devices.map((device) => (
+                        <div key={`${device.node_id}-${device.id}`} className="border border-oahl-border bg-black p-6 hover:border-oahl-accent transition-colors group relative overflow-hidden">
                           {/* Accent line */}
                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-oahl-border group-hover:bg-oahl-accent transition-colors"></div>
                           
-                          <div className="flex justify-between items-start mb-6">
-                            <span className="font-mono text-sm text-oahl-textMain font-bold">{cap.name}</span>
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex flex-col">
+                              <span className="font-mono text-[10px] text-oahl-accent uppercase tracking-widest">{device.type}</span>
+                              <span className="font-mono text-sm text-oahl-textMain font-bold">{device.id}</span>
+                            </div>
                             <div className="flex items-center gap-2 border border-oahl-border px-2 py-1 bg-oahl-surface">
-                              <span className="text-xs font-mono text-oahl-textMuted">{cap.nodes_available} NODES</span>
+                              <span className="text-[10px] font-mono text-oahl-textMuted">{device.status.toUpperCase()}</span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3 mb-6">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[10px] text-oahl-textMuted uppercase font-mono tracking-tighter">Provider</span>
+                              <span className="text-xs text-oahl-textMain font-mono">{device.provider}</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[10px] text-oahl-textMuted uppercase font-mono tracking-tighter">Capabilities</span>
+                              <div className="flex flex-wrap gap-1">
+                                {device.capabilities.map(cap => (
+                                  <span key={cap} className="text-[9px] bg-oahl-accent/10 border border-oahl-accent/20 text-oahl-accent px-1.5 py-0.5 font-mono">
+                                    {cap}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
                           </div>
                           
                           <div className="flex items-center gap-2 text-xs text-oahl-tech font-mono font-bold mt-auto">
-                            <CheckCircle2 className="w-4 h-4" /> STATUS: READY
+                            <CheckCircle2 className="w-4 h-4" /> NODE: {device.node_id}
                           </div>
                         </div>
                       ))}
