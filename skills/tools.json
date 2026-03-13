@@ -1,0 +1,71 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "capture_remote_image",
+      "description": "Capture an image from an available remote camera in a specific region.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": "string",
+            "description": "The country to source the camera from (e.g., 'US', 'GH')."
+          },
+          "resolution": {
+            "type": "string",
+            "enum": ["720p", "1080p", "4k"],
+            "description": "The desired image resolution."
+          }
+        },
+        "required": ["country", "resolution"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "scan_radio_spectrum",
+      "description": "Request a radio scan from an allowed remote SDR receiver in a specific region.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": "string",
+            "description": "The country to source the SDR from."
+          },
+          "start_hz": {
+            "type": "integer",
+            "description": "The start frequency for the scan in Hz."
+          },
+          "end_hz": {
+            "type": "integer",
+            "description": "The end frequency for the scan in Hz."
+          }
+        },
+        "required": ["country", "start_hz", "end_hz"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "read_remote_sensor",
+      "description": "Read environmental data from a remote IoT sensor.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sensor_type": {
+            "type": "string",
+            "enum": ["temperature", "humidity", "soil_moisture", "air_quality"],
+            "description": "The type of sensor reading needed."
+          },
+          "location": {
+            "type": "string",
+            "description": "The general location or region for the sensor."
+          }
+        },
+        "required": ["sensor_type"]
+      }
+    }
+  }
+]

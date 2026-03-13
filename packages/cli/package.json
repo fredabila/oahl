@@ -1,0 +1,20 @@
+{
+  "name": "@oahl/cli",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "bin": {
+    "oahl": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "commander": "^11.1.0",
+    "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/prompts": "^2.4.9",
+    "typescript": "^5.0.0"
+  }
+}

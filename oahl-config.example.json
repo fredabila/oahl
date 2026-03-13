@@ -1,0 +1,27 @@
+{
+  "server": {
+    "port": 3000,
+    "host": "0.0.0.0"
+  },
+  "adapters": [
+    {
+      "type": "mock",
+      "enabled": true
+    },
+    {
+      "type": "usb-camera",
+      "enabled": true,
+      "config": {
+        "resolution": "1080p"
+      }
+    }
+  ],
+  "policies": [
+    {
+      "deviceId": "mock-device-1",
+      "maxDurationMs": 3600000,
+      "allowedCapabilities": ["*"],
+      "disabledCapabilities": []
+    }
+  ]
+}

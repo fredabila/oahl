@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OAHL Configuration Schema",
+  "type": "object",
+  "properties": {
+    "server": {
+      "type": "object",
+      "properties": {
+        "port": { "type": "number", "default": 3000 },
+        "host": { "type": "string", "default": "0.0.0.0" }
+      }
+    },
+    "adapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "enabled": { "type": "boolean", "default": true },
+          "config": { "type": "object" }
+        },
+        "required": ["type"]
+      }
+    },
+    "policies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "deviceId": { "type": "string" },
+          "maxDurationMs": { "type": "number" },
+          "allowedCapabilities": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "disabledCapabilities": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["deviceId"]
+      }
+    }
+  }
+}

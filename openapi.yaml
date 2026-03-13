@@ -1,0 +1,92 @@
+openapi: 3.0.0
+info:
+  title: Open Agent Hardware Layer (OAHL) API
+  description: A standard REST API enabling AI agents to interact with hardware capabilities via pluggable adapters.
+  version: 0.1.0
+servers:
+  - url: http://localhost:3000
+    description: Local Node Server
+paths:
+  /health:
+    get:
+      summary: Health Check
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+  /devices:
+    get:
+      summary: List Devices
+      responses:
+        '200':
+          description: OK
+  /capabilities:
+    get:
+      summary: List Capabilities
+      responses:
+        '200':
+          description: OK
+  /sessions/start:
+    post:
+      summary: Start a new Session
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deviceId:
+                  type: string
+      responses:
+        '200':
+          description: Session started
+  /execute:
+    post:
+      summary: Execute a Capability
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sessionId:
+                  type: string
+                capabilityName:
+                  type: string
+                args:
+                  type: object
+      responses:
+        '200':
+          description: Execution result
+  /sessions/stop:
+    post:
+      summary: Stop a Session
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sessionId:
+                  type: string
+      responses:
+        '200':
+          description: Session stopped
+  /sessions/{id}:
+    get:
+      summary: Get Session State
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session object
