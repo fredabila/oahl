@@ -64,35 +64,22 @@ const authAgent = (req: express.Request, res: express.Response, next: express.Ne
 
 /**
  * 1. NODE REGISTRATION
- * Hardware nodes call this to say "I am online and here is my hardware"
  */
 app.post('/v1/provider/nodes/register', authProvider, async (req, res) => {
   const nodeData = req.body;
-  
-  if (!nodeData.node_id) {
-    return res.status(400).json({ error: "Missing node_id" });
-  }
-
+  if (!nodeData.node_id) return res.status(400).json({ error: "Missing node_id" });
   nodeData.last_seen = Date.now();
-  
-  // Store the node data in Redis. We set an expiration of 5 minutes.
-  // Nodes must "heartbeat" (re-register) every few minutes to stay visible.
-  await redisClient.set(`node:${nodeData.node_id}`, JSON.stringify(nodeData), {
-    EX: 300 
-  });
-
+  await redisClient.set(`node:${nodeData.node_id}`, JSON.stringify(nodeData), { EX: 300 });
   console.log(`[Cloud] 🟢 Node registered: ${nodeData.node_id}`);
-  res.json({ status: "success", message: "Node registered successfully" });
+  res.json({ status: "success" });
 });
 
 /**
  * 2. AGENT DISCOVERY
- * AI Agents call this to ask "What hardware is available right now?"
  */
 app.get('/v1/capabilities', authAgent, async (req, res) => {
   const keys = await redisClient.keys('node:*');
   const availableDevices: any[] = [];
-
   for (const key of keys) {
     const nodeStr = await redisClient.get(key);
     if (nodeStr) {
@@ -102,7 +89,7 @@ app.get('/v1/capabilities', authAgent, async (req, res) => {
           availableDevices.push({
             id: device.id,
             type: device.type,
-            capabilities: device.capabilities, // This is now an array of full objects
+            capabilities: device.capabilities,
             provider: node.provider?.name || "Unknown Provider",
             node_id: node.node_id,
             status: "available"
@@ -111,24 +98,14 @@ app.get('/v1/capabilities', authAgent, async (req, res) => {
       }
     }
   }
-
-  res.json({
-    timestamp: Date.now(),
-    devices: availableDevices
-  });
+  res.json({ timestamp: Date.now(), devices: availableDevices });
 });
 
 /**
- * 3. AGENT REQUEST
- * AI Agents call this to request a specific hardware capability.
+ * 3. AGENT REQUEST (START SESSION)
  */
 app.post('/v1/requests', authAgent, async (req, res) => {
-  const { capability, constraints } = req.body;
-  
-  if (!capability) {
-    return res.status(400).json({ error: "Must specify a capability" });
-  }
-
+  const { capability } = req.body;
   const keys = await redisClient.keys('node:*');
   let matchedNode = null;
   let matchedDevice = null;
@@ -137,7 +114,9 @@ app.post('/v1/requests', authAgent, async (req, res) => {
     const nodeStr = await redisClient.get(key);
     if (nodeStr) {
       const node = JSON.parse(nodeStr);
-      const device = node.devices?.find((d: any) => d.capabilities?.includes(capability));
+      const device = node.devices?.find((d: any) => 
+        d.capabilities?.some((c: any) => c === capability || c.name === capability)
+      );
       if (device) {
         matchedNode = node;
         matchedDevice = device;
@@ -146,35 +125,66 @@ app.post('/v1/requests', authAgent, async (req, res) => {
     }
   }
 
-  if (!matchedNode) {
-    return res.status(404).json({ error: "No available hardware for this capability" });
-  }
+  if (!matchedNode) return res.status(404).json({ error: "Hardware not available" });
 
-  const sessionId = "cloud-sess-" + Math.random().toString(36).substring(7);
-  
+  const sessionId = "sess-" + Math.random().toString(36).substring(7);
   await redisClient.set(`session:${sessionId}`, JSON.stringify({
     node_id: matchedNode.node_id,
     device_id: matchedDevice.id,
-    capability: capability,
-    status: 'assigned'
-  }), { EX: 3600 }); // Sessions expire after 1 hour
+    status: 'active'
+  }), { EX: 3600 });
 
-  console.log(`[Cloud] ✅ Matched agent to node ${matchedNode.node_id}`);
+  res.json({ session_id: sessionId, status: "accepted" });
+});
 
-  res.json({
-    request_id: "req-" + Date.now(),
-    session_id: sessionId,
-    status: "accepted",
-    assigned_node: matchedNode.node_id
+/**
+ * 4. AGENT EXECUTE (COMMAND RELAY)
+ */
+app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
+  const sessionId = req.params.id;
+  const command = req.body;
+
+  const sessionStr = await redisClient.get(`session:${sessionId}`);
+  if (!sessionStr) return res.status(404).json({ error: "Session not found" });
+  const session = JSON.parse(sessionStr);
+
+  // Push the command to the Node's specific command queue (mailbox)
+  const requestId = "cmd-" + Date.now();
+  const relayPayload = JSON.stringify({
+    requestId,
+    sessionId,
+    deviceId: session.device_id,
+    capability: command.capability,
+    params: command.params
   });
+
+  await redisClient.lPush(`commands:${session.node_id}`, relayPayload);
+
+  // Wait for result in a specific result key (blocked for up to 10s)
+  try {
+    const result = await redisClient.brPop(`result:${requestId}`, 15);
+    if (result) {
+      res.json(JSON.parse(result.element));
+    } else {
+      res.status(504).json({ error: "Hardware Node Timeout" });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: "Relay error: " + err.message });
+  }
+});
+
+/**
+ * 5. AGENT STOP SESSION
+ */
+app.post('/v1/sessions/:id/stop', authAgent, async (req, res) => {
+  await redisClient.del(`session:${req.params.id}`);
+  res.json({ status: "stopped" });
 });
 
 async function start() {
   await redisClient.connect();
   const PORT = process.env.PORT || 8000;
-  app.listen(PORT, () => {
-    console.log(`☁️ OAHL Cloud Service running on port ${PORT}`);
-  });
+  app.listen(PORT, () => console.log(`☁️ OAHL Cloud Service running on port ${PORT}`));
 }
 
 start().catch(console.error);
