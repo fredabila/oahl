@@ -1,0 +1,21 @@
+{
+  "node_id": "my-laptop-01",
+  "cloud_url": "https://oahl.onrender.com",
+  "provider_api_key": "123456",
+  "plugins": [
+    "@oahl/adapter-mock",
+    "@oahl/adapter-usb-camera",
+    "@oahl/adapter-rtl-sdr"
+  ],
+  "provider": {
+    "name": "My Personal Test Node"
+  },
+  "devices": [
+    {
+      "id": "usb-cam-1",
+      "type": "camera",
+      "adapter": "usb-camera",
+      "capabilities": ["camera.capture"]
+    }
+  ]
+}

@@ -6,87 +6,102 @@ info:
 servers:
   - url: http://localhost:3000
     description: Local Node Server
+  - url: https://oahl.onrender.com
+    description: Cloud Registry Server
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+
 paths:
-  /health:
+  /v1/capabilities:
     get:
-      summary: Health Check
+      summary: Get all available hardware devices and their capabilities
+      security:
+        - BearerAuth: []
       responses:
         '200':
-          description: OK
+          description: A list of available hardware devices
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  status:
-                    type: string
-  /devices:
-    get:
-      summary: List Devices
-      responses:
-        '200':
-          description: OK
-  /capabilities:
-    get:
-      summary: List Capabilities
-      responses:
-        '200':
-          description: OK
-  /sessions/start:
+                  timestamp:
+                    type: integer
+                  devices:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        type:
+                          type: string
+                        capabilities:
+                          type: array
+                          items:
+                            type: string
+                        provider:
+                          type: string
+                        node_id:
+                          type: string
+                        status:
+                          type: string
+  /v1/requests:
     post:
-      summary: Start a new Session
+      summary: Request a hardware session for a specific capability
+      security:
+        - BearerAuth: []
       requestBody:
         content:
           application/json:
             schema:
               type: object
               properties:
-                deviceId:
+                capability:
                   type: string
+                params:
+                  type: object
       responses:
         '200':
-          description: Session started
-  /execute:
+          description: Session assigned
+  /v1/sessions/{session_id}/execute:
     post:
       summary: Execute a Capability
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
             schema:
               type: object
               properties:
-                sessionId:
+                capability:
                   type: string
-                capabilityName:
-                  type: string
-                args:
+                params:
                   type: object
       responses:
         '200':
           description: Execution result
-  /sessions/stop:
+  /v1/sessions/{session_id}/stop:
     post:
       summary: Stop a Session
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                sessionId:
-                  type: string
-      responses:
-        '200':
-          description: Session stopped
-  /sessions/{id}:
-    get:
-      summary: Get Session State
+      security:
+        - BearerAuth: []
       parameters:
         - in: path
-          name: id
+          name: session_id
           required: true
           schema:
             type: string
       responses:
         '200':
-          description: Session object
+          description: Session stopped

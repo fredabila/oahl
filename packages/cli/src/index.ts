@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import prompts from 'prompts';
 import * as fs from 'fs';
 import * as path from 'path';
+import { execSync } from 'child_process';
 
 const program = new Command();
 
@@ -48,6 +49,9 @@ program
       provider: {
         name: response.providerName
       },
+      plugins: [
+        "@oahl/adapter-mock"
+      ],
       devices: []
     };
 
@@ -60,9 +64,11 @@ program
          adapter = 'usb-camera';
          capabilities = ['camera.capture', 'camera.stream'];
          localPath = '/dev/video0';
+         config.plugins.push("@oahl/adapter-usb-camera");
       } else if (response.deviceType === 'radio') {
          adapter = 'rtl-sdr';
          capabilities = ['radio.scan', 'radio.measure_power'];
+         config.plugins.push("@oahl/adapter-rtl-sdr");
       } else if (response.deviceType === 'mock') {
          adapter = 'mock-sensor';
          capabilities = ['sensor.read'];
@@ -107,8 +113,92 @@ program
     console.log(`\n✅ Successfully generated configuration at: ${configPath}`);
     console.log(`\n🚀 Next steps:`);
     console.log(`1. Review your newly created oahl-config.json`);
-    console.log(`2. Start the local node using Docker:`);
-    console.log(`   docker run -p 8080:8080 -v $(pwd)/oahl-config.json:/app/oahl-config.json oahl/node:latest\n`);
+    console.log(`2. Start the local node using:`);
+    console.log(`   oahl start\n`);
+  });
+
+program
+  .command('install <adapter>')
+  .description('Install a new hardware adapter plugin')
+  .action((adapter) => {
+    console.log(`📦 Installing adapter: ${adapter}...`);
+    try {
+      execSync(`npm install ${adapter}`, { stdio: 'inherit' });
+      
+      // Add to config if exists
+      const configPath = path.resolve(process.cwd(), 'oahl-config.json');
+      if (fs.existsSync(configPath)) {
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        if (!config.plugins) config.plugins = [];
+        if (!config.plugins.includes(adapter)) {
+          config.plugins.push(adapter);
+          fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+          console.log(`✅ Added ${adapter} to oahl-config.json plugins list.`);
+        }
+      }
+      console.log(`\n✨ Successfully installed ${adapter}. Restart your node to enable it.`);
+    } catch (err: any) {
+      console.error(`\n❌ Failed to install adapter: ${err.message}`);
+    }
+  });
+
+program
+  .command('remove <adapter>')
+  .description('Remove a hardware adapter plugin')
+  .action((adapter) => {
+    console.log(`🗑️ Removing adapter: ${adapter}...`);
+    try {
+      execSync(`npm uninstall ${adapter}`, { stdio: 'inherit' });
+      
+      const configPath = path.resolve(process.cwd(), 'oahl-config.json');
+      if (fs.existsSync(configPath)) {
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        if (config.plugins) {
+          config.plugins = config.plugins.filter((p: string) => p !== adapter);
+          fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+          console.log(`✅ Removed ${adapter} from oahl-config.json plugins list.`);
+        }
+      }
+      console.log(`\n✨ Successfully removed ${adapter}.`);
+    } catch (err: any) {
+      console.error(`\n❌ Failed to remove adapter: ${err.message}`);
+    }
+  });
+
+program
+  .command('start')
+  .description('Start the local OAHL node daemon')
+  .option('-p, --port <number>', 'Port to run the server on', '3000')
+  .option('-c, --config <path>', 'Path to oahl-config.json', './oahl-config.json')
+  .action(async (options) => {
+    console.log('🚀 Starting OAHL Node...');
+    
+    // Check if config exists
+    const configPath = path.resolve(process.cwd(), options.config);
+    if (!fs.existsSync(configPath)) {
+      console.error(`❌ Error: Configuration file not found at ${configPath}`);
+      console.log('Hint: Run "oahl init" to create one.');
+      process.exit(1);
+    }
+
+    // Pass environment variables to the server process
+    process.env.PORT = options.port;
+    
+    try {
+      const serverPath = path.resolve(__dirname, '../../server/dist/index.js');
+      if (fs.existsSync(serverPath)) {
+        require(serverPath);
+      } else {
+        const altPath = path.resolve(process.cwd(), 'node_modules/@oahl/server/dist/index.js');
+        if (fs.existsSync(altPath)) {
+            require(altPath);
+        } else {
+            console.error('❌ Error: Server build not found. Please run "npm run build" first.');
+        }
+      }
+    } catch (err: any) {
+      console.error(`❌ Failed to start server: ${err.message}`);
+    }
   });
 
 program.parse();

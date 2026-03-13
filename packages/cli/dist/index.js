@@ -134,7 +134,47 @@ program
     console.log(`\n✅ Successfully generated configuration at: ${configPath}`);
     console.log(`\n🚀 Next steps:`);
     console.log(`1. Review your newly created oahl-config.json`);
-    console.log(`2. Start the local node using Docker:`);
-    console.log(`   docker run -p 8080:8080 -v $(pwd)/oahl-config.json:/app/oahl-config.json oahl/node:latest\n`);
+    console.log(`2. Start the local node using:`);
+    console.log(`   oahl start\n`);
+});
+program
+    .command('start')
+    .description('Start the local OAHL node daemon')
+    .option('-p, --port <number>', 'Port to run the server on', '3000')
+    .option('-c, --config <path>', 'Path to oahl-config.json', './oahl-config.json')
+    .action(async (options) => {
+    console.log('🚀 Starting OAHL Node...');
+    // Check if config exists
+    const configPath = path.resolve(process.cwd(), options.config);
+    if (!fs.existsSync(configPath)) {
+        console.error(`❌ Error: Configuration file not found at ${configPath}`);
+        console.log('Hint: Run "oahl init" to create one.');
+        process.exit(1);
+    }
+    // Pass environment variables to the server process
+    process.env.PORT = options.port;
+    try {
+        // In the workspace structure, server is in ../../server/dist/index.js relative to this file's dist
+        // If we are running from packages/cli/dist/index.js
+        const serverPath = path.resolve(__dirname, '../../server/dist/index.js');
+        if (fs.existsSync(serverPath)) {
+            require(serverPath);
+        }
+        else {
+            // Fallback for different execution environments
+            console.error('❌ Error: Server build not found at ' + serverPath);
+            console.log('Trying alternative path...');
+            const altPath = path.resolve(process.cwd(), 'node_modules/@oahl/server/dist/index.js');
+            if (fs.existsSync(altPath)) {
+                require(altPath);
+            }
+            else {
+                console.error('❌ Error: Server build not found. Please run "npm run build" first.');
+            }
+        }
+    }
+    catch (err) {
+        console.error(`❌ Failed to start server: ${err.message}`);
+    }
 });
 program.parse();

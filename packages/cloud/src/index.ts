@@ -87,11 +87,11 @@ app.post('/v1/provider/nodes/register', authProvider, async (req, res) => {
 
 /**
  * 2. AGENT DISCOVERY
- * AI Agents call this to ask "What capabilities are available right now?"
+ * AI Agents call this to ask "What hardware is available right now?"
  */
 app.get('/v1/capabilities', authAgent, async (req, res) => {
   const keys = await redisClient.keys('node:*');
-  const capabilityMap: Record<string, number> = {};
+  const availableDevices: any[] = [];
 
   for (const key of keys) {
     const nodeStr = await redisClient.get(key);
@@ -99,22 +99,23 @@ app.get('/v1/capabilities', authAgent, async (req, res) => {
       const node = JSON.parse(nodeStr);
       if (node.devices) {
         for (const device of node.devices) {
-          if (device.capabilities) {
-            device.capabilities.forEach((cap: string) => {
-              capabilityMap[cap] = (capabilityMap[cap] || 0) + 1;
-            });
-          }
+          availableDevices.push({
+            id: device.id,
+            type: device.type,
+            capabilities: device.capabilities,
+            provider: node.provider?.name || "Unknown Provider",
+            node_id: node.node_id,
+            status: "available" // In a real system, we'd check session locks here
+          });
         }
       }
     }
   }
 
-  const result = Object.entries(capabilityMap).map(([name, count]) => ({
-    name,
-    nodes_available: count
-  }));
-
-  res.json({ available_capabilities: result });
+  res.json({
+    timestamp: Date.now(),
+    devices: availableDevices
+  });
 });
 
 /**

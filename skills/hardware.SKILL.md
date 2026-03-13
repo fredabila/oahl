@@ -2,117 +2,74 @@
 
 This skill allows an AI agent to interact with real-world hardware devices through the Open Agent Hardware Layer platform.
 
-The platform exposes physical devices such as cameras, sensors, radios, and mobile devices as standardized capabilities that can be requested and executed through API endpoints.
-
-Agents should use this skill when they need information or actions from physical hardware.
-
-Examples include:
-- capturing an image from a remote camera
-- scanning radio spectrum using an SDR receiver
-- reading sensor data
-- running tests on mobile devices
-
-The platform automatically selects an appropriate device that supports the requested capability. 
-**Agents do not need to know which specific hardware device will be used.**
+## 🔐 Authentication
+Agents must provide a valid `AGENT_API_KEY` in the Authorization header for all requests to the Cloud Registry.
+Header: `Authorization: Bearer <YOUR_AGENT_API_KEY>`
 
 ---
 
-## Step 1: Discover available capabilities
-
+## Step 1: Discover available hardware
 Endpoint: `GET /v1/capabilities`
 
-This returns a list of hardware capabilities that are currently available.
+Returns a detailed list of online hardware devices, their providers, and supported capabilities. Use this to select the best physical device for your task.
 
 Example response:
 ```json
-[
-  {
-    "name": "camera.capture",
-    "description": "Capture a still image from a remote camera"
-  },
-  {
-    "name": "radio.scan",
-    "description": "Scan a radio frequency range"
-  }
-]
+{
+  "timestamp": 1710324720000,
+  "devices": [
+    {
+      "id": "usb-cam-1",
+      "type": "camera",
+      "capabilities": ["camera.capture"],
+      "provider": "Accra Test Lab",
+      "node_id": "laptop-01",
+      "status": "available"
+    },
+    {
+      "id": "android-phone-01",
+      "type": "mobile",
+      "capabilities": ["phone.vibrate", "phone.take_photo"],
+      "provider": "User Personal Phone",
+      "node_id": "home-pc-01",
+      "status": "available"
+    }
+  ]
+}
 ```
 
-## Step 2: Request hardware
-
-To use a capability, request a hardware session.
-
+## Step 2: Request a Hardware Session
 Endpoint: `POST /v1/requests`
 
-Example request:
+Target a specific capability. The system will match you to an available device.
+
 ```json
 {
-  "capability": "camera.capture",
-  "constraints": {
-    "country": "US"
-  },
+  "capability": "phone.vibrate",
   "params": {
-    "resolution": "1080p"
+    "pattern": "short"
   }
 }
 ```
 
-Example response:
-```json
-{
-  "request_id": "req_123",
-  "session_id": "sess_123",
-  "status": "accepted"
-}
-```
-
-## Step 3: Execute capability
-
-Once a session is created, execute the capability.
-
+## Step 3: Execute Action
 Endpoint: `POST /v1/sessions/{session_id}/execute`
 
-Example request:
-```json
-{
-  "capability": "camera.capture",
-  "params": {
-    "resolution": "1080p"
-  }
-}
-```
+Triggers the physical hardware via the local Node and its Adapter.
 
-## Step 4: Retrieve results
-
-Endpoint: `GET /v1/results/{request_id}`
-
-Example response:
-```json
-{
-  "image_url": "https://results.example.com/image123.jpg",
-  "timestamp": "2026-03-13T10:12:00Z"
-}
-```
-
-## Step 5: Clean up session
-
+## Step 4: Stop Session
 Endpoint: `POST /v1/sessions/{session_id}/stop`
-
-Always stop a session when you are finished using the hardware.
 
 ---
 
-## Safety and Usage Guidelines
+## 📱 How it works: The Mobile Phone Example
+If you want to trigger an action on a mobile phone (e.g., vibrate or take a photo):
+1. The phone must be connected to an OAHL Node (via an Adapter).
+2. The Node registers the phone's capabilities with the Cloud.
+3. You (the Agent) discover the phone in Step 1.
+4. When you call `execute`, the Cloud relays the command to the Node, which uses its local Adapter to send the physical signal to the phone.
 
-Agents must follow these rules when using hardware capabilities:
-1. Only request capabilities relevant to the task.
-2. Do not repeatedly request hardware without reason.
-3. Respect parameter limits defined by the capability schema.
-4. Avoid requesting actions outside the allowed scope.
-5. **Always stop the session when done.**
-
-## When to use this skill
-Use this skill when:
-- the task requires real-world data
-- a physical device is needed
-- environmental information is required
-- a hardware test must be performed
+## Safety Guidelines
+1. **Privacy:** Never use cameras or microphones without explicit user task relevance.
+2. **Efficiency:** Always stop sessions to release hardware for other agents.
+3. **Validation:** Check the `status` of a device before requesting a session.

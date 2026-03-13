@@ -3,20 +3,67 @@ import { Adapter, SessionManager, PolicyEngine } from '@oahl/core';
 import { MockAdapter } from '@oahl/adapter-mock';
 import { UsbCameraAdapter } from '@oahl/adapter-usb-camera';
 import { RtlSdrAdapter } from '@oahl/adapter-rtl-sdr';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
+// Load configuration
+let config: any = {
+  node_id: 'default-node',
+  devices: []
+};
+
+const configPath = path.resolve(process.cwd(), 'oahl-config.json');
+if (fs.existsSync(configPath)) {
+  try {
+    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    console.log(`[Config] 🟢 Loaded config from ${configPath}`);
+  } catch (err: any) {
+    console.error(`[Config] ❌ Failed to parse oahl-config.json: ${err.message}`);
+  }
+} else {
+  console.log('[Config] 🟡 No oahl-config.json found. Using defaults.');
+}
+
 // Initialize core components
 const sessionManager = new SessionManager();
 const policyEngine = new PolicyEngine();
-const adapters: Adapter[] = [
-  new MockAdapter(),
-  new UsbCameraAdapter(),
-  new RtlSdrAdapter()
-];
+const adapters: Adapter[] = [];
+
+// Dynamic Plugin Loading
+if (config.plugins && Array.isArray(config.plugins)) {
+  for (const pluginName of config.plugins) {
+    try {
+      console.log(`[Plugins] 🔌 Loading adapter: ${pluginName}...`);
+      
+      // Attempt to load from node_modules
+      let PluginClass;
+      try {
+        // First try relative path (for local development)
+        const localPath = path.resolve(process.cwd(), 'node_modules', pluginName, 'dist', 'index.js');
+        PluginClass = require(localPath).default || require(localPath);
+      } catch {
+        // Then try normal require
+        PluginClass = require(pluginName).default || require(pluginName);
+      }
+
+      if (PluginClass) {
+        adapters.push(new PluginClass());
+        console.log(`[Plugins] ✅ ${pluginName} loaded successfully.`);
+      }
+    } catch (err: any) {
+      console.error(`[Plugins] ❌ Failed to load adapter ${pluginName}: ${err.message}`);
+    }
+  }
+}
+
+if (adapters.length === 0) {
+    console.warn("[Plugins] ⚠️ No adapters were loaded. Your node will have no capabilities.");
+}
 
 // Helper to find adapter for a device
 async function getAdapterForDevice(deviceId: string): Promise<Adapter | undefined> {
@@ -27,6 +74,48 @@ async function getAdapterForDevice(deviceId: string): Promise<Adapter | undefine
     }
   }
   return undefined;
+}
+
+// --- Heartbeat Logic ---
+async function startCloudHeartbeat(config: any) {
+  // If the user hasn't configured a cloud URL, just run locally
+  if (!config.cloud_url || !config.provider_api_key) {
+    console.log("[Cloud] 🟡 No cloud_url or provider_api_key found in config. Running in Local-Only mode.");
+    return;
+  }
+
+  const registerNode = async () => {
+    try {
+      console.log(`[Cloud] 🔵 Syncing with ${config.cloud_url}...`);
+      const response = await fetch(`${config.cloud_url}/v1/provider/nodes/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.provider_api_key}`
+        },
+        body: JSON.stringify({
+          node_id: config.node_id,
+          provider: config.provider,
+          devices: config.devices
+        })
+      });
+
+      if (response.ok) {
+        console.log(`[Cloud] 🟢 Successfully synced hardware with ${config.cloud_url}`);
+      } else {
+        const errorText = await response.text();
+        console.error(`[Cloud] ❌ Failed to sync: ${errorText}`);
+      }
+    } catch (err: any) {
+      console.error(`[Cloud] ❌ Could not reach cloud registry: ${err.message}`);
+    }
+  };
+
+  // Register immediately on startup
+  await registerNode();
+
+  // And then send a heartbeat every 2 minutes to keep the node "Alive" in Redis
+  setInterval(registerNode, 2 * 60 * 1000);
 }
 
 app.get('/health', async (req, res) => {
@@ -90,10 +179,6 @@ app.post('/execute', async (req, res) => {
       return res.status(404).json({ error: 'Session not found or inactive' });
     }
 
-    // Normally we would check policy here
-    // const allowed = policyEngine.checkCapability(session.deviceId, capabilityName);
-    // if (!allowed) { return res.status(403).json({ error: 'Capability not allowed by policy' }); }
-
     const adapter = await getAdapterForDevice(session.deviceId);
     if (!adapter) {
       return res.status(404).json({ error: 'Device not found' });
@@ -136,6 +221,9 @@ async function start() {
   for (const adapter of adapters) {
     await adapter.initialize();
   }
+  
+  // Start the cloud heartbeat if configured
+  await startCloudHeartbeat(config);
   
   app.listen(PORT, () => {
     console.log(`OAHL Server running on port ${PORT}`);
