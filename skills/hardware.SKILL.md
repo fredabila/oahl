@@ -50,8 +50,12 @@ Target a specific capability name. The system will match you to an available dev
 ## Step 3: Execute Action
 Endpoint: `POST /v1/sessions/{session_id}/execute`
 
-Triggers the physical hardware. 
-**Constraint:** The `params` you send must match the `schema` found in Step 1.
+This call triggers a **Command Relay**. The Cloud Registry will relay your request to the physical hardware node where the device is connected.
+
+**Response Expectation:**
+- The request is synchronous. The Cloud will wait for the physical hardware to respond before returning the result to you.
+- If the hardware is offline or slow, you may receive a `504 Hardware Node Timeout`.
+- **Constraint:** The `params` you send must match the `schema` found in Step 1.
 
 Example:
 ```json
