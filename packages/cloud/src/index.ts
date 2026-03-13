@@ -32,7 +32,8 @@ const redisOptions: any = {
   url: rawRedisUrl
 };
 
-if (rawRedisUrl.startsWith('rediss://') || rawRedisUrl.includes('redislabs.com') || rawRedisUrl.includes('upstash.io')) {
+// ONLY apply TLS settings if the protocol is explicitly rediss://
+if (rawRedisUrl.startsWith('rediss://')) {
   redisOptions.socket = {
     tls: true,
     rejectUnauthorized: false
