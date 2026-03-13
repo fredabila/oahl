@@ -13,7 +13,11 @@ app.use(express.json());
 const PROVIDER_API_KEY = process.env.PROVIDER_API_KEY || 'dev_provider_key';
 const AGENT_API_KEY = process.env.AGENT_API_KEY || 'dev_agent_key';
 
-let rawRedisUrl = (process.env.REDIS_URL || 'redis://localhost:6379').trim().replace(/^['"]|['"]$/g, '');
+let rawRedisUrl = (process.env.REDIS_URL || 'redis://localhost:6379')
+  .trim()
+  .replace(/[\n\r]/g, '') // Remove accidental newlines
+  .replace(/^['"]|['"]$/g, '') // Remove surrounding quotes
+  .replace(/!+$/, ''); // Remove accidental trailing exclamation marks
 
 // Ensure the URL has a valid protocol
 if (!rawRedisUrl.startsWith('redis://') && !rawRedisUrl.startsWith('rediss://')) {

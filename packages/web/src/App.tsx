@@ -303,13 +303,13 @@ function App() {
                 </div>
                 
                 {/* Horizontal scroll fixed with better padding and scrollbar */}
-                <div className="flex-1 bg-black border border-oahl-border relative flex flex-col">
+                <div className="flex-1 bg-[#050505] border border-oahl-border relative flex flex-col rounded-b-lg">
                   <div className="border-b border-oahl-border bg-oahl-surface px-4 py-2 flex items-center justify-between">
                     <span className="font-mono text-xs text-oahl-textMuted">agent_tool.py</span>
                     <span className="font-mono text-[10px] text-oahl-accent border border-oahl-accent px-2">PYTHON</span>
                   </div>
-                  <div className="p-6 overflow-x-auto code-scroll flex-1">
-<pre className="font-mono text-sm leading-loose text-[#A3A3A3] whitespace-pre min-w-max">
+                  <div className="p-6 overflow-y-auto overflow-x-hidden flex-1 code-scroll">
+<pre className="font-mono text-sm leading-loose text-[#A3A3A3] whitespace-pre-wrap break-words">
 <span className="text-[#FF3300] font-bold">from</span> oahl.sdk <span className="text-[#FF3300] font-bold">import</span> Client
 
 <span className="text-[#666666] italic"># 1. Initialize agent connection to the Cloud Registry</span>
@@ -318,12 +318,16 @@ client = Client(api_key=<span className="text-[#00FF41]">"dev_agent_key"</span>)
 <span className="text-[#666666] italic"># 2. Agent requests a capability (Cloud routes to a physical node)</span>
 session = client.request_hardware(
     capability=<span className="text-[#00FF41]">"camera.capture"</span>,
-    constraints=&#123;<span className="text-[#00FF41]">"location"</span>: <span className="text-[#00FF41]">"US"</span>&#125;
+    constraints=&#123;
+        <span className="text-[#00FF41]">"location"</span>: <span className="text-[#00FF41]">"US"</span>
+    &#125;
 )
 
 <span className="text-[#666666] italic"># 3. Execute action on remote hardware</span>
 result = session.execute(
-    args=&#123;<span className="text-[#00FF41]">"resolution"</span>: <span className="text-[#00FF41]">"1080p"</span>&#125;
+    args=&#123;
+        <span className="text-[#00FF41]">"resolution"</span>: <span className="text-[#00FF41]">"1080p"</span>
+    &#125;
 )
 
 <span className="text-[#3388FF]">print</span>(result.image_url)
