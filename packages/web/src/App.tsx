@@ -258,11 +258,13 @@ function App() {
                   </div>
                 )}
 
-                {/* Empty State */}
+                {/* Empty State / Awaiting Auth */}
                 {!loading && devices.length === 0 && !error && (
                   <div className="flex flex-col items-center justify-center py-16 text-oahl-textMuted border border-dashed border-oahl-border bg-black/50">
                     <Activity className="w-10 h-10 mb-4 opacity-50" />
-                    <p className="font-mono text-sm uppercase tracking-widest">Awaiting authentication</p>
+                    <p className="font-mono text-sm uppercase tracking-widest">
+                      {apiKey ? 'No active hardware found on network' : 'Awaiting authentication'}
+                    </p>
                   </div>
                 )}
 

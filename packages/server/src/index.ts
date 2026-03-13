@@ -100,10 +100,11 @@ async function startCloudHeartbeat(config: any, adapters: Adapter[]) {
             const capabilities = await adapter.getCapabilities(device.id);
             activeDevices.push({
               ...device,
-              capabilities: capabilities.map(c => c.name),
+              capabilities: capabilities, // Full objects (name, description, schema)
               adapter: adapter.id || adapter.constructor.name
             });
           }
+
         } catch (err: any) {
           console.error(`[Cloud] ❌ Failed to poll adapter: ${err.message}`);
         }

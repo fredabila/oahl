@@ -102,10 +102,10 @@ app.get('/v1/capabilities', authAgent, async (req, res) => {
           availableDevices.push({
             id: device.id,
             type: device.type,
-            capabilities: device.capabilities,
+            capabilities: device.capabilities, // This is now an array of full objects
             provider: node.provider?.name || "Unknown Provider",
             node_id: node.node_id,
-            status: "available" // In a real system, we'd check session locks here
+            status: "available"
           });
         }
       }
