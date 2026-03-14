@@ -35,6 +35,20 @@ oahl create-adapter my-device
 
 This creates a ready-to-edit adapter with a valid OAHL interface implementation.
 
+### Run conformance checks
+
+Run the OAHL core conformance suite from your monorepo root:
+
+```bash
+oahl conformance
+```
+
+Or specify a workspace path:
+
+```bash
+oahl conformance --workspace /path/to/oahl
+```
+
 ### What is OAHL?
 OAHL is an open-source framework that lets hardware owners safely expose physical capabilities (like taking pictures or scanning radio frequencies) to remote AI agents. 
 

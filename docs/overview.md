@@ -37,5 +37,6 @@ OAHL now defines a protocol-first path for ecosystem compatibility:
 - Protocol contract: `docs/oahl-protocol-v1.md`
 - Attachment and networking profiles: `docs/transport-attachment-profiles.md`
 - Structured execution result schema: `oahl-execution-result.schema.json`
+- Standardization execution plan: `docs/oahl-standardization-roadmap.md`
 
 This allows heterogeneous hardware (robotics, cameras, radios, sensors, mobile devices) to plug into one consistent agent-facing model.

@@ -302,6 +302,26 @@ Generated with \`oahl create-adapter\`.
   });
 
 program
+  .command('conformance')
+  .description('Run OAHL core conformance checks')
+  .option('--workspace <path>', 'Path to OAHL workspace root', process.cwd())
+  .action((options) => {
+    const workspaceRoot = path.resolve(process.cwd(), options.workspace);
+    console.log(`🧪 Running OAHL conformance checks from: ${workspaceRoot}`);
+
+    try {
+      execSync('npm run test:conformance --workspace=@oahl/core', {
+        stdio: 'inherit',
+        cwd: workspaceRoot
+      });
+      console.log('\n✅ Conformance checks passed.');
+    } catch (err: any) {
+      console.error(`\n❌ Conformance checks failed: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+program
   .command('start')
   .description('Start the local OAHL node daemon')
   .option('-p, --port <number>', 'Port to run the server on', '3000')

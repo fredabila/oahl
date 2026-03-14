@@ -5,7 +5,9 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "npm run build && node --test test/**/*.test.js"
+    "test": "npm run build && node --test test/**/*.test.js",
+    "test:conformance": "npm run build && node --test test/conformance.test.js",
+    "conformance": "npm run test:conformance"
   },
   "devDependencies": {
     "typescript": "^5.3.3"
