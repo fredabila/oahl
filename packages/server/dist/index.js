@@ -62,6 +62,9 @@ if (fs.existsSync(configPath)) {
 // Initialize core components
 const sessionManager = new core_1.SessionManager();
 const adapters = [];
+const ADAPTER_RECOVERY_COOLDOWN_MS = Math.max(1_000, Number.parseInt(process.env.OAHL_ADAPTER_RECOVERY_COOLDOWN_MS || '5000', 10) || 5_000);
+const HEARTBEAT_INTERVAL_MS = Math.max(5_000, Number.parseInt(process.env.OAHL_HEARTBEAT_INTERVAL_MS || '15000', 10) || 15_000);
+const lastAdapterRecoveryAttempt = new Map();
 function resolveAdapterClass(imported) {
     if (!imported)
         return undefined;
@@ -74,6 +77,67 @@ function resolveAdapterClass(imported) {
         return exportCandidates[0];
     }
     return undefined;
+}
+function adapterLabel(adapter) {
+    return adapter.id || adapter.constructor?.name || 'unknown-adapter';
+}
+async function recoverAdapter(adapter, reason) {
+    const now = Date.now();
+    const lastAttempt = lastAdapterRecoveryAttempt.get(adapter) || 0;
+    if (now - lastAttempt < ADAPTER_RECOVERY_COOLDOWN_MS) {
+        return false;
+    }
+    lastAdapterRecoveryAttempt.set(adapter, now);
+    try {
+        await adapter.initialize();
+        console.log(`[Adapters] ♻️ Recovered ${adapterLabel(adapter)} (${reason})`);
+        return true;
+    }
+    catch (err) {
+        console.error(`[Adapters] ❌ Recovery failed for ${adapterLabel(adapter)} (${reason}): ${err.message}`);
+        return false;
+    }
+}
+async function ensureAdapterHealthy(adapter) {
+    if (typeof adapter.healthCheck !== 'function')
+        return;
+    try {
+        const health = await adapter.healthCheck();
+        if (health?.status !== 'ok') {
+            await recoverAdapter(adapter, `health-check:${health?.message || 'error'}`);
+        }
+    }
+    catch (err) {
+        await recoverAdapter(adapter, `health-check-threw:${err.message}`);
+    }
+}
+async function getDevicesWithRecovery(adapter) {
+    try {
+        const devices = await adapter.getDevices();
+        return Array.isArray(devices) ? devices : [];
+    }
+    catch (err) {
+        const recovered = await recoverAdapter(adapter, `getDevices-failed:${err.message}`);
+        if (!recovered) {
+            throw err;
+        }
+        const devices = await adapter.getDevices();
+        return Array.isArray(devices) ? devices : [];
+    }
+}
+async function getCapabilitiesWithRecovery(adapter, deviceId) {
+    try {
+        const capabilities = await adapter.getCapabilities(deviceId);
+        return Array.isArray(capabilities) ? capabilities : [];
+    }
+    catch (err) {
+        const recovered = await recoverAdapter(adapter, `getCapabilities-failed:${deviceId}:${err.message}`);
+        if (!recovered) {
+            throw err;
+        }
+        const capabilities = await adapter.getCapabilities(deviceId);
+        return Array.isArray(capabilities) ? capabilities : [];
+    }
 }
 function asExecutionResult(options) {
     const { requestId, deviceId, capability, adapterId, rawResult, error } = options;
@@ -263,7 +327,7 @@ if (config.plugins && Array.isArray(config.plugins)) {
 // Helper to find adapter for a device
 async function getAdapterForDevice(deviceId) {
     for (const adapter of adapters) {
-        const devices = await adapter.getDevices();
+        const devices = await getDevicesWithRecovery(adapter);
         if (devices.find(d => d.id === deviceId))
             return adapter;
     }
@@ -482,10 +546,11 @@ async function startCloudHeartbeat(config, adapters) {
             const activeDevices = [];
             for (const adapter of adapters) {
                 try {
-                    const devices = await adapter.getDevices();
+                    await ensureAdapterHealthy(adapter);
+                    const devices = await getDevicesWithRecovery(adapter);
                     for (const device of devices) {
                         const configured = configuredDevicesById.get(device.id) || {};
-                        const adapterCapabilities = await adapter.getCapabilities(device.id);
+                        const adapterCapabilities = await getCapabilitiesWithRecovery(adapter, device.id);
                         const capabilities = Array.isArray(adapterCapabilities) ? [...adapterCapabilities] : [];
                         const baselineCapability = resolveBaselineCapability(configured, device, capabilities);
                         if (baselineCapability) {
@@ -533,14 +598,14 @@ async function startCloudHeartbeat(config, adapters) {
         }
     };
     await registerNode();
-    setInterval(registerNode, 2 * 60 * 1000);
+    setInterval(registerNode, HEARTBEAT_INTERVAL_MS);
 }
 // Local API endpoints
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.get('/devices', async (req, res) => {
     const allDevices = [];
     for (const adapter of adapters) {
-        const devices = await adapter.getDevices();
+        const devices = await getDevicesWithRecovery(adapter);
         allDevices.push(...devices);
     }
     res.json(allDevices);
@@ -549,7 +614,7 @@ app.get('/devices', async (req, res) => {
 async function start() {
     for (const adapter of adapters) {
         try {
-            await adapter.initialize();
+            await recoverAdapter(adapter, 'startup');
         }
         catch (err) {
             console.error(`[Adapters] ❌ Failed to initialize adapter: ${err.message}`);

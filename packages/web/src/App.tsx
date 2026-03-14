@@ -69,6 +69,21 @@ interface RelayInfo {
   requestId: string;
 }
 
+interface AiPlannedStep {
+  capability: string;
+  params?: Record<string, any>;
+}
+
+interface AiStepResult {
+  step: number;
+  capability: string;
+  relayMode: string;
+  requestId: string;
+  status: 'success' | 'error';
+  result?: ExecutionResult;
+  error?: string;
+}
+
 const AGENT_ENDPOINTS = [
   { method: 'GET', path: '/v1/capabilities', purpose: 'Discover global hardware inventory with filtering and pagination.' },
   { method: 'POST', path: '/v1/requests', purpose: 'Request a session by capability or deterministically by device_id (+ node_id).' },
@@ -472,6 +487,7 @@ function ApiLabPage() {
   const [aiExecutionSummary, setAiExecutionSummary] = useState('');
   const [aiPlanOnlyMode, setAiPlanOnlyMode] = useState(false);
   const [aiPlanJson, setAiPlanJson] = useState('');
+  const [aiStepResults, setAiStepResults] = useState<AiStepResult[]>([]);
 
   const [queryText, setQueryText] = useState('');
   const [queryCapability, setQueryCapability] = useState('');
@@ -678,6 +694,7 @@ function ApiLabPage() {
     setActionError('');
     setAiExecutionSummary('');
     setAiPlanJson('');
+    setAiStepResults([]);
     setAiRunning(true);
 
     let allocatedSessionId = '';
@@ -722,7 +739,7 @@ function ApiLabPage() {
             {
               role: 'system',
               content:
-                'You are an OAHL hardware execution planner. Follow this strict behavior: discover capability inventory, choose a concrete device+capability, generate params valid against schema, and prepare one execution plan. Output ONLY JSON with keys: device_id (string), capability (string), params (object), rationale (string). Never output markdown.'
+                'You are an OAHL hardware execution planner. Follow strict behavior: choose one concrete device and produce a full task sequence. Output ONLY JSON (no markdown) with keys: device_id (string), rationale (string), steps (array). Each step object must include capability (string) and params (object). If task is single-action, still return one-step array.'
             },
             {
               role: 'user',
@@ -747,18 +764,33 @@ function ApiLabPage() {
 
       const plan = parseJsonFromText(rawMessage);
       const plannedDeviceId = String(plan?.device_id || '').trim();
-      const plannedCapability = String(plan?.capability || '').trim();
-      const plannedParams = plan?.params && typeof plan.params === 'object' ? plan.params : {};
+      const plannedSteps = Array.isArray(plan?.steps)
+        ? plan.steps
+            .map((step: any) => ({
+              capability: String(step?.capability || '').trim(),
+              params: step?.params && typeof step.params === 'object' ? step.params : {}
+            }))
+            .filter((step: AiPlannedStep) => step.capability.length > 0)
+        : [];
+
+      const legacyCapability = String(plan?.capability || '').trim();
+      const legacyParams = plan?.params && typeof plan.params === 'object' ? plan.params : {};
+      const steps: AiPlannedStep[] = plannedSteps.length > 0
+        ? plannedSteps
+        : (legacyCapability ? [{ capability: legacyCapability, params: legacyParams }] : []);
+
+      const firstStep = steps[0];
+      const plannedCapability = firstStep?.capability || '';
+      const plannedParams = firstStep?.params || {};
 
       setAiPlanJson(JSON.stringify({
         device_id: plannedDeviceId,
-        capability: plannedCapability,
-        params: plannedParams,
+        steps,
         rationale: String(plan?.rationale || '')
       }, null, 2));
 
-      if (!plannedCapability) {
-        throw new Error('LLM plan is missing capability');
+      if (steps.length === 0) {
+        throw new Error('LLM plan is missing executable steps');
       }
 
       const matchedDevice = plannedDeviceId ? inventory.find((d) => d.id === plannedDeviceId) : undefined;
@@ -768,12 +800,17 @@ function ApiLabPage() {
         throw new Error(`No online device currently supports capability ${plannedCapability}`);
       }
 
+      const unsupportedStep = steps.find((step) => !(fallbackDevice.capabilities || []).some((c) => capabilityName(c) === step.capability));
+      if (unsupportedStep) {
+        throw new Error(`Device ${fallbackDevice.id} does not expose capability ${unsupportedStep.capability} required by plan sequence.`);
+      }
+
       setSelectedDeviceId(fallbackDevice.id);
       setSelectedCapability(plannedCapability);
       setExecuteParams(JSON.stringify(plannedParams, null, 2));
 
       if (aiPlanOnlyMode) {
-        setAiExecutionSummary(String(plan?.rationale || 'Plan generated. Review capability and params before execution.'));
+        setAiExecutionSummary(String(plan?.rationale || `Plan generated with ${steps.length} step(s). Review before execution.`));
         return;
       }
 
@@ -802,24 +839,49 @@ function ApiLabPage() {
 
       setSessionId(allocatedSessionId);
 
-      const execRes = await fetch(`${cloudUrl}/v1/sessions/${allocatedSessionId}/execute`, {
-        method: 'POST',
-        headers: bearerHeaders(true),
-        body: JSON.stringify({ capability: plannedCapability, params: plannedParams })
-      });
+      const sequenceResults: AiStepResult[] = [];
 
-      if (!execRes.ok) {
-        throw new Error((await execRes.text()) || 'Execute failed for AI plan');
+      for (let index = 0; index < steps.length; index += 1) {
+        const step = steps[index];
+        const execRes = await fetch(`${cloudUrl}/v1/sessions/${allocatedSessionId}/execute`, {
+          method: 'POST',
+          headers: bearerHeaders(true),
+          body: JSON.stringify({ capability: step.capability, params: step.params || {} })
+        });
+
+        const relayMode = execRes.headers.get('x-oahl-relay-mode') || 'unknown';
+        const requestId = execRes.headers.get('x-oahl-request-id') || '';
+
+        if (!execRes.ok) {
+          const errorText = (await execRes.text()) || 'Execute failed';
+          sequenceResults.push({
+            step: index + 1,
+            capability: step.capability,
+            relayMode,
+            requestId,
+            status: 'error',
+            error: errorText
+          });
+          setAiStepResults(sequenceResults);
+          throw new Error(`Step ${index + 1} (${step.capability}) failed: ${errorText}`);
+        }
+
+        const execData = (await execRes.json()) as ExecutionResult;
+        sequenceResults.push({
+          step: index + 1,
+          capability: step.capability,
+          relayMode,
+          requestId,
+          status: 'success',
+          result: execData
+        });
+
+        setExecutionResult(execData);
+        setRelayInfo({ mode: relayMode, requestId });
+        setAiStepResults([...sequenceResults]);
       }
 
-      const execData = (await execRes.json()) as ExecutionResult;
-      setExecutionResult(execData);
-      setRelayInfo({
-        mode: execRes.headers.get('x-oahl-relay-mode') || 'unknown',
-        requestId: execRes.headers.get('x-oahl-request-id') || ''
-      });
-
-      setAiExecutionSummary(String(plan?.rationale || 'AI selected a matching capability and executed it successfully.'));
+      setAiExecutionSummary(String(plan?.rationale || `AI executed ${steps.length} step(s) successfully in sequence.`));
     } catch (err: any) {
       setActionError(err?.message || 'AI execution failed');
     } finally {
@@ -921,6 +983,23 @@ function ApiLabPage() {
             <div className="mt-3">
               <p className="mb-1 text-xs font-mono uppercase tracking-wider text-oahl-textMuted">AI Plan JSON</p>
               <pre className="code-scroll overflow-auto rounded-xl border border-oahl-border bg-oahl-surface px-3 py-2 text-xs text-oahl-textMuted">{aiPlanJson}</pre>
+            </div>
+          )}
+
+          {aiStepResults.length > 0 && (
+            <div className="mt-3">
+              <p className="mb-1 text-xs font-mono uppercase tracking-wider text-oahl-textMuted">Sequence Execution</p>
+              <div className="space-y-2">
+                {aiStepResults.map((stepResult) => (
+                  <div key={`${stepResult.step}-${stepResult.requestId || stepResult.capability}`} className="rounded-xl border border-oahl-border bg-oahl-surface px-3 py-2 text-xs text-oahl-textMuted">
+                    <p className="font-semibold text-oahl-textMain">
+                      Step {stepResult.step}: {stepResult.capability} · {stepResult.status}
+                    </p>
+                    <p>Relay: {stepResult.relayMode}{stepResult.requestId ? ` · Request: ${stepResult.requestId}` : ''}</p>
+                    {stepResult.error && <p className="text-red-300">{stepResult.error}</p>}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
