@@ -3,17 +3,23 @@ import { randomUUID } from 'crypto';
 
 export class SessionManager {
   private sessions: Map<string, Session> = new Map();
+  private activeSessionsByDevice: Map<string, string> = new Map();
 
   startSession(deviceId: string): Session {
-    // Basic session creation
-    // To support policy maxDurationMs, we'd add timers here
+    const activeSession = this.getActiveSessionForDevice(deviceId);
+    if (activeSession) {
+      throw new Error(`Device ${deviceId} already has an active session`);
+    }
+
     const session: Session = {
       id: randomUUID(),
       deviceId,
       startTime: Date.now(),
       status: 'active'
     };
+
     this.sessions.set(session.id, session);
+    this.activeSessionsByDevice.set(deviceId, session.id);
     return session;
   }
 
@@ -21,6 +27,10 @@ export class SessionManager {
     const session = this.sessions.get(sessionId);
     if (session) {
       session.status = 'stopped';
+      const activeSessionId = this.activeSessionsByDevice.get(session.deviceId);
+      if (activeSessionId === sessionId) {
+        this.activeSessionsByDevice.delete(session.deviceId);
+      }
     }
   }
 
@@ -31,5 +41,24 @@ export class SessionManager {
   isSessionActive(sessionId: string): boolean {
     const session = this.sessions.get(sessionId);
     return session !== undefined && session.status === 'active';
+  }
+
+  getActiveSessionForDevice(deviceId: string): Session | undefined {
+    const sessionId = this.activeSessionsByDevice.get(deviceId);
+    if (!sessionId) {
+      return undefined;
+    }
+
+    const session = this.sessions.get(sessionId);
+    if (!session || session.status !== 'active') {
+      this.activeSessionsByDevice.delete(deviceId);
+      return undefined;
+    }
+
+    return session;
+  }
+
+  hasActiveSessionForDevice(deviceId: string): boolean {
+    return this.getActiveSessionForDevice(deviceId) !== undefined;
   }
 }

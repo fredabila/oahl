@@ -1,4 +1,8 @@
-import { Policy, Capability } from './types';
+import { Policy } from './types';
+
+function normalizeCapabilityName(name: string): string {
+  return (name || '').trim().toLowerCase();
+}
 
 export class PolicyEngine {
   private policies: Map<string, Policy> = new Map();
@@ -13,13 +17,17 @@ export class PolicyEngine {
 
   isCapabilityAllowed(deviceId: string, capabilityName: string): boolean {
     const policy = this.getPolicy(deviceId);
-    if (!policy) return true; // Default allow if no policy, or we could strict default deny
+    if (!policy) return true;
 
-    if (policy.disabledCapabilities.includes(capabilityName)) {
+    const requestedCapability = normalizeCapabilityName(capabilityName);
+    const disabledCapabilities = (policy.disabledCapabilities || []).map(normalizeCapabilityName);
+    const allowedCapabilities = (policy.allowedCapabilities || []).map(normalizeCapabilityName);
+
+    if (disabledCapabilities.includes(requestedCapability)) {
       return false;
     }
     
-    if (policy.allowedCapabilities.length > 0 && !policy.allowedCapabilities.includes(capabilityName)) {
+    if (allowedCapabilities.length > 0 && !allowedCapabilities.includes(requestedCapability)) {
       return false;
     }
 

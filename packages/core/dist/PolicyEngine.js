@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PolicyEngine = void 0;
+function normalizeCapabilityName(name) {
+    return (name || '').trim().toLowerCase();
+}
 class PolicyEngine {
     policies = new Map();
     registerPolicy(policy) {
@@ -12,11 +15,14 @@ class PolicyEngine {
     isCapabilityAllowed(deviceId, capabilityName) {
         const policy = this.getPolicy(deviceId);
         if (!policy)
-            return true; // Default allow if no policy, or we could strict default deny
-        if (policy.disabledCapabilities.includes(capabilityName)) {
+            return true;
+        const requestedCapability = normalizeCapabilityName(capabilityName);
+        const disabledCapabilities = (policy.disabledCapabilities || []).map(normalizeCapabilityName);
+        const allowedCapabilities = (policy.allowedCapabilities || []).map(normalizeCapabilityName);
+        if (disabledCapabilities.includes(requestedCapability)) {
             return false;
         }
-        if (policy.allowedCapabilities.length > 0 && !policy.allowedCapabilities.includes(capabilityName)) {
+        if (allowedCapabilities.length > 0 && !allowedCapabilities.includes(requestedCapability)) {
             return false;
         }
         return true;
