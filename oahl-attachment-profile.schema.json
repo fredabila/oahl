@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oahl.dev/schemas/attachment-profile.schema.json",
+  "title": "OAHL Attachment Profile",
+  "description": "Standard descriptor for how a hardware device is attached/reached by an adapter.",
+  "type": "object",
+  "required": ["protocol", "mode"],
+  "properties": {
+    "protocol": {
+      "type": "string",
+      "enum": [
+        "usb",
+        "serial",
+        "pcie",
+        "gpio",
+        "i2c",
+        "spi",
+        "ble",
+        "wifi_direct",
+        "tcp",
+        "udp",
+        "http",
+        "https",
+        "ws",
+        "wss",
+        "mqtt",
+        "mqtts",
+        "coap",
+        "rtsp",
+        "grpc",
+        "webrtc"
+      ]
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["local", "lan", "wan", "relay"]
+    },
+    "endpoint": {
+      "type": "string"
+    },
+    "auth": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["none", "token", "basic", "mtls", "pairing", "custom"]
+        },
+        "details": {
+          "type": ["object", "array", "string", "number", "boolean", "null"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "security": {
+      "type": "object",
+      "properties": {
+        "tls": { "type": "boolean" },
+        "certificate_pinning": { "type": "boolean" },
+        "encrypted_transport": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

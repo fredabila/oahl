@@ -3,6 +3,10 @@ info:
   title: Open Agent Hardware Layer (OAHL) API
   description: A standard REST API enabling AI agents to interact with hardware capabilities via pluggable adapters.
   version: 0.1.0
+  x-oahl-protocol:
+    version: "1.0"
+    execution_result_schema: "./oahl-execution-result.schema.json"
+    attachment_profile_schema: "./oahl-attachment-profile.schema.json"
 servers:
   - url: http://localhost:3000
     description: Local Node Server

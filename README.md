@@ -78,6 +78,9 @@ See the `docs/` folder for:
 - [Agent Integration Guide](docs/agent-integration-guide.md)
 - [API Reference](docs/api-reference.md)
 - [SDK Strategy](docs/sdk-strategy.md)
+- [OAHL Protocol v1](docs/oahl-protocol-v1.md)
+- [Transport & Attachment Profiles](docs/transport-attachment-profiles.md)
+- [Transport Plugin Architecture](docs/transport-plugin-architecture.md)
 
 ## Repository layout
 

@@ -135,6 +135,17 @@ export default class MyVibratingAdapter implements Adapter {
 > 2. `getDevices()` should return physical hardware details (id, type, name, isPublic).
 > 3. `getCapabilities()` MUST provide a `schema` (JSON Schema) for all inputs so the AI Agent knows how to call it.
 > 4. `execute()` must use appropriate Node.js libraries (like `child_process`, `serialport`, `usb`, or `adbkit`) to trigger the hardware.
+> 5. Add a **transport profile** for each device using this shape:
+>    ```json
+>    {
+>      "protocol": "usb|serial|ble|tcp|mqtt|webrtc|...",
+>      "mode": "local|lan|wan|relay",
+>      "endpoint": "optional",
+>      "auth": { "type": "none|token|basic|mtls|pairing|custom" },
+>      "security": { "tls": true }
+>    }
+>    ```
+> 6. If possible, implement a reusable transport class (or helper) aligned with OAHL `TransportProvider` semantics: `supports`, `connect`, `health`, `execute`, `disconnect`.
 >
 > **The Blueprint to follow:**
 > ```typescript
@@ -148,11 +159,21 @@ export default class MyVibratingAdapter implements Adapter {
 >   getCapabilities(deviceId: string): Promise<Capability[]>;
 >   execute(deviceId: string, capabilityName: string, args: any): Promise<any>;
 > }
+>
+> interface TransportAttachmentProfile {
+>   protocol: 'usb' | 'serial' | 'ble' | 'tcp' | 'mqtt' | 'webrtc' | string;
+>   mode: 'local' | 'lan' | 'wan' | 'relay';
+>   endpoint?: string;
+>   auth?: { type: 'none' | 'token' | 'basic' | 'mtls' | 'pairing' | 'custom'; details?: any };
+>   security?: { tls?: boolean; certificate_pinning?: boolean; encrypted_transport?: boolean };
+>   metadata?: Record<string, any>;
+> }
 > ```
 >
 > **What I need from you:**
 > 1. A complete `src/index.ts` file implementing these methods for the hardware I specified.
-> 2. A `package.json` file with `@oahl/core` and any hardware-specific dependencies."
+> 2. A `package.json` file with `@oahl/core` and any hardware-specific dependencies.
+> 3. A transport-aware design in code (for example: `src/transports/*.ts`) and at least one declared `TransportAttachmentProfile` for each device."
 
 ---
 
@@ -235,3 +256,13 @@ To keep adapters interoperable and searchable:
 - Keep domains stable (`camera`, `radio`, `sensor`, `phone`, `robot`, `lab`)
 - Use explicit verbs (`capture`, `stream`, `tune`, `scan`, `read`, `write`, `start`, `stop`)
 - Version only when needed via suffix (`camera.capture.v2`)
+
+## 🌐 9. Transport/Attachment Standard
+
+Adapters should define device attachment metadata using the centralized transport schema:
+
+- Attachment schema: `oahl-attachment-profile.schema.json`
+- Transport profile guide: `docs/transport-attachment-profiles.md`
+- Transport plugin interface guide: `docs/transport-plugin-architecture.md`
+
+This enables consistent support across USB, serial, LAN, BLE, MQTT, WebRTC, and other connection methods without changing the agent-facing capability model.

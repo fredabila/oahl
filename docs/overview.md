@@ -29,3 +29,13 @@ The project is split into three main components to make the ecosystem work secur
 - **Capabilities:** Standardized API actions like `capture_image` or `scan_spectrum`. Agents request capabilities, not devices.
 - **Sessions:** Time-bound, exclusive access control.
 - **Policies:** Safety rules preventing misuse, such as "receive-only", "maximum 5 minutes", or "disable transmit". 
+
+## Standardization Direction
+
+OAHL now defines a protocol-first path for ecosystem compatibility:
+
+- Protocol contract: `docs/oahl-protocol-v1.md`
+- Attachment and networking profiles: `docs/transport-attachment-profiles.md`
+- Structured execution result schema: `oahl-execution-result.schema.json`
+
+This allows heterogeneous hardware (robotics, cameras, radios, sensors, mobile devices) to plug into one consistent agent-facing model.
