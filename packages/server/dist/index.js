@@ -58,12 +58,8 @@ if (fs.existsSync(configPath)) {
         console.error(`[Config] ❌ Failed to parse oahl-config.json: ${err.message}`);
     }
 }
-else {
-    console.log('[Config] 🟡 No oahl-config.json found. Using defaults.');
-}
 // Initialize core components
 const sessionManager = new core_1.SessionManager();
-const policyEngine = new core_1.PolicyEngine();
 const adapters = [];
 // Dynamic Plugin Loading
 if (config.plugins && Array.isArray(config.plugins)) {
@@ -72,28 +68,16 @@ if (config.plugins && Array.isArray(config.plugins)) {
             console.log(`[Plugins] 🔌 Loading adapter: ${pluginName}...`);
             let imported;
             try {
-                // 1. Try to require the package normally (standard Node.js resolution)
                 imported = require(pluginName);
             }
-            catch (err) {
-                // 2. Fallback to local path if require fails
+            catch {
                 const localPath = path.resolve(process.cwd(), 'node_modules', pluginName);
                 imported = require(localPath);
             }
-            // 3. Handle every possible export style (ESM, CJS, etc.)
-            // We look for: .default, .MockAdapter (for internal packages), or the root itself
-            const PluginClass = imported.default ||
-                imported.MockAdapter ||
-                imported.UsbCameraAdapter ||
-                imported.RtlSdrAdapter ||
-                imported.AndroidAdapter ||
-                imported;
+            const PluginClass = imported.default || imported;
             if (typeof PluginClass === 'function') {
                 adapters.push(new PluginClass());
                 console.log(`[Plugins] ✅ ${pluginName} loaded successfully.`);
-            }
-            else {
-                console.error(`[Plugins] ❌ Failed to load ${pluginName}: Exported item is not a constructor (type: ${typeof PluginClass})`);
             }
         }
         catch (err) {
@@ -101,25 +85,74 @@ if (config.plugins && Array.isArray(config.plugins)) {
         }
     }
 }
-if (adapters.length === 0) {
-    console.warn("[Plugins] ⚠️ No adapters were loaded. Your node will have no capabilities.");
-}
 // Helper to find adapter for a device
 async function getAdapterForDevice(deviceId) {
     for (const adapter of adapters) {
         const devices = await adapter.getDevices();
-        if (devices.find(d => d.id === deviceId)) {
+        if (devices.find(d => d.id === deviceId))
             return adapter;
-        }
     }
     return undefined;
 }
+// --- CLOUD RELAY LISTENER (The Mailbox) ---
+async function startCloudRelay(config, adapters) {
+    if (!config.cloud_url || !config.provider_api_key)
+        return;
+    console.log(`[Cloud Relay] 📬 Starting HTTP Command Listener (Polling)...`);
+    while (true) {
+        try {
+            // Poll the Cloud Registry for any pending commands
+            const response = await fetch(`${config.cloud_url}/v1/provider/nodes/${config.node_id}/poll`, {
+                headers: {
+                    'Authorization': `Bearer ${config.provider_api_key}`
+                }
+            });
+            if (response.status === 200) {
+                const payload = await response.json();
+                console.log(`[Cloud Relay] 📥 Received command: ${payload.capability} for device ${payload.deviceId}`);
+                // Find adapter and execute
+                const adapter = await getAdapterForDevice(payload.deviceId);
+                if (adapter) {
+                    try {
+                        const result = await adapter.execute(payload.deviceId, payload.capability, payload.params || {});
+                        // Send result back to cloud
+                        await fetch(`${config.cloud_url}/v1/provider/nodes/results`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${config.provider_api_key}`
+                            },
+                            body: JSON.stringify({
+                                requestId: payload.requestId,
+                                result: result
+                            })
+                        });
+                        console.log(`[Cloud Relay] 📤 Sent result back for ${payload.requestId}`);
+                    }
+                    catch (execErr) {
+                        console.error(`[Cloud Relay] ❌ Execution failed: ${execErr.message}`);
+                    }
+                }
+            }
+            else if (response.status === 204) {
+                // No commands waiting, just loop again
+            }
+            else {
+                const errText = await response.text();
+                console.error(`[Cloud Relay] ❌ Polling error (${response.status}): ${errText}`);
+                await new Promise(r => setTimeout(r, 5000)); // Wait before retry
+            }
+        }
+        catch (err) {
+            console.error(`[Cloud Relay] ❌ Connection error: ${err.message}`);
+            await new Promise(r => setTimeout(r, 5000));
+        }
+    }
+}
 // --- Dynamic Heartbeat Logic ---
 async function startCloudHeartbeat(config, adapters) {
-    if (!config.cloud_url || !config.provider_api_key) {
-        console.log("[Cloud] 🟡 No cloud_url or provider_api_key found in config. Running in Local-Only mode.");
+    if (!config.cloud_url || !config.provider_api_key)
         return;
-    }
     const registerNode = async () => {
         try {
             const activeDevices = [];
@@ -130,17 +163,14 @@ async function startCloudHeartbeat(config, adapters) {
                         const capabilities = await adapter.getCapabilities(device.id);
                         activeDevices.push({
                             ...device,
-                            capabilities: capabilities.map(c => c.name),
+                            capabilities,
                             adapter: adapter.id || adapter.constructor.name
                         });
                     }
                 }
-                catch (err) {
-                    console.error(`[Cloud] ❌ Failed to poll adapter: ${err.message}`);
-                }
+                catch { }
             }
-            console.log(`[Cloud] 🔵 Syncing ${activeDevices.length} devices with ${config.cloud_url}...`);
-            const response = await fetch(`${config.cloud_url}/v1/provider/nodes/register`, {
+            await fetch(`${config.cloud_url}/v1/provider/nodes/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -152,114 +182,26 @@ async function startCloudHeartbeat(config, adapters) {
                     devices: activeDevices
                 })
             });
-            if (response.ok) {
-                console.log(`[Cloud] 🟢 Successfully synced hardware with ${config.cloud_url}`);
-            }
-            else {
-                const errorText = await response.text();
-                console.error(`[Cloud] ❌ Failed to sync: ${errorText}`);
-            }
+            console.log(`[Cloud] 🟢 Hardware synced with registry`);
         }
         catch (err) {
-            console.error(`[Cloud] ❌ Could not reach cloud registry: ${err.message}`);
+            console.error(`[Cloud] ❌ Sync failed: ${err.message}`);
         }
     };
     await registerNode();
     setInterval(registerNode, 2 * 60 * 1000);
 }
-app.get('/health', async (req, res) => {
-    res.json({ status: 'ok', version: '0.1.0' });
-});
+// Local API endpoints
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.get('/devices', async (req, res) => {
-    try {
-        const allDevices = [];
-        for (const adapter of adapters) {
-            const devices = await adapter.getDevices();
-            allDevices.push(...devices);
-        }
-        res.json(allDevices);
+    const allDevices = [];
+    for (const adapter of adapters) {
+        const devices = await adapter.getDevices();
+        allDevices.push(...devices);
     }
-    catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+    res.json(allDevices);
 });
-app.get('/capabilities', async (req, res) => {
-    try {
-        const deviceId = req.query.deviceId;
-        if (!deviceId) {
-            return res.status(400).json({ error: 'deviceId query parameter is required' });
-        }
-        const adapter = await getAdapterForDevice(deviceId);
-        if (!adapter) {
-            return res.status(404).json({ error: 'Device not found' });
-        }
-        const capabilities = await adapter.getCapabilities(deviceId);
-        res.json(capabilities);
-    }
-    catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-app.post('/sessions/start', (req, res) => {
-    try {
-        const { deviceId } = req.body;
-        if (!deviceId) {
-            return res.status(400).json({ error: 'deviceId is required' });
-        }
-        const session = sessionManager.startSession(deviceId);
-        res.json(session);
-    }
-    catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-app.post('/execute', async (req, res) => {
-    try {
-        const { sessionId, capabilityName, args } = req.body;
-        if (!sessionId || !capabilityName) {
-            return res.status(400).json({ error: 'sessionId and capabilityName are required' });
-        }
-        const session = sessionManager.getSession(sessionId);
-        if (!session) {
-            return res.status(404).json({ error: 'Session not found or inactive' });
-        }
-        const adapter = await getAdapterForDevice(session.deviceId);
-        if (!adapter) {
-            return res.status(404).json({ error: 'Device not found' });
-        }
-        const result = await adapter.execute(session.deviceId, capabilityName, args || {});
-        res.json({ result });
-    }
-    catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-app.post('/sessions/stop', (req, res) => {
-    try {
-        const { sessionId } = req.body;
-        if (!sessionId) {
-            return res.status(400).json({ error: 'sessionId is required' });
-        }
-        sessionManager.stopSession(sessionId);
-        res.json({ success: true });
-    }
-    catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-app.get('/sessions/:id', (req, res) => {
-    try {
-        const session = sessionManager.getSession(req.params.id);
-        if (!session) {
-            return res.status(404).json({ error: 'Session not found' });
-        }
-        res.json(session);
-    }
-    catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-// Initialize and start server
+// Start everything
 async function start() {
     for (const adapter of adapters) {
         try {
@@ -269,9 +211,8 @@ async function start() {
             console.error(`[Adapters] ❌ Failed to initialize adapter: ${err.message}`);
         }
     }
-    await startCloudHeartbeat(config, adapters);
-    app.listen(PORT, () => {
-        console.log(`OAHL Server running on port ${PORT}`);
-    });
+    startCloudHeartbeat(config, adapters);
+    startCloudRelay(config, adapters).catch(console.error);
+    app.listen(PORT, () => console.log(`OAHL Server running on port ${PORT}`));
 }
 start().catch(console.error);
