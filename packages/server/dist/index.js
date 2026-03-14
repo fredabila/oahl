@@ -146,6 +146,93 @@ function asExecutionResult(options) {
         }
     };
 }
+function capabilityEntryName(capability) {
+    if (typeof capability === 'string')
+        return capability;
+    if (capability && typeof capability.name === 'string')
+        return capability.name;
+    return '';
+}
+function resolveBaselineCapability(configuredDevice, device, existingCapabilities) {
+    const rawDeviceBaseline = configuredDevice?.baseline_capability;
+    const rawGlobalBaseline = config?.baseline_capability;
+    if (rawDeviceBaseline === false) {
+        return null;
+    }
+    let baselineConfig = null;
+    if (rawDeviceBaseline === true) {
+        baselineConfig = {};
+    }
+    else if (rawDeviceBaseline && typeof rawDeviceBaseline === 'object') {
+        baselineConfig = rawDeviceBaseline;
+    }
+    else if (rawGlobalBaseline === true) {
+        baselineConfig = {};
+    }
+    else if (rawGlobalBaseline && typeof rawGlobalBaseline === 'object') {
+        baselineConfig = rawGlobalBaseline;
+    }
+    if (!baselineConfig || baselineConfig.enabled === false) {
+        return null;
+    }
+    const name = (typeof baselineConfig.name === 'string' && baselineConfig.name.trim())
+        ? baselineConfig.name.trim()
+        : 'hardware.baseline';
+    const alreadyDefined = existingCapabilities.some((cap) => capabilityEntryName(cap) === name);
+    if (alreadyDefined) {
+        return null;
+    }
+    const helperUrl = (baselineConfig.helper_url ||
+        baselineConfig.helperUrl ||
+        configuredDevice?.helper_url ||
+        config?.baseline_helper_url ||
+        '').toString().trim();
+    const description = (typeof baselineConfig.description === 'string' && baselineConfig.description.trim())
+        ? baselineConfig.description.trim()
+        : `Fallback capability template for ${device?.name || device?.id || 'device'} when a direct capability is not available.`;
+    const template = (typeof baselineConfig.template === 'string' && baselineConfig.template.trim())
+        ? baselineConfig.template.trim()
+        : 'Describe desired hardware action, safety constraints, expected output shape, and timeout budget.';
+    const contextHint = (typeof baselineConfig.context === 'string' && baselineConfig.context.trim())
+        ? baselineConfig.context.trim()
+        : '';
+    return {
+        name,
+        description,
+        schema: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+                intent: {
+                    type: 'string',
+                    description: 'Natural-language action request when no dedicated capability exists.'
+                },
+                params: {
+                    type: 'object',
+                    description: 'Structured parameters the provider helper can map to device actions.'
+                },
+                expected_output: {
+                    type: 'object',
+                    description: 'Optional output contract expected by agent workflow.'
+                },
+                timeout_ms: {
+                    type: 'number',
+                    minimum: 1,
+                    description: 'Desired execution timeout in milliseconds.'
+                }
+            },
+            required: ['intent']
+        },
+        helper_url: helperUrl || undefined,
+        template,
+        context: contextHint || undefined,
+        metadata: {
+            baseline: true,
+            helper_url: helperUrl || undefined,
+            template
+        }
+    };
+}
 // Dynamic Plugin Loading
 if (config.plugins && Array.isArray(config.plugins)) {
     for (const pluginName of config.plugins) {
@@ -397,8 +484,13 @@ async function startCloudHeartbeat(config, adapters) {
                 try {
                     const devices = await adapter.getDevices();
                     for (const device of devices) {
-                        const capabilities = await adapter.getCapabilities(device.id);
                         const configured = configuredDevicesById.get(device.id) || {};
+                        const adapterCapabilities = await adapter.getCapabilities(device.id);
+                        const capabilities = Array.isArray(adapterCapabilities) ? [...adapterCapabilities] : [];
+                        const baselineCapability = resolveBaselineCapability(configured, device, capabilities);
+                        if (baselineCapability) {
+                            capabilities.push(baselineCapability);
+                        }
                         const configuredPolicy = configured.access_policy || configured.policy || {};
                         const normalizedAccessPolicy = {
                             visibility: typeof configuredPolicy.visibility === 'string'

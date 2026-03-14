@@ -8,6 +8,10 @@ export interface Capability {
     name: string;
     description: string;
     schema: any;
+    helper_url?: string;
+    template?: string;
+    context?: string;
+    metadata?: Record<string, any>;
 }
 export interface Adapter {
     id: string;

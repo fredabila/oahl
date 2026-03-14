@@ -165,6 +165,23 @@ Guidelines:
 
 ---
 
+## 8.1) Baseline Capability Fallback (Optional)
+
+Some devices may expose an optional baseline fallback capability (default name: `hardware.baseline`) for actions not covered by specialized capabilities.
+
+If no direct capability exists:
+1. Check whether `hardware.baseline` (or configured baseline name) is present for the selected device.
+2. If present, call it with:
+  - `intent` (required natural-language action)
+  - `params` (structured hints)
+  - `expected_output` (optional response contract)
+  - `timeout_ms` (optional timeout budget)
+3. If capability metadata includes `helper_url`, use it as operational guidance when constructing `params`.
+
+Do not skip schema validation: baseline is flexible but still schema-constrained.
+
+---
+
 ## 9) Agent Output Quality Checklist
 
 Before returning final response to user, ensure:

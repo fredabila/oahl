@@ -1,27 +1,33 @@
 {
-  "server": {
-    "port": 3000,
-    "host": "0.0.0.0"
-  },
-  "adapters": [
-    {
-      "type": "mock",
-      "enabled": true
-    },
-    {
-      "type": "usb-camera",
-      "enabled": true,
-      "config": {
-        "resolution": "1080p"
-      }
-    }
+  "node_id": "my-laptop-01",
+  "cloud_url": "https://oahl.onrender.com",
+  "provider_api_key": "123456",
+  "plugins": [
+    "@oahl/adapter-mock",
+    "@oahl/adapter-usb-camera"
   ],
-  "policies": [
+  "provider": {
+    "name": "My Personal Test Node"
+  },
+  "baseline_capability": {
+    "enabled": true,
+    "name": "hardware.baseline",
+    "helper_url": "https://example.com/hardware-helper",
+    "template": "Describe action, safety limits, and expected result when direct capability is missing."
+  },
+  "devices": [
     {
-      "deviceId": "mock-device-1",
-      "maxDurationMs": 3600000,
-      "allowedCapabilities": ["*"],
-      "disabledCapabilities": []
+      "id": "usb-cam-1",
+      "type": "camera",
+      "adapter": "usb-camera",
+      "capabilities": [
+        "camera.capture"
+      ],
+      "baseline_capability": {
+        "enabled": true,
+        "helper_url": "https://example.com/camera-helper",
+        "template": "When no direct capability exists, generate camera workflow steps from intent and params."
+      }
     }
   ]
 }

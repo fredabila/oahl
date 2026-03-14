@@ -2,7 +2,37 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "OAHL Configuration Schema",
   "type": "object",
+  "definitions": {
+    "baselineCapability": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "name": { "type": "string", "default": "hardware.baseline" },
+        "description": { "type": "string" },
+        "helper_url": { "type": "string" },
+        "template": { "type": "string" },
+        "context": { "type": "string" }
+      }
+    }
+  },
   "properties": {
+    "node_id": { "type": "string" },
+    "cloud_url": { "type": "string" },
+    "provider_api_key": { "type": "string" },
+    "plugins": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "provider": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "owner_id": { "type": "string" }
+      }
+    },
+    "baseline_capability": {
+      "$ref": "#/definitions/baselineCapability"
+    },
     "server": {
       "type": "object",
       "properties": {
@@ -39,6 +69,26 @@
           }
         },
         "required": ["deviceId"]
+      }
+    },
+    "devices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string" },
+          "adapter": { "type": "string" },
+          "owner_id": { "type": "string" },
+          "capabilities": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "baseline_capability": {
+            "$ref": "#/definitions/baselineCapability"
+          }
+        },
+        "required": ["id"]
       }
     }
   }

@@ -9,6 +9,10 @@ export interface Capability {
   name: string;
   description: string;
   schema: any; // JSON Schema for arguments
+  helper_url?: string;
+  template?: string;
+  context?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface Adapter {

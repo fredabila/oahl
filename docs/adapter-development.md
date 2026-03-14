@@ -195,6 +195,62 @@ Once your adapter is published (or even if it's a local folder), any OAHL node c
 *   **Be Safe:** Always return errors if the hardware is disconnected or busy.
 *   **Formatting:** Return data in simple JSON formats (e.g., `{ "temp": 24 }`). If returning an image, use a URL or a Base64 string.
 
+## 🧱 6.1 Optional Adapter-Level Baseline Capability
+
+If documenting every hardware action is too expensive, expose a fallback capability directly from the adapter:
+
+- Name: `hardware.baseline` (or your configured name)
+- Purpose: provide a template execution path for unmodeled actions
+- Inputs: `intent` + optional `params`
+
+Example:
+
+```typescript
+async getCapabilities(deviceId: string): Promise<Capability[]> {
+  return [
+    {
+      name: 'hardware.baseline',
+      description: 'Fallback for actions without a dedicated capability',
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          intent: { type: 'string' },
+          params: { type: 'object' },
+          expected_output: { type: 'object' },
+          timeout_ms: { type: 'number', minimum: 1 }
+        },
+        required: ['intent']
+      },
+      helper_url: 'https://your-docs-or-helper-endpoint',
+      template: 'Describe action + safety bounds + expected output contract.'
+    }
+  ];
+}
+
+async execute(deviceId: string, capabilityName: string, args: any) {
+  if (capabilityName === 'hardware.baseline') {
+    const intent = String(args?.intent || '').toLowerCase();
+
+    if (intent.includes('capture')) {
+      return await this.execute(deviceId, 'camera.capture', args?.params || {});
+    }
+
+    return {
+      baseline: true,
+      handled: false,
+      message: 'Intent not mapped yet in this adapter',
+      intent: args?.intent || '',
+      params: args?.params || {}
+    };
+  }
+
+  // ... normal capability execution
+}
+```
+
+This keeps fallback logic local to the adapter, which is ideal when each hardware class needs custom mapping behavior.
+
 ## 📦 7. Standardized Execution Result Envelope
 To keep agent behavior reliable across all hardware types, return structured results using the centralized OAHL execution envelope schema:
 
