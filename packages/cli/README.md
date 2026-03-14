@@ -65,6 +65,22 @@ oahl tui --config ./my-oahl-config.json
 
 In TUI, use **Import detected devices from plugins** to auto-populate `devices` from currently installed adapters, then edit access policy/visibility for each imported device.
 
+### Scan connected USB/serial ports
+
+Scan currently connected devices and get adapter suggestions:
+
+```bash
+oahl scan-ports
+```
+
+Output JSON for scripting/tooling:
+
+```bash
+oahl scan-ports --json
+```
+
+The scan output includes detected IDs, port type, suggested adapter, capability hints, and config snippets to accelerate adapter creation.
+
 ### What is OAHL?
 OAHL is an open-source framework that lets hardware owners safely expose physical capabilities (like taking pictures or scanning radio frequencies) to remote AI agents. 
 

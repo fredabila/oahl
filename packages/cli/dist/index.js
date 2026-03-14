@@ -97,6 +97,148 @@ function parseCsv(value) {
 function toCsv(values) {
     return Array.isArray(values) ? values.join(', ') : '';
 }
+function safeExec(command) {
+    try {
+        return (0, child_process_1.execSync)(command, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    }
+    catch {
+        return '';
+    }
+}
+function scanUsbDevices() {
+    if (process.platform === 'win32') {
+        const raw = safeExec('powershell -NoProfile -Command "Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -like \"USB*\" } | Select-Object FriendlyName,Class,Status,InstanceId,Manufacturer | ConvertTo-Json -Depth 4"');
+        if (!raw)
+            return [];
+        try {
+            const parsed = JSON.parse(raw);
+            const rows = Array.isArray(parsed) ? parsed : [parsed];
+            return rows.map((row) => ({
+                portType: 'usb',
+                id: String(row.InstanceId || row.FriendlyName || 'usb-device'),
+                name: String(row.FriendlyName || row.InstanceId || 'USB Device'),
+                status: String(row.Status || ''),
+                vendor: String(row.Manufacturer || ''),
+                className: String(row.Class || '')
+            }));
+        }
+        catch {
+            return [];
+        }
+    }
+    if (process.platform === 'darwin') {
+        const raw = safeExec('system_profiler SPUSBDataType -json');
+        if (!raw)
+            return [];
+        try {
+            const parsed = JSON.parse(raw);
+            const root = parsed?.SPUSBDataType;
+            const results = [];
+            const walk = (nodes) => {
+                for (const node of nodes || []) {
+                    if (node?._name) {
+                        results.push({
+                            portType: 'usb',
+                            id: String(node?.serial_num || node?._name),
+                            name: String(node?._name),
+                            vendor: String(node?.manufacturer || ''),
+                            product: String(node?.product_id || ''),
+                            status: 'present'
+                        });
+                    }
+                    if (Array.isArray(node?._items)) {
+                        walk(node._items);
+                    }
+                }
+            };
+            walk(Array.isArray(root) ? root : []);
+            return results;
+        }
+        catch {
+            return [];
+        }
+    }
+    const raw = safeExec('lsusb');
+    if (!raw)
+        return [];
+    return raw
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => ({
+        portType: 'usb',
+        id: line,
+        name: line,
+        status: 'present'
+    }));
+}
+function scanSerialPorts() {
+    if (process.platform === 'win32') {
+        const rawPorts = safeExec('powershell -NoProfile -Command "[System.IO.Ports.SerialPort]::GetPortNames() | ConvertTo-Json"');
+        if (!rawPorts)
+            return [];
+        try {
+            const parsed = JSON.parse(rawPorts);
+            const ports = Array.isArray(parsed) ? parsed : [parsed];
+            return ports
+                .map((port) => String(port || '').trim())
+                .filter(Boolean)
+                .map((port) => ({
+                portType: 'serial',
+                id: port,
+                name: `Serial Port ${port}`,
+                status: 'present'
+            }));
+        }
+        catch {
+            return [];
+        }
+    }
+    if (process.platform === 'darwin') {
+        const raw = safeExec('ls /dev/tty.* /dev/cu.* 2>/dev/null');
+        if (!raw)
+            return [];
+        return raw
+            .split(/\s+/)
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .map((port) => ({
+            portType: 'serial',
+            id: port,
+            name: port,
+            status: 'present'
+        }));
+    }
+    const raw = safeExec('sh -lc "ls /dev/ttyUSB* /dev/ttyACM* 2>/dev/null"');
+    if (!raw)
+        return [];
+    return raw
+        .split(/\s+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((port) => ({
+        portType: 'serial',
+        id: port,
+        name: port,
+        status: 'present'
+    }));
+}
+function classifySuggestedAdapter(device) {
+    const haystack = `${device.name} ${device.vendor || ''} ${device.className || ''}`.toLowerCase();
+    if (haystack.includes('android') || haystack.includes('adb')) {
+        return { adapter: '@oahl/adapter-android', type: 'mobile', capabilityHints: ['system.info', 'screen.screenshot', 'system.shell'] };
+    }
+    if (haystack.includes('camera') || haystack.includes('video') || haystack.includes('webcam')) {
+        return { adapter: '@oahl/adapter-usb-camera', type: 'camera', capabilityHints: ['camera.capture'] };
+    }
+    if (haystack.includes('rtl') || haystack.includes('sdr') || haystack.includes('radio')) {
+        return { adapter: '@oahl/adapter-rtl-sdr', type: 'sdr', capabilityHints: ['tune', 'read_samples'] };
+    }
+    if (device.portType === 'serial') {
+        return { adapter: '@oahl/adapter-custom', type: 'serial-device', capabilityHints: ['device.read', 'device.write'] };
+    }
+    return { adapter: '@oahl/adapter-custom', type: 'custom', capabilityHints: ['hardware.baseline'] };
+}
 async function editNodeSettings(config) {
     const response = await (0, prompts_1.default)([
         {
@@ -747,6 +889,50 @@ Generated with \`oahl create-adapter\`.
     console.log('2. npm install');
     console.log('3. npm run build');
     console.log(`4. oahl install @oahl/${normalizedPackageName}`);
+});
+program
+    .command('scan-ports')
+    .description('Scan connected USB/serial devices and print adapter creation guidance')
+    .option('--json', 'Output scan results as JSON', false)
+    .action((options) => {
+    console.log('🔎 Scanning connected ports/devices...');
+    const usb = scanUsbDevices();
+    const serial = scanSerialPorts();
+    const all = [...usb, ...serial];
+    if (options.json) {
+        console.log(JSON.stringify({ timestamp: Date.now(), devices: all }, null, 2));
+        return;
+    }
+    if (all.length === 0) {
+        console.log('⚠️ No USB/serial devices detected.');
+        console.log('Tip: reconnect the device and run `oahl scan-ports` again.');
+        return;
+    }
+    console.log(`✅ Detected ${all.length} device(s):\n`);
+    all.forEach((device, index) => {
+        const suggestion = classifySuggestedAdapter(device);
+        const suggestedId = `detected-${index + 1}`;
+        console.log(`${index + 1}. [${device.portType.toUpperCase()}] ${device.name}`);
+        console.log(`   id: ${device.id}`);
+        if (device.status)
+            console.log(`   status: ${device.status}`);
+        if (device.vendor)
+            console.log(`   vendor: ${device.vendor}`);
+        if (device.className)
+            console.log(`   class: ${device.className}`);
+        console.log(`   suggested adapter: ${suggestion.adapter}`);
+        console.log(`   suggested type: ${suggestion.type}`);
+        console.log(`   capability hints: ${suggestion.capabilityHints.join(', ')}`);
+        console.log('   config snippet:');
+        console.log(`   {"id":"${suggestedId}","type":"${suggestion.type}","adapter":"${suggestion.adapter.replace('@oahl/adapter-', '')}","capabilities":[${suggestion.capabilityHints.map((cap) => `"${cap}"`).join(',')}]}`);
+        console.log('');
+    });
+    console.log('🧭 Adapter creation flow:');
+    console.log('1) Use existing suggested adapter where possible.');
+    console.log('2) For unknown hardware, scaffold one: oahl create-adapter <name>.');
+    console.log('3) Add hardware.baseline capability for fallback intent handling.');
+    console.log('4) Install plugin: oahl install @oahl/adapter-<name>.');
+    console.log('5) Import devices in TUI: oahl tui -> Import detected devices.');
 });
 program
     .command('conformance')

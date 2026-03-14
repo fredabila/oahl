@@ -51,6 +51,22 @@ oahl start
 ```
 *(This starts the local daemon, loads your configuration, and connects to the Cloud Registry).*
 
+### 4. Scan Connected Ports (USB/Serial)
+
+To detect connected hardware and get adapter creation guidance:
+
+```bash
+oahl scan-ports
+```
+
+For machine-readable output:
+
+```bash
+oahl scan-ports --json
+```
+
+This command helps you discover connected devices, suggests likely adapters, and prints config snippets you can use during adapter setup.
+
 **Option B: Using Docker**
 If you prefer running isolated containers:
 ```bash
