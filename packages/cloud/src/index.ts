@@ -47,7 +47,8 @@ redisClient.on('error', (err) => console.log('Redis Client Error', err));
 const providerSocketsByNode = new Map<string, WebSocket>();
 const pendingWsResults = new Map<string, { resolve: (value: any) => void; timeout: NodeJS.Timeout }>();
 const WS_FASTPATH_TIMEOUT_MS = toPositiveInt(process.env.OAHL_WS_FASTPATH_TIMEOUT_MS, 4_000);
-const WS_LATE_RESULT_GRACE_MS = toPositiveInt(process.env.OAHL_WS_LATE_RESULT_GRACE_MS, 1_500);
+const WS_LATE_RESULT_GRACE_MS = toPositiveInt(process.env.OAHL_WS_LATE_RESULT_GRACE_MS, 6_000);
+const POLLING_RESULT_TIMEOUT_S = toPositiveInt(process.env.OAHL_POLLING_RESULT_TIMEOUT_S, 20);
 
 type AccessVisibility = 'public' | 'shared' | 'private';
 
@@ -545,6 +546,7 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
   };
 
   const nodeSocket = providerSocketsByNode.get(session.node_id);
+  let wsFastPathTimedOut = false;
   if (nodeSocket && nodeSocket.readyState === WebSocket.OPEN) {
     try {
       nodeSocket.send(JSON.stringify({ type: 'command', payload: relayPayload }));
@@ -554,6 +556,7 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
       return res.json(wsResult);
     } catch (wsErr: any) {
       console.warn(`[Cloud WS] ⚠️ Fast-path timed out for ${requestId}: ${wsErr.message}`);
+      wsFastPathTimedOut = true;
 
       const lateWsResult = await waitForLateResultFromQueue(requestId, WS_LATE_RESULT_GRACE_MS);
       if (lateWsResult) {
@@ -564,14 +567,26 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
     }
   }
 
+  if (wsFastPathTimedOut && nodeSocket?.readyState === WebSocket.OPEN) {
+    res.setHeader('x-oahl-relay-mode', 'websocket-timeout');
+    res.setHeader('x-oahl-request-id', requestId);
+    return res.status(504).json({
+      error: 'WebSocket command timed out waiting for provider result',
+      request_id: requestId,
+      session_id: sessionId,
+      node_id: session.node_id,
+      device_id: session.device_id
+    });
+  }
+
   const relayPayloadJson = JSON.stringify(relayPayload);
 
   // Push to node's queue
   await redisClient.lPush(`commands:${session.node_id}`, relayPayloadJson);
 
-  // Wait for result (timeout 30s)
+  // Wait for result (timeout configurable)
   try {
-    const result = await redisClient.brPop(`result:${requestId}`, 30);
+    const result = await redisClient.brPop(`result:${requestId}`, POLLING_RESULT_TIMEOUT_S);
     if (result) {
       res.setHeader('x-oahl-relay-mode', 'polling');
       res.setHeader('x-oahl-request-id', requestId);

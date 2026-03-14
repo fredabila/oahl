@@ -344,6 +344,10 @@ async function startCloudRelay(config, adapters) {
     };
     while (true) {
         try {
+            if (isWebSocketRelayConnected) {
+                await new Promise(r => setTimeout(r, 250));
+                continue;
+            }
             // Poll the Cloud Registry for any pending commands
             const response = await fetch(`${config.cloud_url}/v1/provider/nodes/${config.node_id}/poll`, {
                 headers: {

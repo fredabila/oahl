@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
+  Bot,
   CheckCircle2,
   Cloud,
   Code2,
@@ -19,7 +20,7 @@ import {
 } from 'lucide-react';
 
 type Page = 'home' | 'about' | 'api-lab';
-type CapabilityLike = string | { name?: string; description?: string };
+type CapabilityLike = string | { name?: string; description?: string; schema?: unknown };
 
 interface Device {
   id: string;
@@ -96,6 +97,27 @@ const FLOW_STEPS = [
 function capabilityName(capability: CapabilityLike): string {
   if (typeof capability === 'string') return capability;
   return capability?.name || 'unknown.capability';
+}
+
+function parseJsonFromText(value: string): any {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error('Empty model output');
+  }
+
+  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fencedMatch ? fencedMatch[1].trim() : trimmed;
+
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    const first = candidate.indexOf('{');
+    const last = candidate.lastIndexOf('}');
+    if (first >= 0 && last > first) {
+      return JSON.parse(candidate.slice(first, last + 1));
+    }
+    throw new Error('Unable to parse JSON from model output');
+  }
 }
 
 function detectPage(): Page {
@@ -443,6 +465,13 @@ function HomePage({ onOpenApiLab }: { onOpenApiLab: () => void }) {
 function ApiLabPage() {
   const [cloudUrl, setCloudUrl] = useState('https://oahl.onrender.com');
   const [apiKey, setApiKey] = useState('');
+  const [llmUrl, setLlmUrl] = useState('https://api.openai.com/v1');
+  const [llmApiKey, setLlmApiKey] = useState('');
+  const [llmModel, setLlmModel] = useState('gpt-4o-mini');
+  const [aiPrompt, setAiPrompt] = useState('Take a screenshot from my Android device and return metadata.');
+  const [aiExecutionSummary, setAiExecutionSummary] = useState('');
+  const [aiPlanOnlyMode, setAiPlanOnlyMode] = useState(false);
+  const [aiPlanJson, setAiPlanJson] = useState('');
 
   const [queryText, setQueryText] = useState('');
   const [queryCapability, setQueryCapability] = useState('');
@@ -464,6 +493,7 @@ function ApiLabPage() {
   const [requestingSession, setRequestingSession] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [stopping, setStopping] = useState(false);
+  const [aiRunning, setAiRunning] = useState(false);
   const [actionError, setActionError] = useState('');
 
   const selectedDevice = useMemo(() => devices.find((d) => d.id === selectedDeviceId) || null, [devices, selectedDeviceId]);
@@ -631,6 +661,183 @@ function ApiLabPage() {
     }
   }
 
+  async function runAiExecution() {
+    if (!apiKey.trim()) {
+      setActionError('Agent API key is required.');
+      return;
+    }
+    if (!llmApiKey.trim()) {
+      setActionError('LLM API key is required.');
+      return;
+    }
+    if (!aiPrompt.trim()) {
+      setActionError('Describe the action you want hardware to execute.');
+      return;
+    }
+
+    setActionError('');
+    setAiExecutionSummary('');
+    setAiPlanJson('');
+    setAiRunning(true);
+
+    let allocatedSessionId = '';
+
+    try {
+      let inventory = devices;
+      if (inventory.length === 0) {
+        const capsResponse = await fetch(buildCapabilitiesUrl(), { method: 'GET', headers: bearerHeaders(false) });
+        if (!capsResponse.ok) {
+          throw new Error((await capsResponse.text()) || 'Failed to fetch capabilities for AI execution');
+        }
+        const capsData = (await capsResponse.json()) as CapabilitiesResponse;
+        inventory = Array.isArray(capsData.devices) ? capsData.devices : [];
+        setDevices(inventory);
+      }
+
+      if (inventory.length === 0) {
+        throw new Error('No devices available. Fetch capabilities first or ensure hardware is online.');
+      }
+
+      const capabilityCatalog = inventory.slice(0, 30).map((device) => ({
+        device_id: device.id,
+        type: device.type,
+        node_id: device.node_id,
+        capabilities: (device.capabilities || []).map((cap) => ({
+          name: capabilityName(cap),
+          description: typeof cap === 'string' ? '' : cap.description || '',
+          schema: typeof cap === 'string' ? undefined : cap.schema
+        }))
+      }));
+
+      const llmResponse = await fetch(`${llmUrl.replace(/\/$/, '')}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${llmApiKey.trim()}`
+        },
+        body: JSON.stringify({
+          model: llmModel.trim(),
+          temperature: 0.1,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are an OAHL hardware execution planner. Follow this strict behavior: discover capability inventory, choose a concrete device+capability, generate params valid against schema, and prepare one execution plan. Output ONLY JSON with keys: device_id (string), capability (string), params (object), rationale (string). Never output markdown.'
+            },
+            {
+              role: 'user',
+              content: JSON.stringify({
+                user_prompt: aiPrompt.trim(),
+                available_devices: capabilityCatalog
+              })
+            }
+          ]
+        })
+      });
+
+      if (!llmResponse.ok) {
+        throw new Error((await llmResponse.text()) || 'LLM planning failed');
+      }
+
+      const llmData = await llmResponse.json();
+      const rawMessage = llmData?.choices?.[0]?.message?.content;
+      if (typeof rawMessage !== 'string') {
+        throw new Error('LLM did not return a usable plan');
+      }
+
+      const plan = parseJsonFromText(rawMessage);
+      const plannedDeviceId = String(plan?.device_id || '').trim();
+      const plannedCapability = String(plan?.capability || '').trim();
+      const plannedParams = plan?.params && typeof plan.params === 'object' ? plan.params : {};
+
+      setAiPlanJson(JSON.stringify({
+        device_id: plannedDeviceId,
+        capability: plannedCapability,
+        params: plannedParams,
+        rationale: String(plan?.rationale || '')
+      }, null, 2));
+
+      if (!plannedCapability) {
+        throw new Error('LLM plan is missing capability');
+      }
+
+      const matchedDevice = plannedDeviceId ? inventory.find((d) => d.id === plannedDeviceId) : undefined;
+      const fallbackDevice = matchedDevice || inventory.find((d) => (d.capabilities || []).some((c) => capabilityName(c) === plannedCapability));
+
+      if (!fallbackDevice) {
+        throw new Error(`No online device currently supports capability ${plannedCapability}`);
+      }
+
+      setSelectedDeviceId(fallbackDevice.id);
+      setSelectedCapability(plannedCapability);
+      setExecuteParams(JSON.stringify(plannedParams, null, 2));
+
+      if (aiPlanOnlyMode) {
+        setAiExecutionSummary(String(plan?.rationale || 'Plan generated. Review capability and params before execution.'));
+        return;
+      }
+
+      const requestPayload: Record<string, string> = {
+        capability: plannedCapability,
+        device_id: fallbackDevice.id
+      };
+      if (fallbackDevice.node_id) {
+        requestPayload.node_id = fallbackDevice.node_id;
+      }
+
+      const requestRes = await fetch(`${cloudUrl}/v1/requests`, {
+        method: 'POST',
+        headers: bearerHeaders(true),
+        body: JSON.stringify(requestPayload)
+      });
+      if (!requestRes.ok) {
+        throw new Error((await requestRes.text()) || 'Unable to request session from AI plan');
+      }
+
+      const requestData = (await requestRes.json()) as SessionResponse;
+      allocatedSessionId = requestData.session_id || '';
+      if (!allocatedSessionId) {
+        throw new Error('Session allocation returned no session_id');
+      }
+
+      setSessionId(allocatedSessionId);
+
+      const execRes = await fetch(`${cloudUrl}/v1/sessions/${allocatedSessionId}/execute`, {
+        method: 'POST',
+        headers: bearerHeaders(true),
+        body: JSON.stringify({ capability: plannedCapability, params: plannedParams })
+      });
+
+      if (!execRes.ok) {
+        throw new Error((await execRes.text()) || 'Execute failed for AI plan');
+      }
+
+      const execData = (await execRes.json()) as ExecutionResult;
+      setExecutionResult(execData);
+      setRelayInfo({
+        mode: execRes.headers.get('x-oahl-relay-mode') || 'unknown',
+        requestId: execRes.headers.get('x-oahl-request-id') || ''
+      });
+
+      setAiExecutionSummary(String(plan?.rationale || 'AI selected a matching capability and executed it successfully.'));
+    } catch (err: any) {
+      setActionError(err?.message || 'AI execution failed');
+    } finally {
+      if (allocatedSessionId) {
+        try {
+          await fetch(`${cloudUrl}/v1/sessions/${allocatedSessionId}/stop`, {
+            method: 'POST',
+            headers: bearerHeaders(false)
+          });
+        } catch {
+          // keep UI responsive even if cleanup fails
+        }
+        setSessionId('');
+      }
+      setAiRunning(false);
+    }
+  }
+
   return (
     <section className="space-y-6">
       <div className="panel p-8">
@@ -660,6 +867,62 @@ function ApiLabPage() {
           <Field label="type" value={queryType} onChange={setQueryType} placeholder="camera" />
           <Field label="provider" value={queryProvider} onChange={setQueryProvider} placeholder="Local Lab" />
           <Field label="node_id" value={queryNodeId} onChange={setQueryNodeId} placeholder="node-01" />
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-oahl-tech/40 bg-oahl-tech/10 p-5">
+          <p className="flex items-center gap-2 text-sm font-semibold text-oahl-tech">
+            <Bot className="h-4 w-4" />
+            AI Execute (Hardware Skill Flow)
+          </p>
+          <p className="mt-1 text-xs text-oahl-textMuted">Prompt in plain English. The model picks device + capability + params, then runs discover → reserve → execute → stop automatically.</p>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <Field label="LLM URL" value={llmUrl} onChange={setLlmUrl} placeholder="https://api.openai.com/v1" />
+            <Field label="LLM Model" value={llmModel} onChange={setLlmModel} placeholder="gpt-4o-mini" />
+            <Field label="LLM API Key" value={llmApiKey} onChange={setLlmApiKey} placeholder="sk-..." />
+          </div>
+
+          <div className="mt-3">
+            <label className="mb-1 block text-xs font-mono uppercase tracking-wider text-oahl-textMuted">Prompt</label>
+            <textarea
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              className="input-field h-24 w-full rounded-xl px-3 py-2 text-sm"
+              placeholder="Example: Take a screenshot from my Android test device and return the file path."
+            />
+          </div>
+
+          <label className="mt-3 inline-flex items-center gap-2 text-xs text-oahl-textMuted">
+            <input
+              type="checkbox"
+              checked={aiPlanOnlyMode}
+              onChange={(e) => setAiPlanOnlyMode(e.target.checked)}
+              className="h-4 w-4 rounded border-oahl-border bg-oahl-surface"
+            />
+            Plan only (do not create session or execute hardware)
+          </label>
+
+          <button
+            onClick={runAiExecution}
+            disabled={aiRunning || !apiKey.trim() || !llmApiKey.trim()}
+            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-oahl-tech bg-oahl-tech/20 px-4 py-2.5 text-sm font-semibold text-oahl-tech hover:bg-oahl-tech/30 disabled:opacity-50"
+          >
+            <Bot className="h-4 w-4" />
+            {aiRunning ? 'Planning + Executing...' : aiPlanOnlyMode ? 'Generate Plan' : 'Run Prompt'}
+          </button>
+
+          {aiExecutionSummary && (
+            <div className="mt-3 rounded-xl border border-oahl-border bg-oahl-surface px-3 py-2 text-xs text-oahl-textMuted">
+              {aiExecutionSummary}
+            </div>
+          )}
+
+          {aiPlanJson && (
+            <div className="mt-3">
+              <p className="mb-1 text-xs font-mono uppercase tracking-wider text-oahl-textMuted">AI Plan JSON</p>
+              <pre className="code-scroll overflow-auto rounded-xl border border-oahl-border bg-oahl-surface px-3 py-2 text-xs text-oahl-textMuted">{aiPlanJson}</pre>
+            </div>
+          )}
         </div>
       </div>
 
