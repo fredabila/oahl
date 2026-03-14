@@ -264,16 +264,22 @@ function startCloudWebSocketRelay(config) {
             const wsBase = String(config.cloud_url)
                 .replace(/^http:\/\//i, 'ws://')
                 .replace(/^https:\/\//i, 'wss://');
-            const wsUrl = `${wsBase}/ws/provider`;
+            const wsUrl = `${wsBase}/ws/provider?node_id=${encodeURIComponent(String(config.node_id))}`;
             const socket = new ws_1.WebSocket(wsUrl, {
                 headers: {
                     Authorization: `Bearer ${config.provider_api_key}`,
                     'x-node-id': String(config.node_id)
                 }
             });
+            let keepAliveTimer;
             socket.on('open', () => {
                 isWebSocketRelayConnected = true;
                 console.log('[Cloud WS] 🟢 Provider websocket connected');
+                keepAliveTimer = setInterval(() => {
+                    if (socket.readyState === ws_1.WebSocket.OPEN) {
+                        socket.ping();
+                    }
+                }, 20_000);
             });
             socket.on('message', async (rawMessage) => {
                 try {
@@ -299,9 +305,17 @@ function startCloudWebSocketRelay(config) {
                     console.error(`[Cloud WS] ❌ Failed handling websocket command: ${err.message}`);
                 }
             });
-            socket.on('close', () => {
+            socket.on('close', (code, reasonBuffer) => {
+                if (keepAliveTimer) {
+                    clearInterval(keepAliveTimer);
+                    keepAliveTimer = undefined;
+                }
+                const reason = reasonBuffer ? reasonBuffer.toString() : '';
                 if (isWebSocketRelayConnected) {
-                    console.log('[Cloud WS] 🔌 Provider websocket disconnected, falling back to polling');
+                    console.log(`[Cloud WS] 🔌 Provider websocket disconnected, falling back to polling (code=${code}${reason ? `, reason=${reason}` : ''})`);
+                }
+                else {
+                    console.log(`[Cloud WS] 🔌 Provider websocket closed before ready (code=${code}${reason ? `, reason=${reason}` : ''})`);
                 }
                 isWebSocketRelayConnected = false;
                 setTimeout(connect, 3000);

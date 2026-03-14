@@ -227,12 +227,13 @@ function configureProviderWebSocket(server: HttpServer) {
         }
       });
 
-      socket.on('close', () => {
+      socket.on('close', (code, reasonBuffer) => {
+        const reason = reasonBuffer ? reasonBuffer.toString() : '';
         const existing = providerSocketsByNode.get(nodeId);
         if (existing === socket) {
           providerSocketsByNode.delete(nodeId);
         }
-        console.log(`[Cloud WS] 🔌 Provider websocket disconnected: ${nodeId}`);
+        console.log(`[Cloud WS] 🔌 Provider websocket disconnected: ${nodeId} (code=${code}${reason ? `, reason=${reason}` : ''})`);
       });
 
       socket.on('error', (err) => {

@@ -253,7 +253,7 @@ function startCloudWebSocketRelay(config: any) {
       const wsBase = String(config.cloud_url)
         .replace(/^http:\/\//i, 'ws://')
         .replace(/^https:\/\//i, 'wss://');
-      const wsUrl = `${wsBase}/ws/provider`;
+      const wsUrl = `${wsBase}/ws/provider?node_id=${encodeURIComponent(String(config.node_id))}`;
 
       const socket = new WebSocket(wsUrl, {
         headers: {
@@ -262,9 +262,17 @@ function startCloudWebSocketRelay(config: any) {
         }
       });
 
+      let keepAliveTimer: NodeJS.Timeout | undefined;
+
       socket.on('open', () => {
         isWebSocketRelayConnected = true;
         console.log('[Cloud WS] 🟢 Provider websocket connected');
+
+        keepAliveTimer = setInterval(() => {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.ping();
+          }
+        }, 20_000);
       });
 
       socket.on('message', async (rawMessage) => {
@@ -292,9 +300,17 @@ function startCloudWebSocketRelay(config: any) {
         }
       });
 
-      socket.on('close', () => {
+      socket.on('close', (code, reasonBuffer) => {
+        if (keepAliveTimer) {
+          clearInterval(keepAliveTimer);
+          keepAliveTimer = undefined;
+        }
+
+        const reason = reasonBuffer ? reasonBuffer.toString() : '';
         if (isWebSocketRelayConnected) {
-          console.log('[Cloud WS] 🔌 Provider websocket disconnected, falling back to polling');
+          console.log(`[Cloud WS] 🔌 Provider websocket disconnected, falling back to polling (code=${code}${reason ? `, reason=${reason}` : ''})`);
+        } else {
+          console.log(`[Cloud WS] 🔌 Provider websocket closed before ready (code=${code}${reason ? `, reason=${reason}` : ''})`);
         }
         isWebSocketRelayConnected = false;
         setTimeout(connect, 3000);

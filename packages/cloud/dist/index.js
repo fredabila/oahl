@@ -181,12 +181,13 @@ function configureProviderWebSocket(server) {
                     console.error(`[Cloud WS] ❌ Invalid provider message: ${err.message}`);
                 }
             });
-            socket.on('close', () => {
+            socket.on('close', (code, reasonBuffer) => {
+                const reason = reasonBuffer ? reasonBuffer.toString() : '';
                 const existing = providerSocketsByNode.get(nodeId);
                 if (existing === socket) {
                     providerSocketsByNode.delete(nodeId);
                 }
-                console.log(`[Cloud WS] 🔌 Provider websocket disconnected: ${nodeId}`);
+                console.log(`[Cloud WS] 🔌 Provider websocket disconnected: ${nodeId} (code=${code}${reason ? `, reason=${reason}` : ''})`);
             });
             socket.on('error', (err) => {
                 console.error(`[Cloud WS] ❌ Socket error (${nodeId}): ${err.message}`);
