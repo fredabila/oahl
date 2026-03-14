@@ -7,6 +7,7 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const redis_1 = require("redis");
 const dotenv_1 = __importDefault(require("dotenv"));
+const crypto_1 = require("crypto");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)({
@@ -53,6 +54,77 @@ function capabilityMatches(capabilityEntry, searchValue) {
     }
     return false;
 }
+function normalizeStringList(value) {
+    if (!Array.isArray(value))
+        return [];
+    return value
+        .map((entry) => String(entry || '').trim())
+        .filter((entry) => entry.length > 0);
+}
+function extractAgentIdentity(req) {
+    const agentId = typeof req.headers['x-agent-id'] === 'string'
+        ? req.headers['x-agent-id'].trim()
+        : undefined;
+    const orgId = typeof req.headers['x-agent-org-id'] === 'string'
+        ? req.headers['x-agent-org-id'].trim()
+        : undefined;
+    const rawRoles = typeof req.headers['x-agent-roles'] === 'string'
+        ? req.headers['x-agent-roles']
+        : '';
+    const roles = rawRoles
+        .split(',')
+        .map((r) => r.trim())
+        .filter((r) => r.length > 0);
+    return { agentId, orgId, roles };
+}
+function resolveDeviceAccessPolicy(device) {
+    const policy = device?.access_policy || device?.policy || {};
+    let visibility = 'public';
+    if (typeof policy.visibility === 'string') {
+        const normalizedVisibility = policy.visibility.trim().toLowerCase();
+        if (normalizedVisibility === 'public' || normalizedVisibility === 'shared' || normalizedVisibility === 'private') {
+            visibility = normalizedVisibility;
+        }
+    }
+    else if (typeof policy.public === 'boolean') {
+        visibility = policy.public ? 'public' : 'private';
+    }
+    else if (typeof device?.isPublic === 'boolean') {
+        visibility = device.isPublic ? 'public' : 'private';
+    }
+    return {
+        visibility,
+        allowedAgents: normalizeStringList(policy.allowed_agents || policy.allowedAgents),
+        allowedOrgs: normalizeStringList(policy.allowed_orgs || policy.allowedOrgs),
+        deniedAgents: normalizeStringList(policy.denied_agents || policy.deniedAgents)
+    };
+}
+function resolveDeviceOwnerId(node, device) {
+    const candidate = device?.owner_id || node?.owner_id || node?.provider?.owner_id;
+    if (typeof candidate !== 'string')
+        return undefined;
+    const value = candidate.trim();
+    return value.length > 0 ? value : undefined;
+}
+function isDeviceAccessibleToAgent(node, device, agent) {
+    const policy = resolveDeviceAccessPolicy(device);
+    const ownerId = resolveDeviceOwnerId(node, device);
+    if (agent.agentId && ownerId && agent.agentId === ownerId) {
+        return true;
+    }
+    if (agent.agentId && policy.deniedAgents.includes(agent.agentId)) {
+        return false;
+    }
+    if (policy.visibility === 'public') {
+        return true;
+    }
+    const explicitlyAllowed = (agent.agentId && policy.allowedAgents.includes(agent.agentId)) ||
+        (agent.orgId && policy.allowedOrgs.includes(agent.orgId));
+    if (policy.visibility === 'shared') {
+        return Boolean(explicitlyAllowed);
+    }
+    return Boolean(explicitlyAllowed);
+}
 // Middleware: Authenticate Providers (Hardware Nodes)
 const authProvider = (req, res, next) => {
     const apiKey = req.headers['authorization']?.split(' ')[1];
@@ -62,6 +134,10 @@ const authProvider = (req, res, next) => {
     next();
 };
 // Middleware: Authenticate AI Agents
+// Optional identity context for access policy enforcement is read from headers:
+// - x-agent-id
+// - x-agent-org-id
+// - x-agent-roles (comma-separated)
 const authAgent = (req, res, next) => {
     const apiKey = req.headers['authorization']?.split(' ')[1];
     if (apiKey !== AGENT_API_KEY) {
@@ -116,6 +192,7 @@ app.post('/v1/provider/nodes/results', authProvider, async (req, res) => {
  * 2. AGENT DISCOVERY
  */
 app.get('/v1/capabilities', authAgent, async (req, res) => {
+    const agent = extractAgentIdentity(req);
     const q = typeof req.query.q === 'string' ? req.query.q.trim().toLowerCase() : '';
     const typeFilter = typeof req.query.type === 'string' ? req.query.type.trim().toLowerCase() : '';
     const providerFilter = typeof req.query.provider === 'string' ? req.query.provider.trim().toLowerCase() : '';
@@ -134,6 +211,9 @@ app.get('/v1/capabilities', authAgent, async (req, res) => {
             }
             if (node.devices) {
                 for (const device of node.devices) {
+                    if (!isDeviceAccessibleToAgent(node, device, agent)) {
+                        continue;
+                    }
                     const providerName = node.provider?.name || "Unknown Provider";
                     const capabilities = Array.isArray(device.capabilities) ? device.capabilities : [];
                     if (typeFilter && String(device.type || '').toLowerCase() !== typeFilter) {
@@ -200,10 +280,12 @@ app.get('/v1/capabilities', authAgent, async (req, res) => {
  * 3. AGENT REQUEST (START SESSION)
  */
 app.post('/v1/requests', authAgent, async (req, res) => {
+    const agent = extractAgentIdentity(req);
     const { capability, device_id, node_id } = req.body;
     const keys = await redisClient.keys('node:*');
     let matchedNode = null;
     let matchedDevice = null;
+    let unauthorizedMatch = false;
     if (node_id && !device_id) {
         return res.status(400).json({ error: "node_id requires device_id" });
     }
@@ -218,6 +300,10 @@ app.post('/v1/requests', authAgent, async (req, res) => {
             const device = node.devices?.find((d) => d.id === device_id);
             if (!device)
                 continue;
+            if (!isDeviceAccessibleToAgent(node, device, agent)) {
+                unauthorizedMatch = true;
+                continue;
+            }
             if (capability) {
                 const hasCapability = device.capabilities?.some((c) => c === capability || c.name === capability);
                 if (!hasCapability) {
@@ -231,6 +317,9 @@ app.post('/v1/requests', authAgent, async (req, res) => {
             break;
         }
         if (!matchedNode) {
+            if (unauthorizedMatch) {
+                return res.status(403).json({ error: "Access denied for requested device" });
+            }
             return res.status(404).json({ error: "Requested device not available" });
         }
     }
@@ -242,7 +331,13 @@ app.post('/v1/requests', authAgent, async (req, res) => {
             const nodeStr = await redisClient.get(key);
             if (nodeStr) {
                 const node = JSON.parse(nodeStr);
-                const device = node.devices?.find((d) => d.capabilities?.some((c) => c === capability || c.name === capability));
+                const devices = Array.isArray(node.devices) ? node.devices : [];
+                const device = devices.find((d) => {
+                    if (!isDeviceAccessibleToAgent(node, d, agent)) {
+                        return false;
+                    }
+                    return d.capabilities?.some((c) => c === capability || c.name === capability);
+                });
                 if (device) {
                     matchedNode = node;
                     matchedDevice = device;
@@ -253,7 +348,7 @@ app.post('/v1/requests', authAgent, async (req, res) => {
     }
     if (!matchedNode)
         return res.status(404).json({ error: "Hardware not available" });
-    const sessionId = "sess-" + Math.random().toString(36).substring(7);
+    const sessionId = `sess-${(0, crypto_1.randomUUID)()}`;
     await redisClient.set(`session:${sessionId}`, JSON.stringify({
         node_id: matchedNode.node_id,
         device_id: matchedDevice.id,
@@ -271,7 +366,7 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
     if (!sessionStr)
         return res.status(404).json({ error: "Session not found" });
     const session = JSON.parse(sessionStr);
-    const requestId = "cmd-" + Date.now();
+    const requestId = `cmd-${(0, crypto_1.randomUUID)()}`;
     const relayPayload = JSON.stringify({
         requestId,
         sessionId,
@@ -281,14 +376,20 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
     });
     // Push to node's queue
     await redisClient.lPush(`commands:${session.node_id}`, relayPayload);
-    // Wait for result (timeout 20s)
+    // Wait for result (timeout 30s)
     try {
-        const result = await redisClient.brPop(`result:${requestId}`, 20);
+        const result = await redisClient.brPop(`result:${requestId}`, 30);
         if (result) {
             res.json(JSON.parse(result.element));
         }
         else {
-            res.status(504).json({ error: "Hardware Node Timeout" });
+            res.status(504).json({
+                error: "Hardware Node Timeout",
+                request_id: requestId,
+                session_id: sessionId,
+                node_id: session.node_id,
+                device_id: session.device_id
+            });
         }
     }
     catch (err) {

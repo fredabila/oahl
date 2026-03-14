@@ -210,7 +210,7 @@ async function startCloudRelay(config, adapters) {
                             rawResult
                         });
                         // Send result back to cloud
-                        await fetch(`${config.cloud_url}/v1/provider/nodes/results`, {
+                        const resultResponse = await fetch(`${config.cloud_url}/v1/provider/nodes/results`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -221,7 +221,13 @@ async function startCloudRelay(config, adapters) {
                                 result: result
                             })
                         });
-                        console.log(`[Cloud Relay] 📤 Sent result back for ${payload.requestId}`);
+                        if (!resultResponse.ok) {
+                            const body = await resultResponse.text();
+                            console.error(`[Cloud Relay] ❌ Failed to send result for ${payload.requestId}: ${resultResponse.status} ${body}`);
+                        }
+                        else {
+                            console.log(`[Cloud Relay] 📤 Sent result back for ${payload.requestId}`);
+                        }
                     }
                     catch (execErr) {
                         console.error(`[Cloud Relay] ❌ Execution failed: ${execErr.message}`);
@@ -232,7 +238,7 @@ async function startCloudRelay(config, adapters) {
                             adapterId: adapter.id || adapter.constructor.name,
                             error: execErr
                         });
-                        await fetch(`${config.cloud_url}/v1/provider/nodes/results`, {
+                        const errorResultResponse = await fetch(`${config.cloud_url}/v1/provider/nodes/results`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -243,6 +249,39 @@ async function startCloudRelay(config, adapters) {
                                 result
                             })
                         });
+                        if (!errorResultResponse.ok) {
+                            const body = await errorResultResponse.text();
+                            console.error(`[Cloud Relay] ❌ Failed to send error result for ${payload.requestId}: ${errorResultResponse.status} ${body}`);
+                        }
+                        else {
+                            console.log(`[Cloud Relay] 📤 Sent error result back for ${payload.requestId}`);
+                        }
+                    }
+                }
+                else {
+                    const result = asExecutionResult({
+                        requestId: payload.requestId,
+                        deviceId: payload.deviceId,
+                        capability: payload.capability,
+                        error: new Error(`No adapter found for device ${payload.deviceId}`)
+                    });
+                    const noAdapterResultResponse = await fetch(`${config.cloud_url}/v1/provider/nodes/results`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${config.provider_api_key}`
+                        },
+                        body: JSON.stringify({
+                            requestId: payload.requestId,
+                            result
+                        })
+                    });
+                    if (!noAdapterResultResponse.ok) {
+                        const body = await noAdapterResultResponse.text();
+                        console.error(`[Cloud Relay] ❌ Failed to send no-adapter result for ${payload.requestId}: ${noAdapterResultResponse.status} ${body}`);
+                    }
+                    else {
+                        console.log(`[Cloud Relay] 📤 Sent no-adapter result back for ${payload.requestId}`);
                     }
                 }
             }
@@ -265,6 +304,9 @@ async function startCloudRelay(config, adapters) {
 async function startCloudHeartbeat(config, adapters) {
     if (!config.cloud_url || !config.provider_api_key)
         return;
+    const configuredDevicesById = new Map((Array.isArray(config.devices) ? config.devices : [])
+        .filter((entry) => entry && typeof entry.id === 'string')
+        .map((entry) => [entry.id, entry]));
     const registerNode = async () => {
         try {
             const activeDevices = [];
@@ -273,10 +315,22 @@ async function startCloudHeartbeat(config, adapters) {
                     const devices = await adapter.getDevices();
                     for (const device of devices) {
                         const capabilities = await adapter.getCapabilities(device.id);
+                        const configured = configuredDevicesById.get(device.id) || {};
+                        const configuredPolicy = configured.access_policy || configured.policy || {};
+                        const normalizedAccessPolicy = {
+                            visibility: typeof configuredPolicy.visibility === 'string'
+                                ? configuredPolicy.visibility
+                                : (typeof configuredPolicy.public === 'boolean' ? (configuredPolicy.public ? 'public' : 'private') : undefined),
+                            allowed_agents: configuredPolicy.allowed_agents || configuredPolicy.allowedAgents,
+                            allowed_orgs: configuredPolicy.allowed_orgs || configuredPolicy.allowedOrgs,
+                            denied_agents: configuredPolicy.denied_agents || configuredPolicy.deniedAgents
+                        };
                         activeDevices.push({
                             ...device,
                             capabilities,
-                            adapter: adapter.id || adapter.constructor.name
+                            adapter: adapter.id || adapter.constructor.name,
+                            owner_id: configured.owner_id || config.owner_id || config.provider?.owner_id,
+                            access_policy: normalizedAccessPolicy
                         });
                     }
                 }
@@ -292,6 +346,7 @@ async function startCloudHeartbeat(config, adapters) {
                 },
                 body: JSON.stringify({
                     node_id: config.node_id,
+                    owner_id: config.owner_id || config.provider?.owner_id,
                     provider: config.provider,
                     devices: activeDevices
                 })
