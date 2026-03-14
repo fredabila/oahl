@@ -13,6 +13,60 @@ components:
     BearerAuth:
       type: http
       scheme: bearer
+  schemas:
+    ExecutionResult:
+      type: object
+      required:
+        - schema_version
+        - operation_id
+        - status
+        - completion
+        - capability
+        - device_id
+        - timestamp
+      properties:
+        schema_version:
+          type: string
+          example: "1.0"
+        operation_id:
+          type: string
+        status:
+          type: string
+          enum: [accepted, in_progress, success, error]
+        completion:
+          type: object
+          required: [done, state]
+          properties:
+            done:
+              type: boolean
+            state:
+              type: string
+              enum: [queued, in_progress, completed, failed]
+            progress_pct:
+              type: number
+              minimum: 0
+              maximum: 100
+        capability:
+          type: string
+        device_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        data:
+          nullable: true
+        error:
+          type: object
+          nullable: true
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            retryable:
+              type: boolean
+            details:
+              nullable: true
 
 paths:
   /v1/capabilities:
@@ -62,8 +116,10 @@ paths:
               properties:
                 capability:
                   type: string
-                params:
-                  type: object
+                device_id:
+                  type: string
+                node_id:
+                  type: string
       responses:
         '200':
           description: Session assigned
@@ -91,6 +147,10 @@ paths:
       responses:
         '200':
           description: Execution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResult'
   /v1/sessions/{session_id}/stop:
     post:
       summary: Stop a Session

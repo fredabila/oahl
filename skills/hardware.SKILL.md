@@ -1,67 +1,70 @@
-# Open Agent Hardware Layer Skill
+# OAHL Hardware Skill (Agent-Operational Spec)
 
-This skill allows an AI agent to interact with real-world hardware devices through the Open Agent Hardware Layer platform.
+Use this skill when an agent must discover, reserve, execute, and release real hardware through OAHL Cloud.
 
-## 🔗 Connection Details
-**Base URL:** `https://oahl.onrender.com`
+## 1) Connection Contract
 
-## 🔐 Authentication
-Agents must provide a valid `AGENT_API_KEY` in the Authorization header for all requests.
-Header: `Authorization: Bearer <YOUR_AGENT_API_KEY>`
+- Base URL: `https://oahl.onrender.com`
+- Auth header (required on every request):
+  - `Authorization: Bearer <AGENT_API_KEY>`
+- Content type for POST requests:
+  - `Content-Type: application/json`
+
+If auth is missing or invalid, stop and surface a clear authorization error.
 
 ---
 
-## Step 1: Discover available hardware
-Endpoint: `GET /v1/capabilities`
+## 2) Required Agent Behavior (Do Not Skip)
 
-Returns a detailed list of online hardware devices and their **Capability Schemas**. 
+1. Discover hardware with `GET /v1/capabilities`.
+2. Select a concrete device and capability.
+3. Validate execution params against the capability `schema`.
+4. Reserve with `POST /v1/requests` and obtain `session_id`.
+5. Execute with `POST /v1/sessions/{session_id}/execute`.
+6. Always cleanup with `POST /v1/sessions/{session_id}/stop`.
 
-For large fleets, use query parameters:
-- `q`: full-text search across device id, type, provider, and capability names
-- `type`: exact device type filter
-- `provider`: exact provider name filter
-- `node_id`: filter to one node
+If any step fails after session creation, still attempt session stop in a final cleanup step.
+
+---
+
+## 3) Discovery API
+
+### Endpoint
+`GET /v1/capabilities`
+
+### Query Parameters (for large fleets)
+- `q`: full-text search over device id/type/provider/capability names
+- `type`: exact device type
+- `provider`: exact provider name
+- `node_id`: exact node filter
 - `capability`: capability-name filter
-- `page`: page number (starts at 1)
+- `page`: 1-based page index
 - `page_size`: page size (max 100)
 
-**IMPORTANT:** Every capability includes a `schema` object (JSON Schema). You **MUST** read this schema to understand which parameters are required for the `execute` call.
+### What to parse from response
+- `devices[]`
+  - `id`
+  - `type`
+  - `provider`
+  - `node_id`
+  - `capabilities[]`
+    - `name`
+    - `description`
+    - `schema` (JSON Schema for params)
+- `pagination` metadata (if present)
 
-### Capability Naming Convention (recommended)
-- Use lowercase dot-notation: `<domain>.<action>` (e.g., `camera.capture`, `radio.tune`, `phone.vibrate`)
-- Keep action verbs consistent (`capture`, `scan`, `read`, `write`, `start`, `stop`)
-- Avoid ambiguous generic names like `run` or `do`
+### Schema rule (critical)
+Treat capability `schema` as the source of truth for allowed/required params.
+Never send unknown keys, missing required keys, or wrong types.
 
-Example response:
-```json
-{
-  "devices": [
-    {
-      "id": "android-phone-01",
-      "capabilities": [
-        {
-          "name": "phone.vibrate",
-          "description": "Trigger a physical vibration",
-          "schema": {
-            "type": "object",
-            "properties": {
-              "duration_ms": { "type": "number" }
-            },
-            "required": ["duration_ms"]
-          }
-        }
-      ]
-    }
-  ]
-}
-```
+---
 
-## Step 2: Request a Hardware Session
-Endpoint: `POST /v1/requests`
+## 4) Session Request API
 
-Prefer targeting a specific device for deterministic routing.
+### Endpoint
+`POST /v1/requests`
 
-Recommended body:
+### Deterministic request (recommended)
 ```json
 {
   "device_id": "android-phone-01",
@@ -69,22 +72,32 @@ Recommended body:
 }
 ```
 
-Notes:
-- `device_id` is optional but recommended when multiple devices may share the same capability name.
-- `node_id` can also be provided with `device_id` to pin routing to a specific node.
-- If only `capability` is provided, the cloud will match the first available compatible device.
+### Optional node pinning
+```json
+{
+  "device_id": "android-phone-01",
+  "node_id": "node-accra-1",
+  "capability": "phone.vibrate"
+}
+```
 
-## Step 3: Execute Action
-Endpoint: `POST /v1/sessions/{session_id}/execute`
+### Non-deterministic fallback
+```json
+{
+  "capability": "phone.vibrate"
+}
+```
 
-This call triggers a **Command Relay**. The Cloud Registry will relay your request to the physical hardware node where the device is connected.
+Use fallback only when device specificity is not required.
 
-**Response Expectation:**
-- The request is synchronous. The Cloud will wait for the physical hardware to respond before returning the result to you.
-- If the hardware is offline or slow, you may receive a `504 Hardware Node Timeout`.
-- **Constraint:** The `params` you send must match the `schema` found in Step 1.
+---
 
-Example:
+## 5) Execute API
+
+### Endpoint
+`POST /v1/sessions/{session_id}/execute`
+
+### Body
 ```json
 {
   "capability": "phone.vibrate",
@@ -94,12 +107,101 @@ Example:
 }
 ```
 
-## Step 4: Stop Session
-Endpoint: `POST /v1/sessions/{session_id}/stop`
+### Execution semantics
+- Synchronous relay: response returns after hardware node responds.
+- Timeout possibility: `504 Hardware Node Timeout`.
+
+Before execute, reconfirm that:
+- `capability` exactly matches selected capability name.
+- `params` pass schema validation.
 
 ---
 
-## Safety Guidelines
-1. **Schema Validation:** Never send parameters not defined in the capability's schema.
-2. **Privacy:** Do not use sensors or cameras unless necessary for the user's specific request.
-3. **Session Cleanup:** Always call `stop` when your hardware task is complete.
+## 6) Stop API
+
+### Endpoint
+`POST /v1/sessions/{session_id}/stop`
+
+Always call stop once the task is complete (success or failure path).
+
+---
+
+## 7) Error Handling Playbook
+
+- `401 Unauthorized`
+  - Cause: invalid or missing `AGENT_API_KEY`.
+  - Action: stop and request valid credentials.
+
+- `404 Hardware not available` (session request)
+  - Cause: no matching online device/capability.
+  - Action: re-run discovery with broader filters; present alternatives.
+
+- `400` on request/execute
+  - Cause: invalid body, unsupported capability on device, or schema mismatch.
+  - Action: re-check payload and schema; correct and retry once.
+
+- `504 Hardware Node Timeout`
+  - Cause: node offline/slow.
+  - Action: surface timeout, attempt session stop, offer retry.
+
+Do not perform unlimited retries. Keep retries bounded and explicit.
+
+---
+
+## 8) Capability Naming Convention
+
+Use lowercase dot notation: `<domain>.<action>`
+
+Examples:
+- `camera.capture`
+- `radio.tune`
+- `phone.vibrate`
+- `sensor.read`
+
+Guidelines:
+- prefer explicit verbs (`capture`, `scan`, `read`, `write`, `start`, `stop`)
+- avoid ambiguous verbs (`run`, `do`, `exec`)
+- keep names stable over time
+
+---
+
+## 9) Agent Output Quality Checklist
+
+Before returning final response to user, ensure:
+
+- selected device/capability is explicitly stated
+- params shown match schema requirements
+- execution result is summarized clearly
+- session cleanup was attempted and reported
+
+This checklist is mandatory for reliable hardware interactions.
+
+---
+
+## 10) Canonical Execution Result Schema (Central Contract)
+
+Agents should expect execution responses to follow the OAHL structured envelope (`schema_version: "1.0"`) defined in:
+
+- `oahl-execution-result.schema.json`
+
+Required fields:
+
+```json
+{
+  "schema_version": "1.0",
+  "operation_id": "cmd-123",
+  "status": "success",
+  "completion": { "done": true, "state": "completed" },
+  "capability": "robotic_arm.move",
+  "device_id": "arm-01",
+  "timestamp": "2026-03-14T10:00:00.000Z"
+}
+```
+
+Status semantics:
+- `accepted`: command accepted by relay
+- `in_progress`: hardware started but not done
+- `success`: completed successfully
+- `error`: failed (must include `error.code` and `error.message`)
+
+For robotic arm control, use `completion.done` + `completion.state` as the definitive completion signal instead of parsing free-text messages.

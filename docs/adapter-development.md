@@ -174,7 +174,61 @@ Once your adapter is published (or even if it's a local folder), any OAHL node c
 *   **Be Safe:** Always return errors if the hardware is disconnected or busy.
 *   **Formatting:** Return data in simple JSON formats (e.g., `{ "temp": 24 }`). If returning an image, use a URL or a Base64 string.
 
-## 🧾 7. Capability Naming Conventions
+## 📦 7. Standardized Execution Result Envelope
+To keep agent behavior reliable across all hardware types, return structured results using the centralized OAHL execution envelope schema:
+
+- Schema file: `oahl-execution-result.schema.json`
+- Version: `schema_version: "1.0"`
+
+Minimum required fields:
+
+```json
+{
+  "schema_version": "1.0",
+  "operation_id": "cmd-123",
+  "status": "success",
+  "completion": { "done": true, "state": "completed" },
+  "capability": "robotic_arm.move",
+  "device_id": "arm-01",
+  "timestamp": "2026-03-14T10:00:00.000Z",
+  "data": {}
+}
+```
+
+For failures, include:
+
+```json
+{
+  "status": "error",
+  "completion": { "done": true, "state": "failed" },
+  "error": {
+    "code": "MOVE_BLOCKED",
+    "message": "Path blocked by obstacle",
+    "retryable": true
+  }
+}
+```
+
+### Robotic Arm Example
+
+```json
+{
+  "schema_version": "1.0",
+  "operation_id": "cmd-robot-778",
+  "status": "success",
+  "completion": { "done": true, "state": "completed" },
+  "capability": "robotic_arm.move",
+  "device_id": "arm-01",
+  "timestamp": "2026-03-14T10:00:00.000Z",
+  "data": {
+    "target_pose": { "x": 200, "y": 50, "z": 120 },
+    "final_pose": { "x": 200, "y": 50, "z": 120 },
+    "position_tolerance_mm": 0.4
+  }
+}
+```
+
+## 🧾 8. Capability Naming Conventions
 To keep adapters interoperable and searchable:
 
 - Use lowercase dot-notation: `<domain>.<action>` (example: `camera.capture`)

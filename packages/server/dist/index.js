@@ -61,6 +61,77 @@ if (fs.existsSync(configPath)) {
 // Initialize core components
 const sessionManager = new core_1.SessionManager();
 const adapters = [];
+function asExecutionResult(options) {
+    const { requestId, deviceId, capability, adapterId, rawResult, error } = options;
+    if (rawResult && typeof rawResult === 'object' &&
+        typeof rawResult.schema_version === 'string' &&
+        typeof rawResult.operation_id === 'string' &&
+        typeof rawResult.status === 'string' &&
+        rawResult.completion && typeof rawResult.completion === 'object') {
+        return {
+            ...rawResult,
+            schema_version: rawResult.schema_version || '1.0',
+            operation_id: rawResult.operation_id || requestId,
+            capability: rawResult.capability || capability,
+            device_id: rawResult.device_id || deviceId,
+            timestamp: rawResult.timestamp || new Date().toISOString(),
+            meta: {
+                ...(rawResult.meta || {}),
+                adapter_id: (rawResult.meta && rawResult.meta.adapter_id) || adapterId
+            }
+        };
+    }
+    if (error) {
+        return {
+            schema_version: '1.0',
+            operation_id: requestId,
+            status: 'error',
+            completion: {
+                done: true,
+                state: 'failed'
+            },
+            capability,
+            device_id: deviceId,
+            timestamp: new Date().toISOString(),
+            error: {
+                code: 'EXECUTION_FAILED',
+                message: error.message || 'Capability execution failed',
+                retryable: true,
+                details: {
+                    name: error.name
+                }
+            },
+            meta: {
+                adapter_id: adapterId
+            }
+        };
+    }
+    const inferredSuccess = !(rawResult && typeof rawResult === 'object' && rawResult.success === false);
+    return {
+        schema_version: '1.0',
+        operation_id: requestId,
+        status: inferredSuccess ? 'success' : 'error',
+        completion: {
+            done: true,
+            state: inferredSuccess ? 'completed' : 'failed'
+        },
+        capability,
+        device_id: deviceId,
+        timestamp: new Date().toISOString(),
+        data: rawResult,
+        ...(inferredSuccess ? {} : {
+            error: {
+                code: 'ADAPTER_REPORTED_FAILURE',
+                message: 'Adapter reported an unsuccessful execution result',
+                retryable: true,
+                details: rawResult
+            }
+        }),
+        meta: {
+            adapter_id: adapterId
+        }
+    };
+}
 // Dynamic Plugin Loading
 if (config.plugins && Array.isArray(config.plugins)) {
     for (const pluginName of config.plugins) {
@@ -114,7 +185,14 @@ async function startCloudRelay(config, adapters) {
                 const adapter = await getAdapterForDevice(payload.deviceId);
                 if (adapter) {
                     try {
-                        const result = await adapter.execute(payload.deviceId, payload.capability, payload.params || {});
+                        const rawResult = await adapter.execute(payload.deviceId, payload.capability, payload.params || {});
+                        const result = asExecutionResult({
+                            requestId: payload.requestId,
+                            deviceId: payload.deviceId,
+                            capability: payload.capability,
+                            adapterId: adapter.id || adapter.constructor.name,
+                            rawResult
+                        });
                         // Send result back to cloud
                         await fetch(`${config.cloud_url}/v1/provider/nodes/results`, {
                             method: 'POST',
@@ -131,6 +209,24 @@ async function startCloudRelay(config, adapters) {
                     }
                     catch (execErr) {
                         console.error(`[Cloud Relay] ❌ Execution failed: ${execErr.message}`);
+                        const result = asExecutionResult({
+                            requestId: payload.requestId,
+                            deviceId: payload.deviceId,
+                            capability: payload.capability,
+                            adapterId: adapter.id || adapter.constructor.name,
+                            error: execErr
+                        });
+                        await fetch(`${config.cloud_url}/v1/provider/nodes/results`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${config.provider_api_key}`
+                            },
+                            body: JSON.stringify({
+                                requestId: payload.requestId,
+                                result
+                            })
+                        });
                     }
                 }
             }
