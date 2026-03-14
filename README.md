@@ -77,6 +77,25 @@ See the `docs/` folder for:
 - [Security and Policy Guide](docs/security-guide.md)
 - [Agent Integration Guide](docs/agent-integration-guide.md)
 - [API Reference](docs/api-reference.md)
+- [SDK Strategy](docs/sdk-strategy.md)
+
+## Repository layout
+
+- `packages/` → platform packages (`cli`, `cloud`, `core`, `server`, `sdk-js`, `web`)
+- `adapters/` → hardware adapter packages (`adapter-*`)
+- `sdk-python/` → lightweight Python client
+
+This separation keeps core platform development distinct from adapter ecosystem development.
+
+## SDKs
+
+OAHL currently includes two client SDKs:
+
+- JavaScript SDK: `@oahl/sdk` (`packages/sdk-js`)
+- Python SDK: `sdk-python/client.py`
+
+Current scope: both SDKs primarily target local node endpoints (`/devices`, `/sessions/start`, `/execute`).
+If you are integrating with cloud relay endpoints (`/v1/...`), use direct HTTP calls until the cloud-focused SDK surface is finalized.
 
 ## License
 Apache 2.0 or MIT.

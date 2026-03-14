@@ -4,7 +4,8 @@
   "private": false,
   "description": "Open Agent Hardware Layer (OAHL) monorepo",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "adapters/*"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
