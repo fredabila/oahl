@@ -264,8 +264,13 @@ function startCloudWebSocketRelay(config) {
             const wsBase = String(config.cloud_url)
                 .replace(/^http:\/\//i, 'ws://')
                 .replace(/^https:\/\//i, 'wss://');
-            const wsUrl = `${wsBase}/ws/provider?node_id=${encodeURIComponent(config.node_id)}&api_key=${encodeURIComponent(config.provider_api_key)}`;
-            const socket = new ws_1.WebSocket(wsUrl);
+            const wsUrl = `${wsBase}/ws/provider`;
+            const socket = new ws_1.WebSocket(wsUrl, {
+                headers: {
+                    Authorization: `Bearer ${config.provider_api_key}`,
+                    'x-node-id': String(config.node_id)
+                }
+            });
             socket.on('open', () => {
                 isWebSocketRelayConnected = true;
                 console.log('[Cloud WS] 🟢 Provider websocket connected');
@@ -324,10 +329,6 @@ async function startCloudRelay(config, adapters) {
         await sendResultToCloud(config, payload.requestId, result, resultType);
     };
     while (true) {
-        if (isWebSocketRelayConnected) {
-            await new Promise((resolve) => setTimeout(resolve, 250));
-            continue;
-        }
         try {
             // Poll the Cloud Registry for any pending commands
             const response = await fetch(`${config.cloud_url}/v1/provider/nodes/${config.node_id}/poll`, {

@@ -469,11 +469,20 @@ function ApiLabPage() {
             {devices.map((device) => {
               const isSelected = device.id === selectedDeviceId;
               return (
-                <button
+                <div
                   key={`${device.node_id}-${device.id}`}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => {
                     setSelectedDeviceId(device.id);
                     setSelectedCapability(capabilityName(device.capabilities?.[0] || ''));
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setSelectedDeviceId(device.id);
+                      setSelectedCapability(capabilityName(device.capabilities?.[0] || ''));
+                    }
                   }}
                   className={`w-full rounded-2xl border p-4 text-left transition ${
                     isSelected
@@ -488,12 +497,25 @@ function ApiLabPage() {
                   <p className="mt-1 text-xs text-oahl-textMuted">{device.provider} · {device.node_id}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {(device.capabilities || []).map((cap) => (
-                      <span key={`${device.id}-${capabilityName(cap)}`} className="rounded-full border border-oahl-border px-2 py-1 text-[11px] text-oahl-textMain">
+                      <button
+                        key={`${device.id}-${capabilityName(cap)}`}
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setSelectedDeviceId(device.id);
+                          setSelectedCapability(capabilityName(cap));
+                        }}
+                        className={`rounded-full border px-2 py-1 text-[11px] transition ${
+                          selectedCapability === capabilityName(cap)
+                            ? 'border-oahl-accent bg-oahl-accent/20 text-oahl-accent'
+                            : 'border-oahl-border text-oahl-textMain hover:border-oahl-accent/60'
+                        }`}
+                      >
                         {capabilityName(cap)}
-                      </span>
+                      </button>
                     ))}
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>

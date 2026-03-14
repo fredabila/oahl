@@ -155,8 +155,11 @@ function configureProviderWebSocket(server) {
         try {
             const host = req.headers.host || 'localhost';
             const requestUrl = new URL(req.url || '/ws/provider', `http://${host}`);
-            const nodeId = requestUrl.searchParams.get('node_id') || '';
-            const apiKey = requestUrl.searchParams.get('api_key') || '';
+            const nodeIdFromQuery = requestUrl.searchParams.get('node_id') || '';
+            const nodeIdFromHeader = typeof req.headers['x-node-id'] === 'string' ? req.headers['x-node-id'] : '';
+            const nodeId = (nodeIdFromHeader || nodeIdFromQuery || '').trim();
+            const authHeader = typeof req.headers['authorization'] === 'string' ? req.headers['authorization'] : '';
+            const apiKey = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : '';
             if (!nodeId || apiKey !== PROVIDER_API_KEY) {
                 socket.close(1008, 'Unauthorized provider websocket');
                 return;
