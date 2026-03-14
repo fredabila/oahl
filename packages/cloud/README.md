@@ -20,6 +20,19 @@ This package acts as the central control plane (or matchmaking brain) for the Ag
 
 When only `capability` is provided, the cloud selects the first available compatible device.
 
+## Capability Discovery at Scale
+Use `GET /v1/capabilities` with optional query params:
+
+- `q` (text search)
+- `type` (exact device type)
+- `provider` (exact provider)
+- `node_id` (exact node)
+- `capability` (capability-name filter)
+- `page` (1-based)
+- `page_size` (max 100)
+
+Response now includes a `pagination` object and preserves `devices` for compatibility.
+
 ## What is OAHL?
 OAHL is an open-source framework that lets hardware owners safely expose physical capabilities (like taking pictures or scanning radio frequencies) to remote AI agents. 
 

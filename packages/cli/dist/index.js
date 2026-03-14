@@ -191,6 +191,132 @@ program
     }
 });
 program
+    .command('create-adapter <name>')
+    .description('Scaffold a new OAHL adapter package in the current workspace')
+    .option('-d, --dir <path>', 'Directory to create the adapter in', '.')
+    .action(async (name, options) => {
+    const packageName = name.startsWith('@') ? name.split('/').pop() || name : name;
+    const normalizedPackageName = packageName.startsWith('adapter-') ? packageName : `adapter-${packageName}`;
+    const className = normalizedPackageName
+        .split(/[^a-zA-Z0-9]/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join('') + 'Adapter';
+    const targetDir = path.resolve(process.cwd(), options.dir, normalizedPackageName);
+    const srcDir = path.join(targetDir, 'src');
+    if (fs.existsSync(targetDir)) {
+        console.error(`❌ Target folder already exists: ${targetDir}`);
+        process.exit(1);
+    }
+    fs.mkdirSync(srcDir, { recursive: true });
+    const packageJson = {
+        name: `@oahl/${normalizedPackageName}`,
+        version: '0.1.0',
+        main: 'dist/index.js',
+        types: 'dist/index.d.ts',
+        scripts: {
+            build: 'tsc',
+            start: 'node dist/index.js'
+        },
+        peerDependencies: {
+            '@oahl/core': '*'
+        },
+        devDependencies: {
+            typescript: '^5.0.0',
+            '@types/node': '^20.10.0'
+        }
+    };
+    const tsconfig = {
+        extends: '../../tsconfig.base.json',
+        compilerOptions: {
+            outDir: './dist',
+            rootDir: './src',
+            declaration: true
+        },
+        include: ['src/**/*']
+    };
+    const adapterSource = `import { Adapter, Device, Capability } from '@oahl/core';
+
+export default class ${className} implements Adapter {
+  id = '${normalizedPackageName}';
+
+  async initialize(): Promise<void> {
+    console.log('[${normalizedPackageName}] Initialized');
+  }
+
+  async healthCheck(): Promise<{ status: 'ok' | 'error'; message?: string }> {
+    return { status: 'ok' };
+  }
+
+  async getDevices(): Promise<Device[]> {
+    return [
+      {
+        id: '${normalizedPackageName}-device-01',
+        type: 'custom',
+        name: '${className} Device',
+        isPublic: false
+      }
+    ];
+  }
+
+  async getCapabilities(deviceId: string): Promise<Capability[]> {
+    if (deviceId !== '${normalizedPackageName}-device-01') {
+      throw new Error('Device not found');
+    }
+
+    return [
+      {
+        name: 'custom.ping',
+        description: 'Smoke-test capability for this adapter',
+        schema: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' }
+          }
+        }
+      }
+    ];
+  }
+
+  async execute(deviceId: string, capabilityName: string, args: any): Promise<any> {
+    if (deviceId !== '${normalizedPackageName}-device-01') {
+      throw new Error('Device not found');
+    }
+
+    if (capabilityName === 'custom.ping') {
+      return {
+        ok: true,
+        adapter: this.id,
+        message: args?.message || 'pong',
+        timestamp: Date.now()
+      };
+    }
+
+    throw new Error('Capability not supported');
+  }
+}
+`;
+    const readme = `# @oahl/${normalizedPackageName}
+
+Generated with \`oahl create-adapter\`.
+
+## Development
+
+- Build: \`npm run build\`
+- Install into a node workspace: \`oahl install @oahl/${normalizedPackageName}\`
+`;
+    fs.writeFileSync(path.join(targetDir, 'package.json'), JSON.stringify(packageJson, null, 2));
+    fs.writeFileSync(path.join(targetDir, 'tsconfig.json'), JSON.stringify(tsconfig, null, 2));
+    fs.writeFileSync(path.join(srcDir, 'index.ts'), adapterSource);
+    fs.writeFileSync(path.join(targetDir, 'README.md'), readme);
+    console.log(`✅ Adapter scaffold created at ${targetDir}`);
+    console.log('Next steps:');
+    console.log(`1. cd ${path.relative(process.cwd(), targetDir) || '.'}`);
+    console.log('2. npm install');
+    console.log('3. npm run build');
+    console.log(`4. oahl install @oahl/${normalizedPackageName}`);
+});
+program
     .command('start')
     .description('Start the local OAHL node daemon')
     .option('-p, --port <number>', 'Port to run the server on', '3000')

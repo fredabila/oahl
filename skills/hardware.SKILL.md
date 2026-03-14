@@ -16,7 +16,21 @@ Endpoint: `GET /v1/capabilities`
 
 Returns a detailed list of online hardware devices and their **Capability Schemas**. 
 
+For large fleets, use query parameters:
+- `q`: full-text search across device id, type, provider, and capability names
+- `type`: exact device type filter
+- `provider`: exact provider name filter
+- `node_id`: filter to one node
+- `capability`: capability-name filter
+- `page`: page number (starts at 1)
+- `page_size`: page size (max 100)
+
 **IMPORTANT:** Every capability includes a `schema` object (JSON Schema). You **MUST** read this schema to understand which parameters are required for the `execute` call.
+
+### Capability Naming Convention (recommended)
+- Use lowercase dot-notation: `<domain>.<action>` (e.g., `camera.capture`, `radio.tune`, `phone.vibrate`)
+- Keep action verbs consistent (`capture`, `scan`, `read`, `write`, `start`, `stop`)
+- Avoid ambiguous generic names like `run` or `do`
 
 Example response:
 ```json

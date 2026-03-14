@@ -2,6 +2,15 @@
 
 This guide is the definitive resource for building hardware adapters for the Open Agent Hardware Layer. An adapter acts as a **Standardized Bridge** between AI Agents and physical hardware.
 
+## ⚡ Fastest Path (Scaffold)
+Use the CLI to generate a ready-to-edit adapter package:
+
+```bash
+oahl create-adapter my-device
+```
+
+This creates a working package with `src/index.ts`, `package.json`, and `tsconfig.json` so you only need to replace the capability logic.
+
 ---
 
 ## 🏗️ 1. Core Architecture & File Structure
@@ -164,3 +173,11 @@ Once your adapter is published (or even if it's a local folder), any OAHL node c
 *   **Be Descriptive:** The `description` field in `getCapabilities` is how the Agent "learns" what your hardware does.
 *   **Be Safe:** Always return errors if the hardware is disconnected or busy.
 *   **Formatting:** Return data in simple JSON formats (e.g., `{ "temp": 24 }`). If returning an image, use a URL or a Base64 string.
+
+## 🧾 7. Capability Naming Conventions
+To keep adapters interoperable and searchable:
+
+- Use lowercase dot-notation: `<domain>.<action>` (example: `camera.capture`)
+- Keep domains stable (`camera`, `radio`, `sensor`, `phone`, `robot`, `lab`)
+- Use explicit verbs (`capture`, `stream`, `tune`, `scan`, `read`, `write`, `start`, `stop`)
+- Version only when needed via suffix (`camera.capture.v2`)

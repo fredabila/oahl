@@ -32,6 +32,20 @@ if (rawRedisUrl.startsWith('rediss://')) {
 }
 const redisClient = (0, redis_1.createClient)(redisOptions);
 redisClient.on('error', (err) => console.log('Redis Client Error', err));
+function toPositiveInt(value, defaultValue) {
+    const parsed = Number.parseInt(String(value ?? ''), 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
+}
+function capabilityMatches(capabilityEntry, searchValue) {
+    const normalizedSearch = searchValue.toLowerCase();
+    if (typeof capabilityEntry === 'string') {
+        return capabilityEntry.toLowerCase().includes(normalizedSearch);
+    }
+    if (capabilityEntry && typeof capabilityEntry.name === 'string') {
+        return capabilityEntry.name.toLowerCase().includes(normalizedSearch);
+    }
+    return false;
+}
 // Middleware: Authenticate Providers (Hardware Nodes)
 const authProvider = (req, res, next) => {
     const apiKey = req.headers['authorization']?.split(' ')[1];
@@ -95,19 +109,54 @@ app.post('/v1/provider/nodes/results', authProvider, async (req, res) => {
  * 2. AGENT DISCOVERY
  */
 app.get('/v1/capabilities', authAgent, async (req, res) => {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim().toLowerCase() : '';
+    const typeFilter = typeof req.query.type === 'string' ? req.query.type.trim().toLowerCase() : '';
+    const providerFilter = typeof req.query.provider === 'string' ? req.query.provider.trim().toLowerCase() : '';
+    const nodeFilter = typeof req.query.node_id === 'string' ? req.query.node_id.trim() : '';
+    const capabilityFilter = typeof req.query.capability === 'string' ? req.query.capability.trim().toLowerCase() : '';
+    const page = toPositiveInt(req.query.page, 1);
+    const pageSize = Math.min(toPositiveInt(req.query.page_size, 25), 100);
     const keys = await redisClient.keys('node:*');
     const availableDevices = [];
     for (const key of keys) {
         const nodeStr = await redisClient.get(key);
         if (nodeStr) {
             const node = JSON.parse(nodeStr);
+            if (nodeFilter && node.node_id !== nodeFilter) {
+                continue;
+            }
             if (node.devices) {
                 for (const device of node.devices) {
+                    const providerName = node.provider?.name || "Unknown Provider";
+                    const capabilities = Array.isArray(device.capabilities) ? device.capabilities : [];
+                    if (typeFilter && String(device.type || '').toLowerCase() !== typeFilter) {
+                        continue;
+                    }
+                    if (providerFilter && String(providerName).toLowerCase() !== providerFilter) {
+                        continue;
+                    }
+                    if (capabilityFilter) {
+                        const hasCapability = capabilities.some((c) => capabilityMatches(c, capabilityFilter));
+                        if (!hasCapability) {
+                            continue;
+                        }
+                    }
+                    if (q) {
+                        const haystack = [
+                            String(device.id || ''),
+                            String(device.type || ''),
+                            String(providerName),
+                            ...capabilities.map((c) => typeof c === 'string' ? c : String(c?.name || ''))
+                        ].join(' ').toLowerCase();
+                        if (!haystack.includes(q)) {
+                            continue;
+                        }
+                    }
                     availableDevices.push({
                         id: device.id,
                         type: device.type,
-                        capabilities: device.capabilities,
-                        provider: node.provider?.name || "Unknown Provider",
+                        capabilities,
+                        provider: providerName,
                         node_id: node.node_id,
                         status: "available"
                     });
@@ -115,7 +164,30 @@ app.get('/v1/capabilities', authAgent, async (req, res) => {
             }
         }
     }
-    res.json({ timestamp: Date.now(), devices: availableDevices });
+    const total = availableDevices.length;
+    const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+    const safePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
+    const startIndex = (safePage - 1) * pageSize;
+    const pagedDevices = availableDevices.slice(startIndex, startIndex + pageSize);
+    res.json({
+        timestamp: Date.now(),
+        devices: pagedDevices,
+        pagination: {
+            page: safePage,
+            page_size: pageSize,
+            total,
+            total_pages: totalPages,
+            has_next: safePage < totalPages,
+            has_prev: safePage > 1 && totalPages > 0
+        },
+        filters: {
+            q: q || undefined,
+            type: typeFilter || undefined,
+            provider: providerFilter || undefined,
+            node_id: nodeFilter || undefined,
+            capability: capabilityFilter || undefined
+        }
+    });
 });
 /**
  * 3. AGENT REQUEST (START SESSION)
