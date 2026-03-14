@@ -45,7 +45,20 @@ Example response:
 ## Step 2: Request a Hardware Session
 Endpoint: `POST /v1/requests`
 
-Target a specific capability name. The system will match you to an available device and return a `session_id`.
+Prefer targeting a specific device for deterministic routing.
+
+Recommended body:
+```json
+{
+  "device_id": "android-phone-01",
+  "capability": "phone.vibrate"
+}
+```
+
+Notes:
+- `device_id` is optional but recommended when multiple devices may share the same capability name.
+- `node_id` can also be provided with `device_id` to pin routing to a specific node.
+- If only `capability` is provided, the cloud will match the first available compatible device.
 
 ## Step 3: Execute Action
 Endpoint: `POST /v1/sessions/{session_id}/execute`

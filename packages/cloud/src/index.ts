@@ -126,22 +126,60 @@ app.get('/v1/capabilities', authAgent, async (req, res) => {
  * 3. AGENT REQUEST (START SESSION)
  */
 app.post('/v1/requests', authAgent, async (req, res) => {
-  const { capability } = req.body;
+  const { capability, device_id, node_id } = req.body;
   const keys = await redisClient.keys('node:*');
   let matchedNode = null;
   let matchedDevice = null;
 
-  for (const key of keys) {
-    const nodeStr = await redisClient.get(key);
-    if (nodeStr) {
+  if (node_id && !device_id) {
+    return res.status(400).json({ error: "node_id requires device_id" });
+  }
+
+  if (device_id) {
+    for (const key of keys) {
+      const nodeStr = await redisClient.get(key);
+      if (!nodeStr) continue;
+
       const node = JSON.parse(nodeStr);
-      const device = node.devices?.find((d: any) => 
-        d.capabilities?.some((c: any) => c === capability || c.name === capability)
-      );
-      if (device) {
-        matchedNode = node;
-        matchedDevice = device;
-        break;
+      if (node_id && node.node_id !== node_id) continue;
+
+      const device = node.devices?.find((d: any) => d.id === device_id);
+      if (!device) continue;
+
+      if (capability) {
+        const hasCapability = device.capabilities?.some((c: any) => c === capability || c.name === capability);
+        if (!hasCapability) {
+          return res.status(400).json({
+            error: `Requested device ${device_id} does not support capability ${capability}`
+          });
+        }
+      }
+
+      matchedNode = node;
+      matchedDevice = device;
+      break;
+    }
+
+    if (!matchedNode) {
+      return res.status(404).json({ error: "Requested device not available" });
+    }
+  } else {
+    if (!capability) {
+      return res.status(400).json({ error: "Missing capability or device_id" });
+    }
+
+    for (const key of keys) {
+      const nodeStr = await redisClient.get(key);
+      if (nodeStr) {
+        const node = JSON.parse(nodeStr);
+        const device = node.devices?.find((d: any) => 
+          d.capabilities?.some((c: any) => c === capability || c.name === capability)
+        );
+        if (device) {
+          matchedNode = node;
+          matchedDevice = device;
+          break;
+        }
       }
     }
   }
