@@ -46,9 +46,9 @@ redisClient.on('error', (err) => console.log('Redis Client Error', err));
 
 const providerSocketsByNode = new Map<string, WebSocket>();
 const pendingWsResults = new Map<string, { resolve: (value: any) => void; timeout: NodeJS.Timeout }>();
-const WS_FASTPATH_TIMEOUT_MS = toPositiveInt(process.env.OAHL_WS_FASTPATH_TIMEOUT_MS, 4_000);
-const WS_LATE_RESULT_GRACE_MS = toPositiveInt(process.env.OAHL_WS_LATE_RESULT_GRACE_MS, 6_000);
-const POLLING_RESULT_TIMEOUT_S = toPositiveInt(process.env.OAHL_POLLING_RESULT_TIMEOUT_S, 20);
+const WS_FASTPATH_TIMEOUT_MS = toPositiveInt(process.env.OAHL_WS_FASTPATH_TIMEOUT_MS, 10_000);
+const WS_LATE_RESULT_GRACE_MS = toPositiveInt(process.env.OAHL_WS_LATE_RESULT_GRACE_MS, 20_000);
+const POLLING_RESULT_TIMEOUT_S = toPositiveInt(process.env.OAHL_POLLING_RESULT_TIMEOUT_S, 30);
 
 type AccessVisibility = 'public' | 'shared' | 'private';
 
@@ -568,6 +568,7 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
   }
 
   if (wsFastPathTimedOut && nodeSocket?.readyState === WebSocket.OPEN) {
+    console.warn(`[Cloud WS] 🛑 WebSocket total timeout for ${requestId} after ${WS_FASTPATH_TIMEOUT_MS + WS_LATE_RESULT_GRACE_MS}ms`);
     res.setHeader('x-oahl-relay-mode', 'websocket-timeout');
     res.setHeader('x-oahl-request-id', requestId);
     return res.status(504).json({
