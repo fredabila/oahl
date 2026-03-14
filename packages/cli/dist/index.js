@@ -47,6 +47,438 @@ program
     .name('oahl')
     .description('CLI to manage Open Agent Hardware Layer (OAHL) nodes and configs')
     .version('0.1.0');
+function resolveAdapterClassFromModule(imported) {
+    if (!imported)
+        return undefined;
+    if (typeof imported === 'function')
+        return imported;
+    if (typeof imported.default === 'function')
+        return imported.default;
+    const candidates = Object.values(imported).filter((value) => typeof value === 'function');
+    return candidates.length > 0 ? candidates[0] : undefined;
+}
+function createDefaultConfig() {
+    return {
+        node_id: 'local-node-01',
+        cloud_url: 'https://oahl.onrender.com',
+        provider_api_key: '123456',
+        provider: {
+            name: 'Local Lab'
+        },
+        plugins: ['@oahl/adapter-mock'],
+        devices: []
+    };
+}
+function loadConfig(configPath) {
+    if (!fs.existsSync(configPath)) {
+        return createDefaultConfig();
+    }
+    const raw = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    return {
+        ...createDefaultConfig(),
+        ...raw,
+        provider: {
+            ...createDefaultConfig().provider,
+            ...(raw.provider || {})
+        },
+        plugins: Array.isArray(raw.plugins) ? raw.plugins : [],
+        devices: Array.isArray(raw.devices) ? raw.devices : []
+    };
+}
+function saveConfig(configPath, config) {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+}
+function parseCsv(value) {
+    return value
+        .split(',')
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0);
+}
+function toCsv(values) {
+    return Array.isArray(values) ? values.join(', ') : '';
+}
+async function editNodeSettings(config) {
+    const response = await (0, prompts_1.default)([
+        {
+            type: 'text',
+            name: 'node_id',
+            message: 'Node ID',
+            initial: config.node_id || 'local-node-01'
+        },
+        {
+            type: 'text',
+            name: 'provider_name',
+            message: 'Provider name',
+            initial: config.provider?.name || 'Local Lab'
+        },
+        {
+            type: 'text',
+            name: 'owner_id',
+            message: 'Owner ID (optional)',
+            initial: config.owner_id || config.provider?.owner_id || ''
+        },
+        {
+            type: 'text',
+            name: 'cloud_url',
+            message: 'Cloud URL',
+            initial: config.cloud_url || 'https://oahl.onrender.com'
+        },
+        {
+            type: 'password',
+            name: 'provider_api_key',
+            message: 'Provider API key',
+            initial: config.provider_api_key || '123456'
+        }
+    ]);
+    config.node_id = response.node_id || config.node_id;
+    config.provider = config.provider || {};
+    config.provider.name = response.provider_name || config.provider.name;
+    config.cloud_url = response.cloud_url || config.cloud_url;
+    config.provider_api_key = response.provider_api_key || config.provider_api_key;
+    const ownerId = (response.owner_id || '').trim();
+    if (ownerId) {
+        config.owner_id = ownerId;
+        config.provider.owner_id = ownerId;
+    }
+    else {
+        delete config.owner_id;
+        if (config.provider)
+            delete config.provider.owner_id;
+    }
+}
+async function managePlugins(config) {
+    while (true) {
+        const choice = await (0, prompts_1.default)({
+            type: 'select',
+            name: 'action',
+            message: `Plugins (${config.plugins.length})`,
+            choices: [
+                { title: 'Add plugin', value: 'add' },
+                { title: 'Remove plugin', value: 'remove' },
+                { title: 'Back', value: 'back' }
+            ]
+        });
+        if (!choice.action || choice.action === 'back')
+            return;
+        if (choice.action === 'add') {
+            const addRes = await (0, prompts_1.default)({
+                type: 'text',
+                name: 'plugin',
+                message: 'Plugin package name (e.g. @oahl/adapter-usb-camera)'
+            });
+            const plugin = (addRes.plugin || '').trim();
+            if (plugin && !config.plugins.includes(plugin)) {
+                config.plugins.push(plugin);
+            }
+        }
+        if (choice.action === 'remove') {
+            if (config.plugins.length === 0)
+                continue;
+            const removeRes = await (0, prompts_1.default)({
+                type: 'select',
+                name: 'plugin',
+                message: 'Select plugin to remove',
+                choices: config.plugins.map((plugin) => ({ title: plugin, value: plugin }))
+            });
+            if (removeRes.plugin) {
+                config.plugins = config.plugins.filter((plugin) => plugin !== removeRes.plugin);
+            }
+        }
+    }
+}
+async function promptDevice(existing) {
+    const initialVisibility = existing?.access_policy?.visibility || (existing?.policy?.public ? 'public' : 'private');
+    const response = await (0, prompts_1.default)([
+        {
+            type: 'text',
+            name: 'id',
+            message: 'Device ID',
+            initial: existing?.id || 'device-01'
+        },
+        {
+            type: 'text',
+            name: 'type',
+            message: 'Device type',
+            initial: existing?.type || 'custom'
+        },
+        {
+            type: 'text',
+            name: 'adapter',
+            message: 'Adapter name',
+            initial: existing?.adapter || 'mock'
+        },
+        {
+            type: 'text',
+            name: 'capabilities',
+            message: 'Capabilities (comma-separated)',
+            initial: toCsv(existing?.capabilities)
+        },
+        {
+            type: 'text',
+            name: 'owner_id',
+            message: 'Owner ID (optional)',
+            initial: existing?.owner_id || ''
+        },
+        {
+            type: 'select',
+            name: 'visibility',
+            message: 'Access visibility',
+            choices: [
+                { title: 'Public', value: 'public' },
+                { title: 'Shared (allow-list)', value: 'shared' },
+                { title: 'Private (owner/allow-list only)', value: 'private' }
+            ],
+            initial: ['public', 'shared', 'private'].indexOf(initialVisibility)
+        },
+        {
+            type: 'text',
+            name: 'allowed_agents',
+            message: 'Allowed agent IDs (comma-separated)',
+            initial: toCsv(existing?.access_policy?.allowed_agents)
+        },
+        {
+            type: 'text',
+            name: 'allowed_orgs',
+            message: 'Allowed org IDs (comma-separated)',
+            initial: toCsv(existing?.access_policy?.allowed_orgs)
+        },
+        {
+            type: 'text',
+            name: 'denied_agents',
+            message: 'Denied agent IDs (comma-separated)',
+            initial: toCsv(existing?.access_policy?.denied_agents)
+        },
+        {
+            type: 'number',
+            name: 'max_session_minutes',
+            message: 'Max session minutes',
+            initial: existing?.policy?.max_session_minutes || 30,
+            min: 1
+        }
+    ]);
+    const id = (response.id || '').trim();
+    if (!id) {
+        return undefined;
+    }
+    const visibility = (response.visibility || 'public');
+    const parsedOwnerId = (response.owner_id || '').trim();
+    return {
+        id,
+        type: (response.type || 'custom').trim(),
+        adapter: (response.adapter || 'mock').trim(),
+        capabilities: parseCsv(response.capabilities || ''),
+        ...(parsedOwnerId ? { owner_id: parsedOwnerId } : {}),
+        access_policy: {
+            visibility,
+            allowed_agents: parseCsv(response.allowed_agents || ''),
+            allowed_orgs: parseCsv(response.allowed_orgs || ''),
+            denied_agents: parseCsv(response.denied_agents || '')
+        },
+        policy: {
+            public: visibility === 'public',
+            max_session_minutes: Number(response.max_session_minutes) || 30
+        }
+    };
+}
+async function manageDevices(config) {
+    while (true) {
+        const choice = await (0, prompts_1.default)({
+            type: 'select',
+            name: 'action',
+            message: `Devices (${config.devices.length})`,
+            choices: [
+                { title: 'Add device', value: 'add' },
+                { title: 'Edit device', value: 'edit' },
+                { title: 'Remove device', value: 'remove' },
+                { title: 'Back', value: 'back' }
+            ]
+        });
+        if (!choice.action || choice.action === 'back')
+            return;
+        if (choice.action === 'add') {
+            const device = await promptDevice();
+            if (device) {
+                config.devices.push(device);
+            }
+        }
+        if (choice.action === 'edit') {
+            if (config.devices.length === 0)
+                continue;
+            const select = await (0, prompts_1.default)({
+                type: 'select',
+                name: 'deviceId',
+                message: 'Select device to edit',
+                choices: config.devices.map((device) => ({
+                    title: `${device.id} (${device.type})`,
+                    value: device.id
+                }))
+            });
+            if (!select.deviceId)
+                continue;
+            const index = config.devices.findIndex((device) => device.id === select.deviceId);
+            if (index < 0)
+                continue;
+            const updated = await promptDevice(config.devices[index]);
+            if (updated) {
+                config.devices[index] = updated;
+            }
+        }
+        if (choice.action === 'remove') {
+            if (config.devices.length === 0)
+                continue;
+            const select = await (0, prompts_1.default)({
+                type: 'select',
+                name: 'deviceId',
+                message: 'Select device to remove',
+                choices: config.devices.map((device) => ({
+                    title: `${device.id} (${device.type})`,
+                    value: device.id
+                }))
+            });
+            if (select.deviceId) {
+                config.devices = config.devices.filter((device) => device.id !== select.deviceId);
+            }
+        }
+    }
+}
+async function importDetectedDevices(config) {
+    const detectedDevices = [];
+    for (const pluginName of config.plugins || []) {
+        try {
+            let imported;
+            try {
+                imported = require(pluginName);
+            }
+            catch {
+                const localPath = path.resolve(process.cwd(), 'node_modules', pluginName);
+                imported = require(localPath);
+            }
+            const AdapterClass = resolveAdapterClassFromModule(imported);
+            if (typeof AdapterClass !== 'function') {
+                console.log(`⚠️ Skipped ${pluginName}: no constructable adapter export.`);
+                continue;
+            }
+            const adapter = new AdapterClass();
+            if (typeof adapter.initialize === 'function') {
+                try {
+                    await adapter.initialize();
+                }
+                catch (err) {
+                    console.log(`⚠️ ${pluginName} initialize warning: ${err.message}`);
+                }
+            }
+            const adapterDevices = (await adapter.getDevices?.()) || [];
+            for (const device of adapterDevices) {
+                let capabilityNames = [];
+                try {
+                    const capabilities = (await adapter.getCapabilities?.(device.id)) || [];
+                    capabilityNames = capabilities.map((cap) => typeof cap === 'string' ? cap : cap?.name).filter(Boolean);
+                }
+                catch (err) {
+                    console.log(`⚠️ Failed to get capabilities for ${device.id}: ${err.message}`);
+                }
+                detectedDevices.push({
+                    id: device.id,
+                    type: device.type || 'custom',
+                    adapter: device.adapter || (adapter.id || pluginName),
+                    capabilities: capabilityNames,
+                    policy: {
+                        public: device.isPublic !== false,
+                        max_session_minutes: 30
+                    }
+                });
+            }
+        }
+        catch (err) {
+            console.log(`⚠️ Failed to inspect plugin ${pluginName}: ${err.message}`);
+        }
+    }
+    let added = 0;
+    let updated = 0;
+    for (const detected of detectedDevices) {
+        const existingIndex = config.devices.findIndex((device) => device.id === detected.id);
+        if (existingIndex >= 0) {
+            const existing = config.devices[existingIndex];
+            config.devices[existingIndex] = {
+                ...detected,
+                ...existing,
+                id: detected.id,
+                type: detected.type,
+                adapter: detected.adapter,
+                capabilities: detected.capabilities
+            };
+            updated += 1;
+        }
+        else {
+            config.devices.push(detected);
+            added += 1;
+        }
+    }
+    console.log(`🔎 Device import complete: ${detectedDevices.length} detected, ${added} added, ${updated} updated.`);
+}
+async function runTui(configPath) {
+    const config = loadConfig(configPath);
+    let dirty = false;
+    while (true) {
+        const summary = `Node: ${config.node_id} | Plugins: ${config.plugins.length} | Devices: ${config.devices.length}`;
+        const choice = await (0, prompts_1.default)({
+            type: 'select',
+            name: 'action',
+            message: `OAHL Config TUI (${summary})`,
+            choices: [
+                { title: 'Edit node settings', value: 'node' },
+                { title: 'Manage plugins', value: 'plugins' },
+                { title: 'Manage devices + access policies', value: 'devices' },
+                { title: 'Import detected devices from plugins', value: 'import-devices' },
+                { title: 'Save', value: 'save' },
+                { title: 'Save and exit', value: 'save-exit' },
+                { title: 'Exit without saving', value: 'exit' }
+            ]
+        });
+        if (!choice.action)
+            return;
+        if (choice.action === 'node') {
+            await editNodeSettings(config);
+            dirty = true;
+        }
+        if (choice.action === 'plugins') {
+            await managePlugins(config);
+            dirty = true;
+        }
+        if (choice.action === 'devices') {
+            await manageDevices(config);
+            dirty = true;
+        }
+        if (choice.action === 'import-devices') {
+            await importDetectedDevices(config);
+            dirty = true;
+        }
+        if (choice.action === 'save') {
+            saveConfig(configPath, config);
+            dirty = false;
+            console.log(`✅ Saved config to ${configPath}`);
+        }
+        if (choice.action === 'save-exit') {
+            saveConfig(configPath, config);
+            console.log(`✅ Saved config to ${configPath}`);
+            return;
+        }
+        if (choice.action === 'exit') {
+            if (dirty) {
+                const confirm = await (0, prompts_1.default)({
+                    type: 'confirm',
+                    name: 'discard',
+                    message: 'Discard unsaved changes?',
+                    initial: false
+                });
+                if (!confirm.discard) {
+                    continue;
+                }
+            }
+            return;
+        }
+    }
+}
 program
     .command('init')
     .description('Interactively create a new oahl-config.json file for your hardware node')
@@ -332,6 +764,22 @@ program
     }
     catch (err) {
         console.error(`\n❌ Conformance checks failed: ${err.message}`);
+        process.exit(1);
+    }
+});
+program
+    .command('tui')
+    .description('Open terminal UI to configure OAHL node, plugins, devices, and access policies')
+    .option('-c, --config <path>', 'Path to oahl-config.json', './oahl-config.json')
+    .action(async (options) => {
+    const configPath = path.resolve(process.cwd(), options.config);
+    console.log(`🖥️ Opening OAHL TUI for ${configPath}`);
+    try {
+        await runTui(configPath);
+        console.log('✅ Closed OAHL TUI');
+    }
+    catch (err) {
+        console.error(`❌ TUI failed: ${err.message}`);
         process.exit(1);
     }
 });

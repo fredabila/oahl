@@ -104,23 +104,26 @@ function extractAgentIdentity(req: express.Request): AgentIdentity {
 function resolveDeviceAccessPolicy(device: any): DeviceAccessPolicy {
   const policy = device?.access_policy || device?.policy || {};
 
+  const allowedAgents = normalizeStringList(policy.allowed_agents || policy.allowedAgents);
+  const allowedOrgs = normalizeStringList(policy.allowed_orgs || policy.allowedOrgs);
+  const deniedAgents = normalizeStringList(policy.denied_agents || policy.deniedAgents);
+  const hasAccessLists = allowedAgents.length > 0 || allowedOrgs.length > 0 || deniedAgents.length > 0;
+
   let visibility: AccessVisibility = 'public';
   if (typeof policy.visibility === 'string') {
     const normalizedVisibility = policy.visibility.trim().toLowerCase();
     if (normalizedVisibility === 'public' || normalizedVisibility === 'shared' || normalizedVisibility === 'private') {
       visibility = normalizedVisibility;
     }
-  } else if (typeof policy.public === 'boolean') {
-    visibility = policy.public ? 'public' : 'private';
-  } else if (typeof device?.isPublic === 'boolean') {
-    visibility = device.isPublic ? 'public' : 'private';
+  } else if (hasAccessLists) {
+    visibility = 'shared';
   }
 
   return {
     visibility,
-    allowedAgents: normalizeStringList(policy.allowed_agents || policy.allowedAgents),
-    allowedOrgs: normalizeStringList(policy.allowed_orgs || policy.allowedOrgs),
-    deniedAgents: normalizeStringList(policy.denied_agents || policy.deniedAgents)
+    allowedAgents,
+    allowedOrgs,
+    deniedAgents
   };
 }
 
@@ -190,6 +193,16 @@ app.post('/v1/provider/nodes/register', authProvider, async (req, res) => {
   await redisClient.set(`node:${nodeData.node_id}`, JSON.stringify(nodeData), { EX: 300 });
   console.log(`[Cloud] 🟢 Node registered: ${nodeData.node_id}`);
   res.json({ status: "success" });
+});
+
+app.get('/v1/provider/nodes/:id', authProvider, async (req, res) => {
+  const nodeId = req.params.id;
+  const nodeData = await redisClient.get(`node:${nodeId}`);
+  if (!nodeData) {
+    return res.status(404).json({ error: 'Node not found or expired' });
+  }
+
+  return res.json(JSON.parse(nodeData));
 });
 
 /**

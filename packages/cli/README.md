@@ -49,6 +49,22 @@ Or specify a workspace path:
 oahl conformance --workspace /path/to/oahl
 ```
 
+### Configure with Terminal UI (TUI)
+
+Open an interactive terminal UI to manage node settings, plugins, devices, and access policies:
+
+```bash
+oahl tui
+```
+
+Use a custom config path if needed:
+
+```bash
+oahl tui --config ./my-oahl-config.json
+```
+
+In TUI, use **Import detected devices from plugins** to auto-populate `devices` from currently installed adapters, then edit access policy/visibility for each imported device.
+
 ### What is OAHL?
 OAHL is an open-source framework that lets hardware owners safely expose physical capabilities (like taking pictures or scanning radio frequencies) to remote AI agents. 
 
