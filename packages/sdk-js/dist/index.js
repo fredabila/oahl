@@ -1,63 +1,114 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OahlClient = void 0;
-class OahlClient {
+exports.CloudClient = exports.OahlClient = void 0;
+class HttpClient {
+    async request(url, init) {
+        const response = await fetch(url, init);
+        if (!response.ok) {
+            const body = await response.text();
+            throw new Error(`HTTP error ${response.status}: ${body || response.statusText}`);
+        }
+        return response.json();
+    }
+}
+class OahlClient extends HttpClient {
     baseUrl;
     constructor(baseUrl = 'http://localhost:3000') {
+        super();
         this.baseUrl = baseUrl;
     }
     async health() {
-        const res = await fetch(`${this.baseUrl}/health`);
-        if (!res.ok)
-            throw new Error(`HTTP error! status: ${res.status}`);
-        return res.json();
+        return this.request(`${this.baseUrl}/health`);
     }
     async getDevices() {
-        const res = await fetch(`${this.baseUrl}/devices`);
-        if (!res.ok)
-            throw new Error(`HTTP error! status: ${res.status}`);
-        return res.json();
+        return this.request(`${this.baseUrl}/devices`);
     }
     async getCapabilities(deviceId) {
-        const res = await fetch(`${this.baseUrl}/capabilities?deviceId=${encodeURIComponent(deviceId)}`);
-        if (!res.ok)
-            throw new Error(`HTTP error! status: ${res.status}`);
-        return res.json();
+        return this.request(`${this.baseUrl}/capabilities?deviceId=${encodeURIComponent(deviceId)}`);
     }
     async startSession(deviceId) {
-        const res = await fetch(`${this.baseUrl}/sessions/start`, {
+        return this.request(`${this.baseUrl}/sessions/start`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ deviceId })
         });
-        if (!res.ok)
-            throw new Error(`HTTP error! status: ${res.status}`);
-        return res.json();
     }
     async execute(sessionId, capabilityName, args) {
-        const res = await fetch(`${this.baseUrl}/execute`, {
+        return this.request(`${this.baseUrl}/execute`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sessionId, capabilityName, args })
         });
-        if (!res.ok)
-            throw new Error(`HTTP error! status: ${res.status}`);
-        return res.json();
     }
     async stopSession(sessionId) {
-        const res = await fetch(`${this.baseUrl}/sessions/stop`, {
+        await this.request(`${this.baseUrl}/sessions/stop`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sessionId })
         });
-        if (!res.ok)
-            throw new Error(`HTTP error! status: ${res.status}`);
     }
     async getSession(sessionId) {
-        const res = await fetch(`${this.baseUrl}/sessions/${encodeURIComponent(sessionId)}`);
-        if (!res.ok)
-            throw new Error(`HTTP error! status: ${res.status}`);
-        return res.json();
+        return this.request(`${this.baseUrl}/sessions/${encodeURIComponent(sessionId)}`);
     }
 }
 exports.OahlClient = OahlClient;
+class CloudClient extends HttpClient {
+    baseUrl;
+    agentApiKey;
+    constructor(baseUrl = 'https://oahl.onrender.com', agentApiKey) {
+        super();
+        this.baseUrl = baseUrl.replace(/\/$/, '');
+        this.agentApiKey = agentApiKey;
+    }
+    setAgentApiKey(agentApiKey) {
+        this.agentApiKey = agentApiKey;
+    }
+    authHeaders(additionalHeaders) {
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (this.agentApiKey) {
+            headers.Authorization = `Bearer ${this.agentApiKey}`;
+        }
+        return {
+            ...headers,
+            ...(additionalHeaders || {})
+        };
+    }
+    async getCapabilities(query) {
+        const params = new URLSearchParams();
+        if (query) {
+            for (const [key, value] of Object.entries(query)) {
+                if (value !== undefined && value !== null && value !== '') {
+                    params.set(key, String(value));
+                }
+            }
+        }
+        const queryString = params.toString();
+        const url = `${this.baseUrl}/v1/capabilities${queryString ? `?${queryString}` : ''}`;
+        return this.request(url, {
+            headers: this.authHeaders()
+        });
+    }
+    async requestSession(input) {
+        return this.request(`${this.baseUrl}/v1/requests`, {
+            method: 'POST',
+            headers: this.authHeaders(),
+            body: JSON.stringify(input)
+        });
+    }
+    async execute(sessionId, input) {
+        return this.request(`${this.baseUrl}/v1/sessions/${encodeURIComponent(sessionId)}/execute`, {
+            method: 'POST',
+            headers: this.authHeaders(),
+            body: JSON.stringify(input)
+        });
+    }
+    async stopSession(sessionId) {
+        return this.request(`${this.baseUrl}/v1/sessions/${encodeURIComponent(sessionId)}/stop`, {
+            method: 'POST',
+            headers: this.authHeaders()
+        });
+    }
+}
+exports.CloudClient = CloudClient;

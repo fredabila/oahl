@@ -6,9 +6,9 @@ SDKs reduce integration effort for agents and applications by hiding API transpo
 
 ## Current state
 
-- JavaScript SDK (`@oahl/sdk`) targets local node APIs.
+- JavaScript SDK (`@oahl/sdk`) supports both local node and cloud relay APIs via `OahlClient` and `CloudClient`.
 - Python SDK (`sdk-python/client.py`) targets local node APIs.
-- Cloud relay APIs (`/v1/...`) are consumed directly via HTTP today.
+
 
 ## Recommended direction
 
@@ -19,12 +19,12 @@ SDKs reduce integration effort for agents and applications by hiding API transpo
 
 ### 2) Keep naming explicit
 
-- `NodeClient` for local-node flows
+- `OahlClient` for local-node flows
 - `CloudClient` for cloud-relay flows
 
-### 3) Add capability discovery primitives
+### 3) Keep cloud discovery ergonomic
 
-Cloud SDK should include:
+Cloud client should continue to expose:
 
 - search and filter helpers for `GET /v1/capabilities`
 - pagination model (`page`, `page_size`, `pagination` metadata)

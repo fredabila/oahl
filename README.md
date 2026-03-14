@@ -94,8 +94,30 @@ OAHL currently includes two client SDKs:
 - JavaScript SDK: `@oahl/sdk` (`packages/sdk-js`)
 - Python SDK: `sdk-python/client.py`
 
-Current scope: both SDKs primarily target local node endpoints (`/devices`, `/sessions/start`, `/execute`).
-If you are integrating with cloud relay endpoints (`/v1/...`), use direct HTTP calls until the cloud-focused SDK surface is finalized.
+Current scope:
+- JavaScript SDK supports both local node and cloud relay endpoints via `OahlClient` and `CloudClient`.
+- Python SDK currently targets local node endpoints.
+
+## Publishing packages
+
+Use the root scripts to publish all public OAHL packages (including `@oahl/sdk`):
+
+```bash
+npm run publish:all:dry-run
+npm run publish:all
+```
+
+To avoid publish failures from duplicate versions, use auto-bump + publish:
+
+```bash
+npm run version:bump:preview
+npm run publish:all:auto
+```
+
+Release variants are also available:
+- `npm run publish:all:auto:minor`
+- `npm run publish:all:auto:major`
+- `npm run publish:all:auto:prerelease`
 
 ## License
 Apache 2.0 or MIT.

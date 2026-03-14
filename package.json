@@ -10,7 +10,18 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "start": "npm run start --workspace=@oahl/server"
+    "start": "npm run start --workspace=@oahl/server",
+    "version:bump:patch": "node ./scripts/bump-workspace-versions.mjs --release patch",
+    "version:bump:minor": "node ./scripts/bump-workspace-versions.mjs --release minor",
+    "version:bump:major": "node ./scripts/bump-workspace-versions.mjs --release major",
+    "version:bump:prerelease": "node ./scripts/bump-workspace-versions.mjs --release prerelease",
+    "version:bump:preview": "node ./scripts/bump-workspace-versions.mjs --release patch --dry-run",
+    "publish:all": "npm run build && npm publish --workspace=@oahl/core --access public && npm publish --workspace=@oahl/sdk --access public && npm publish --workspace=@oahl/adapter-mock --access public && npm publish --workspace=@oahl/adapter-rtl-sdr --access public && npm publish --workspace=@oahl/adapter-usb-camera --access public && npm publish --workspace=@oahl/server --access public && npm publish --workspace=@oahl/cloud --access public && npm publish --workspace=@oahl/cli --access public && npm publish --workspace=@fredabila/oahl --access public",
+    "publish:all:dry-run": "npm run build && npm publish --workspace=@oahl/core --access public --dry-run && npm publish --workspace=@oahl/sdk --access public --dry-run && npm publish --workspace=@oahl/adapter-mock --access public --dry-run && npm publish --workspace=@oahl/adapter-rtl-sdr --access public --dry-run && npm publish --workspace=@oahl/adapter-usb-camera --access public --dry-run && npm publish --workspace=@oahl/server --access public --dry-run && npm publish --workspace=@oahl/cloud --access public --dry-run && npm publish --workspace=@oahl/cli --access public --dry-run && npm publish --workspace=@fredabila/oahl --access public --dry-run",
+    "publish:all:auto": "npm run version:bump:patch && npm run publish:all",
+    "publish:all:auto:minor": "npm run version:bump:minor && npm run publish:all",
+    "publish:all:auto:major": "npm run version:bump:major && npm run publish:all",
+    "publish:all:auto:prerelease": "npm run version:bump:prerelease && npm run publish:all"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
