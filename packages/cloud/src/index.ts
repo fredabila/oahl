@@ -427,6 +427,7 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
     requestId,
     sessionId,
     deviceId: session.device_id,
+    dispatchedAt: Date.now(),
     capability: command.capability,
     params: command.params
   });

@@ -186,6 +186,82 @@ async function startCloudRelay(config, adapters) {
     if (!config.cloud_url || !config.provider_api_key)
         return;
     console.log(`[Cloud Relay] 📬 Starting HTTP Command Listener (Polling)...`);
+    const relayMaxConcurrency = Math.max(1, Number.parseInt(process.env.OAHL_RELAY_MAX_CONCURRENCY || '4', 10) || 4);
+    const inFlightCommands = new Set();
+    const sendResultToCloud = async (requestId, result, resultType) => {
+        const response = await fetch(`${config.cloud_url}/v1/provider/nodes/results`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.provider_api_key}`
+            },
+            body: JSON.stringify({
+                requestId,
+                result
+            })
+        });
+        if (!response.ok) {
+            const body = await response.text();
+            console.error(`[Cloud Relay] ❌ Failed to send ${resultType} result for ${requestId}: ${response.status} ${body}`);
+            return;
+        }
+        console.log(`[Cloud Relay] 📤 Sent ${resultType} result back for ${requestId}`);
+    };
+    const handlePolledCommand = async (payload) => {
+        console.log(`[Cloud Relay] 📥 Received command: ${payload.capability} for device ${payload.deviceId}`);
+        const relayStartedAt = Date.now();
+        const adapter = await getAdapterForDevice(payload.deviceId);
+        if (adapter) {
+            try {
+                const rawResult = await adapter.execute(payload.deviceId, payload.capability, payload.params || {});
+                const result = asExecutionResult({
+                    requestId: payload.requestId,
+                    deviceId: payload.deviceId,
+                    capability: payload.capability,
+                    adapterId: adapter.id || adapter.constructor.name,
+                    rawResult
+                });
+                const dispatchTimestamp = Number(payload.dispatchedAt) || relayStartedAt;
+                result.meta = {
+                    ...(result.meta || {}),
+                    relay_latency_ms: Date.now() - dispatchTimestamp,
+                    node_id: config.node_id
+                };
+                await sendResultToCloud(payload.requestId, result, 'success');
+            }
+            catch (execErr) {
+                console.error(`[Cloud Relay] ❌ Execution failed: ${execErr.message}`);
+                const result = asExecutionResult({
+                    requestId: payload.requestId,
+                    deviceId: payload.deviceId,
+                    capability: payload.capability,
+                    adapterId: adapter.id || adapter.constructor.name,
+                    error: execErr
+                });
+                const dispatchTimestamp = Number(payload.dispatchedAt) || relayStartedAt;
+                result.meta = {
+                    ...(result.meta || {}),
+                    relay_latency_ms: Date.now() - dispatchTimestamp,
+                    node_id: config.node_id
+                };
+                await sendResultToCloud(payload.requestId, result, 'error');
+            }
+            return;
+        }
+        const result = asExecutionResult({
+            requestId: payload.requestId,
+            deviceId: payload.deviceId,
+            capability: payload.capability,
+            error: new Error(`No adapter found for device ${payload.deviceId}`)
+        });
+        const dispatchTimestamp = Number(payload.dispatchedAt) || relayStartedAt;
+        result.meta = {
+            ...(result.meta || {}),
+            relay_latency_ms: Date.now() - dispatchTimestamp,
+            node_id: config.node_id
+        };
+        await sendResultToCloud(payload.requestId, result, 'no-adapter');
+    };
     while (true) {
         try {
             // Poll the Cloud Registry for any pending commands
@@ -196,94 +272,17 @@ async function startCloudRelay(config, adapters) {
             });
             if (response.status === 200) {
                 const payload = await response.json();
-                console.log(`[Cloud Relay] 📥 Received command: ${payload.capability} for device ${payload.deviceId}`);
-                // Find adapter and execute
-                const adapter = await getAdapterForDevice(payload.deviceId);
-                if (adapter) {
-                    try {
-                        const rawResult = await adapter.execute(payload.deviceId, payload.capability, payload.params || {});
-                        const result = asExecutionResult({
-                            requestId: payload.requestId,
-                            deviceId: payload.deviceId,
-                            capability: payload.capability,
-                            adapterId: adapter.id || adapter.constructor.name,
-                            rawResult
-                        });
-                        // Send result back to cloud
-                        const resultResponse = await fetch(`${config.cloud_url}/v1/provider/nodes/results`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${config.provider_api_key}`
-                            },
-                            body: JSON.stringify({
-                                requestId: payload.requestId,
-                                result: result
-                            })
-                        });
-                        if (!resultResponse.ok) {
-                            const body = await resultResponse.text();
-                            console.error(`[Cloud Relay] ❌ Failed to send result for ${payload.requestId}: ${resultResponse.status} ${body}`);
-                        }
-                        else {
-                            console.log(`[Cloud Relay] 📤 Sent result back for ${payload.requestId}`);
-                        }
-                    }
-                    catch (execErr) {
-                        console.error(`[Cloud Relay] ❌ Execution failed: ${execErr.message}`);
-                        const result = asExecutionResult({
-                            requestId: payload.requestId,
-                            deviceId: payload.deviceId,
-                            capability: payload.capability,
-                            adapterId: adapter.id || adapter.constructor.name,
-                            error: execErr
-                        });
-                        const errorResultResponse = await fetch(`${config.cloud_url}/v1/provider/nodes/results`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${config.provider_api_key}`
-                            },
-                            body: JSON.stringify({
-                                requestId: payload.requestId,
-                                result
-                            })
-                        });
-                        if (!errorResultResponse.ok) {
-                            const body = await errorResultResponse.text();
-                            console.error(`[Cloud Relay] ❌ Failed to send error result for ${payload.requestId}: ${errorResultResponse.status} ${body}`);
-                        }
-                        else {
-                            console.log(`[Cloud Relay] 📤 Sent error result back for ${payload.requestId}`);
-                        }
-                    }
+                while (inFlightCommands.size >= relayMaxConcurrency) {
+                    await Promise.race(inFlightCommands);
                 }
-                else {
-                    const result = asExecutionResult({
-                        requestId: payload.requestId,
-                        deviceId: payload.deviceId,
-                        capability: payload.capability,
-                        error: new Error(`No adapter found for device ${payload.deviceId}`)
-                    });
-                    const noAdapterResultResponse = await fetch(`${config.cloud_url}/v1/provider/nodes/results`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${config.provider_api_key}`
-                        },
-                        body: JSON.stringify({
-                            requestId: payload.requestId,
-                            result
-                        })
-                    });
-                    if (!noAdapterResultResponse.ok) {
-                        const body = await noAdapterResultResponse.text();
-                        console.error(`[Cloud Relay] ❌ Failed to send no-adapter result for ${payload.requestId}: ${noAdapterResultResponse.status} ${body}`);
-                    }
-                    else {
-                        console.log(`[Cloud Relay] 📤 Sent no-adapter result back for ${payload.requestId}`);
-                    }
-                }
+                const task = handlePolledCommand(payload)
+                    .catch((commandErr) => {
+                    console.error(`[Cloud Relay] ❌ Command handling failed: ${commandErr.message}`);
+                })
+                    .finally(() => {
+                    inFlightCommands.delete(task);
+                });
+                inFlightCommands.add(task);
             }
             else if (response.status === 204) {
                 // No commands waiting, just loop again
