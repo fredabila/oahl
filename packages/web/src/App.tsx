@@ -5,7 +5,6 @@ import {
   Cloud,
   Code2,
   Database,
-  Globe,
   KeyRound,
   Layers,
   Network,
@@ -19,7 +18,7 @@ import {
   Waypoints
 } from 'lucide-react';
 
-type Page = 'home' | 'api-lab';
+type Page = 'home' | 'about' | 'api-lab';
 type CapabilityLike = string | { name?: string; description?: string };
 
 interface Device {
@@ -64,6 +63,11 @@ interface ExecutionResult {
   error?: unknown;
 }
 
+interface RelayInfo {
+  mode: string;
+  requestId: string;
+}
+
 const AGENT_ENDPOINTS = [
   { method: 'GET', path: '/v1/capabilities', purpose: 'Discover global hardware inventory with filtering and pagination.' },
   { method: 'POST', path: '/v1/requests', purpose: 'Request a session by capability or deterministically by device_id (+ node_id).' },
@@ -95,11 +99,15 @@ function capabilityName(capability: CapabilityLike): string {
 }
 
 function detectPage(): Page {
-  return window.location.pathname.includes('api-lab') ? 'api-lab' : 'home';
+  if (window.location.pathname.includes('about')) return 'about';
+  if (window.location.pathname.includes('api-lab')) return 'api-lab';
+  return 'home';
 }
 
 function setPagePath(page: Page) {
-  const path = page === 'api-lab' ? '/api-lab' : '/';
+  let path = '/';
+  if (page === 'api-lab') path = '/api-lab';
+  if (page === 'about') path = '/about';
   window.history.pushState({}, '', path);
 }
 
@@ -138,13 +146,16 @@ function App() {
 
           <nav className="flex items-center gap-2 text-sm">
             <NavButton active={page === 'home'} onClick={() => goToPage('home')} label="Home" />
+            <NavButton active={page === 'about'} onClick={() => goToPage('about')} label="About" />
             <NavButton active={page === 'api-lab'} onClick={() => goToPage('api-lab')} label="API Lab" />
           </nav>
         </div>
       </header>
 
       <main className="relative z-10 mx-auto max-w-7xl px-6 pb-16 pt-10">
-        {page === 'home' ? <HomePage onOpenApiLab={() => goToPage('api-lab')} /> : <ApiLabPage />}
+        {page === 'home' && <HomePage onOpenApiLab={() => goToPage('api-lab')} />}
+        {page === 'about' && <AboutPage />}
+        {page === 'api-lab' && <ApiLabPage />}
       </main>
 
       <footer className="relative z-10 border-t border-oahl-border/70 py-6">
@@ -161,75 +172,268 @@ function App() {
   );
 }
 
+function AboutPage() {
+  return (
+    <article className="prose prose-oahl mx-auto max-w-3xl pt-10">
+      <header className="mb-12">
+        <div className="mb-4 flex items-center gap-3 text-sm font-mono text-oahl-textMuted uppercase tracking-widest">
+          <span>March 14, 2026</span>
+          <span className="h-1 w-1 rounded-full bg-oahl-border"></span>
+          <span>Product Announcement</span>
+        </div>
+        <h1 className="mb-4 text-4xl font-semibold tracking-tight text-oahl-textMain md:text-5xl leading-tight">
+          Introducing the Open Agent Hardware Layer
+        </h1>
+        <p className="text-xl leading-relaxed text-oahl-textMuted">
+          A standard protocol to seamlessly connect AI agents to physical hardware, from lab test rigs to sensory networks.
+        </p>
+      </header>
+
+      <div className="h-px w-full bg-oahl-border mb-12"></div>
+
+      <p>
+        AI agents represent the next major evolution in computing, moving from conversational interfaces to autonomous systems that reason and execute complex workflows. Yet, up to this point, the operational theater of these agents has been largely restricted to the digital world. They can write code, manipulate databases, and call APIs—but the exact moment an agent needs to turn a camera, read a spectrum analyzer, or interact with a mobile test board, the ecosystem collapses into bespoke, fragile integration scripts.
+      </p>
+
+      <p>
+        Today, we are introducing the <strong>Open Agent Hardware Layer (OAHL)</strong>, an open-source standard and architecture designed to bridge the gap between AI agents and the physical world through a secure, uniform protocol.
+      </p>
+
+      <h3>The Hardware Integration Barrier</h3>
+      <p>
+        Currently, if a developer wants their agent to capture an image from a local USB camera and analyze it, they must write custom adapter code, manage driver dependencies, and insecurely expose local network endpoints to the cloud. When they try to scale this to hundreds of devices—or a mix of Android phones, Software Defined Radios (SDRs), and lab equipment—the overhead becomes entirely unmanageable.
+      </p>
+      <p>
+        Hardware has no standard native prompt language. Different vendors use different transports (USB, RTSP, BLE, proprietary SDKs). Asking an AI model to navigate these physical topologies safely is a profound security and architectural risk.
+      </p>
+
+      <h3>A Standardized Protocol for the Physical World</h3>
+      <p>
+        OAHL solves this by replacing ad-hoc integration scripts with a formalized capability contract. The system treats physical devices not as IP addresses or USB ports, but as normalized semantic capabilities (<code>camera.capture</code>, <code>android.screen.tap</code>, <code>sdr.measure</code>) that agents can natively understand.
+      </p>
+
+      <p>The OAHL architecture enables four clear lifecycle phases:</p>
+      <ul>
+        <li><strong>Discover:</strong> Agents dynamically query the OAHL registry for hardware that satisfies specific capability requirements, regardless of where that hardware physically lives.</li>
+        <li><strong>Reserve:</strong> The system enforces strictly isolated, lease-based hardware sessions, ensuring that two agents cannot collide and inadvertently mutate physical device state simultaneously.</li>
+        <li><strong>Execute:</strong> A unified execution envelope normalizes requests—handling fast-path WebSocket relay and graceful polling fallbacks for heavily firewalled lab environments.</li>
+        <li><strong>Release:</strong> Immediate tear-down of the session, releasing the hardware lock for the next intelligence workload.</li>
+      </ul>
+
+      <h3>Built for Enterprise Constraints</h3>
+      <p>
+        Unlike software, physical hardware exists in constrained, often highly secure network topologies. OAHL utilizes a <strong>Provider Node</strong> model. Hardware operators install a lightweight Node in their local lab or edge environment, which reaches <em>out</em> to the cloud registry. At no point do firewall ports need to be opened inbound.
+      </p>
+
+      <p>
+        Furthermore, OAHL implements explicit ownership metadata and access control lists right at registration, allowing hardware owners to cryptographically sign exactly which agent identities or tenant organizations are permitted to claim a session on their physical toolchains.
+      </p>
+
+      <h3>Get Started</h3>
+      <p>
+        We believe that the next breakthrough in AI requires agents to interact with our reality. OAHL is available today. You can build provider nodes, write adapters for custom hardware, and begin routing agent workloads immediately.
+      </p>
+      <p>
+        Read the documentation or explore the <code>@oahl/cli</code> on our <a href="https://github.com/fredabila/oahl" className="text-oahl-textMain underline decoration-oahl-border underline-offset-4 hover:decoration-oahl-textMain transition-all cursor-pointer">GitHub repository</a>.
+      </p>
+    </article>
+  );
+}
+
 function HomePage({ onOpenApiLab }: { onOpenApiLab: () => void }) {
   return (
     <>
-      <section className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
-        <div className="panel p-8 md:p-10">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-oahl-tech/30 bg-oahl-tech/10 px-3 py-1 text-xs font-mono text-oahl-tech">
-            <Sparkles className="h-3.5 w-3.5" />
-            Protocol + Cloud + Node + Adapter
+      <section className="aesthetic-hero panel relative overflow-hidden p-8 md:p-12 lg:p-14">
+        <div className="relative z-10 grid items-end gap-10 lg:grid-cols-[1.3fr_1fr]">
+          <div>
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-oahl-border bg-oahl-surface px-3 py-1 text-xs font-mono text-oahl-accent">
+              <Sparkles className="h-3.5 w-3.5" />
+              Agent-native Hardware Platform
+            </div>
+
+            <h1 className="max-w-4xl text-4xl font-semibold leading-[1.02] tracking-tight md:text-6xl text-oahl-textMain">
+              A standard protocol for
+              <span className="block text-oahl-accent mt-1">real-world agent execution.</span>
+            </h1>
+
+            <p className="mt-6 max-w-3xl text-base leading-relaxed text-oahl-textMuted md:text-lg">
+              OAHL gives your agents one elegant interface to orchestrate cameras, radios, phones, and lab gear with
+              isolation, policy, and deterministic routing built into the core lifecycle.
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button onClick={onOpenApiLab} className="rounded-2xl bg-oahl-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-oahl-accentHover">
+                Launch API Lab
+              </button>
+              <a href="https://github.com/fredabila/oahl" target="_blank" rel="noreferrer" className="rounded-2xl border border-oahl-border bg-black/30 px-5 py-2.5 text-sm font-semibold text-oahl-textMain transition-colors hover:border-oahl-accent">
+                Explore Repository
+              </a>
+            </div>
           </div>
-          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight leading-tight">
-            A modern hardware cloud interface where agents discover, allocate, execute, and control real devices.
-          </h1>
-          <p className="mt-5 max-w-3xl text-oahl-textMuted leading-relaxed">
-            OAHL provides a consistent API contract across cloud relay and local hardware nodes. Use Home for architecture context, then switch to API Lab for live endpoint testing.
+
+          <div className="hero-panel p-6 flex flex-col relative overflow-hidden">
+            <div className="absolute top-[-50px] right-[-50px] h-[200px] w-[200px] bg-oahl-tech/5 blur-[80px] rounded-full pointer-events-none" />
+            
+            <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-oahl-tech relative z-10">
+              <Waypoints className="h-4 w-4" />
+              Live topology
+            </h3>
+            
+            <div className="mt-8 flex flex-col relative z-10">
+              <div className="absolute left-[15px] top-4 bottom-4 w-px bg-gradient-to-b from-oahl-tech/50 via-oahl-accent/50 to-oahl-tech/50" />
+              
+              <div className="flex items-center gap-4 relative py-3 group">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-oahl-tech/30 bg-[#171615] z-10 transition-colors group-hover:border-oahl-tech shadow-[0_0_15px_rgba(115,149,128,0.1)] group-hover:shadow-[0_0_15px_rgba(115,149,128,0.3)]">
+                  <Terminal className="h-4 w-4 text-oahl-tech" />
+                </div>
+                <div>
+                  <div className="font-mono text-sm text-oahl-textMain">Agent SDK</div>
+                  <div className="text-xs text-oahl-textMuted">Local Execution Context</div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4 relative py-3 group">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-oahl-accent/30 bg-[#171615] z-10 transition-colors group-hover:border-oahl-accent shadow-[0_0_15px_rgba(212,126,91,0.1)] group-hover:shadow-[0_0_15px_rgba(212,126,91,0.3)]">
+                  <Cloud className="h-4 w-4 text-oahl-accent" />
+                </div>
+                <div>
+                  <div className="font-mono text-sm text-oahl-textMain">Cloud Registry</div>
+                  <div className="text-xs text-oahl-textMuted">Global Namespace Map</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 relative py-3 group">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-oahl-tech/30 bg-[#171615] z-10 transition-colors group-hover:border-oahl-tech shadow-[0_0_15px_rgba(115,149,128,0.1)] group-hover:shadow-[0_0_15px_rgba(115,149,128,0.3)]">
+                  <Server className="h-4 w-4 text-oahl-tech" />
+                </div>
+                <div>
+                  <div className="font-mono text-sm text-oahl-textMain">Provider Node</div>
+                  <div className="text-xs text-oahl-textMuted">Relay & Policy Engine</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 relative py-3 group">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-oahl-accent/30 bg-[#171615] z-10 transition-colors group-hover:border-oahl-accent shadow-[0_0_15px_rgba(212,126,91,0.1)] group-hover:shadow-[0_0_15px_rgba(212,126,91,0.3)]">
+                  <Layers className="h-4 w-4 text-oahl-accent" />
+                </div>
+                <div>
+                  <div className="font-mono text-sm text-oahl-textMain">Adapter Base</div>
+                  <div className="text-xs text-oahl-textMuted">Hardware Protocol</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative z-10 mt-8 grid gap-3 md:grid-cols-3">
+          <StatCard label="Device Families" value="Cameras · SDR · Android · Custom" />
+          <StatCard label="Control Model" value="Discover · Reserve · Execute · Release" />
+          <StatCard label="Relay Strategy" value="WebSocket Fast Path + Polling Fallback" />
+        </div>
+      </section>
+
+      <section className="mt-10 grid gap-6 lg:grid-cols-[1.25fr_1fr]">
+        <div className="panel p-7">
+          <h2 className="text-2xl font-semibold md:text-3xl">From hardware chaos to one operating model</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-oahl-textMuted md:text-base">
+            OAHL replaces ad-hoc device scripts with a standards-first execution contract, so teams can scale from single benches to
+            distributed hardware farms without rewriting agent orchestration each time a transport or vendor changes.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <button onClick={onOpenApiLab} className="rounded-2xl bg-oahl-accent px-5 py-2.5 text-sm font-semibold text-white hover:bg-oahl-accentHover transition-colors">
+
+          <div className="flow-rail mt-6">
+            {FLOW_STEPS.map((step, index) => (
+              <div key={step.title} className="flow-rail-node">
+                <div className="flow-rail-index">{index + 1}</div>
+                <p className="mt-3 text-sm font-semibold text-oahl-textMain">{step.title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-oahl-textMuted">{step.detail}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel p-7">
+          <h3 className="text-lg font-semibold">Designed for serious operations</h3>
+          <div className="mt-4 space-y-3 text-sm text-oahl-textMuted">
+            <LandingFeatureCard icon={<ShieldCheck className="h-4 w-4 text-oahl-tech" />} title="Policy-aware access" detail="Owner visibility and allow/deny rules at device level." />
+            <LandingFeatureCard icon={<Activity className="h-4 w-4 text-oahl-accent" />} title="Low-latency execution" detail="WS relay first, queue fallback if transport quality drops." />
+            <LandingFeatureCard icon={<Database className="h-4 w-4 text-oahl-tech" />} title="Structured responses" detail="Execution Result envelope for predictable agent parsing." />
+            <LandingFeatureCard icon={<Network className="h-4 w-4 text-oahl-accent" />} title="Scale-ready topology" detail="Register many nodes and route deterministically." />
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-10 bento-grid">
+        <div className="panel bento-main p-7">
+          <p className="text-xs font-mono uppercase tracking-wider text-oahl-textMuted">Use Cases</p>
+          <h3 className="mt-2 text-2xl font-semibold">Built for physical AI workloads</h3>
+          <p className="mt-3 text-sm leading-relaxed text-oahl-textMuted">
+            Run field diagnostics, automate inspections, control mobile test fleets, and operate distributed radio pipelines through a single cloud-native hardware interface.
+          </p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <MiniInfo label="Vision Workflows" value="Capture, inspect, and route imagery" />
+            <MiniInfo label="SDR Operations" value="Scan and diagnose RF environments" />
+            <MiniInfo label="Mobile Automation" value="Android control for scripted validation" />
+            <MiniInfo label="Lab Orchestration" value="Multi-node deterministic scheduling" />
+          </div>
+        </div>
+
+        <div className="panel p-6">
+          <p className="text-xs font-mono uppercase tracking-wider text-oahl-textMuted">Agent APIs</p>
+          <div className="mt-4 space-y-2">
+            {AGENT_ENDPOINTS.map((endpoint) => (
+              <div key={`${endpoint.method}-${endpoint.path}`} className="api-line">
+                <span className="text-xs font-mono text-oahl-textMuted">{endpoint.method}</span>
+                <span className="text-xs font-mono text-oahl-textMain">{endpoint.path}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel p-6">
+          <p className="text-xs font-mono uppercase tracking-wider text-oahl-textMuted">Provider APIs</p>
+          <div className="mt-4 space-y-2">
+            {PROVIDER_ENDPOINTS.map((endpoint) => (
+              <div key={`${endpoint.method}-${endpoint.path}`} className="api-line">
+                <span className="text-xs font-mono text-oahl-textMuted">{endpoint.method}</span>
+                <span className="text-xs font-mono text-oahl-textMain">{endpoint.path}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel p-6">
+          <p className="text-xs font-mono uppercase tracking-wider text-oahl-textMuted">Node APIs</p>
+          <div className="mt-4 space-y-2">
+            {LOCAL_ENDPOINTS.map((endpoint) => (
+              <div key={`${endpoint.method}-${endpoint.path}`} className="api-line">
+                <span className="text-xs font-mono text-oahl-textMuted">{endpoint.method}</span>
+                <span className="text-xs font-mono text-oahl-textMain">{endpoint.path}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-10 cta-band panel overflow-hidden p-8 md:p-10">
+        <div className="relative z-10 flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-center">
+          <div>
+            <p className="text-xs font-mono uppercase tracking-wider text-oahl-textMuted">Start Building</p>
+            <h2 className="mt-2 max-w-2xl text-3xl font-semibold leading-tight">
+              Upgrade from fragile hardware scripts to a clean agent platform.
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm text-oahl-textMuted">
+              Keep your adapter ecosystem, enforce policy centrally, and evolve transport layers without changing agent business logic.
+            </p>
+          </div>
+
+          <div className="flex w-full flex-wrap gap-3 lg:w-auto">
+            <button onClick={onOpenApiLab} className="rounded-2xl bg-oahl-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-oahl-accentHover">
               Open API Lab
             </button>
-            <a href="https://github.com/fredabila/oahl" target="_blank" rel="noreferrer" className="rounded-2xl border border-oahl-border px-5 py-2.5 text-sm font-semibold text-oahl-textMain hover:border-oahl-accent transition-colors">
-              View Repository
+            <a href="https://github.com/fredabila/oahl" target="_blank" rel="noreferrer" className="rounded-2xl border border-oahl-border px-5 py-2.5 text-sm font-semibold text-oahl-textMain transition-colors hover:border-oahl-accent">
+              Read Documentation
             </a>
           </div>
-
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            <StatCard label="Agent APIs" value="4 endpoints" />
-            <StatCard label="Provider APIs" value="3 endpoints" />
-            <StatCard label="Local Node APIs" value="2 endpoints" />
-          </div>
-        </div>
-
-        <div className="panel p-8">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
-            <Waypoints className="h-5 w-5 text-oahl-accent" />
-            Architecture Flow
-          </h2>
-          <div className="space-y-3 text-sm text-oahl-textMuted">
-            <FlowStep icon={<Terminal className="h-4 w-4 text-oahl-tech" />} label="Agent/SDK" />
-            <FlowConnector />
-            <FlowStep icon={<Cloud className="h-4 w-4 text-oahl-accent" />} label="Cloud Registry" />
-            <FlowConnector />
-            <FlowStep icon={<Server className="h-4 w-4 text-oahl-tech" />} label="Provider Node" />
-            <FlowConnector />
-            <FlowStep icon={<Layers className="h-4 w-4 text-oahl-accent" />} label="Adapter + Device" />
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-10 grid gap-6 lg:grid-cols-3">
-        <ApiGroup title="Agent Cloud APIs" icon={<Globe className="h-4 w-4 text-oahl-accent" />} endpoints={AGENT_ENDPOINTS} />
-        <ApiGroup title="Provider Relay APIs" icon={<Network className="h-4 w-4 text-oahl-tech" />} endpoints={PROVIDER_ENDPOINTS} />
-        <ApiGroup title="Local Node APIs" icon={<Database className="h-4 w-4 text-oahl-accent" />} endpoints={LOCAL_ENDPOINTS} />
-      </section>
-
-      <section className="mt-10 panel p-8">
-        <h2 className="mb-5 flex items-center gap-2 text-xl font-semibold">
-          <ShieldCheck className="h-5 w-5 text-oahl-tech" />
-          Session Lifecycle
-        </h2>
-        <div className="grid gap-4 md:grid-cols-4">
-          {FLOW_STEPS.map((step, index) => (
-            <div key={step.title} className="api-card">
-              <div className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-oahl-border bg-black text-xs font-mono">
-                {index + 1}
-              </div>
-              <h3 className="mt-3 text-sm font-semibold">{step.title}</h3>
-              <p className="mt-2 text-xs text-oahl-textMuted leading-relaxed">{step.detail}</p>
-            </div>
-          ))}
         </div>
       </section>
     </>
@@ -254,6 +458,7 @@ function ApiLabPage() {
   const [sessionId, setSessionId] = useState('');
   const [executeParams, setExecuteParams] = useState('{\n  "sample": true\n}');
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
+  const [relayInfo, setRelayInfo] = useState<RelayInfo | null>(null);
 
   const [loadingCapabilities, setLoadingCapabilities] = useState(false);
   const [requestingSession, setRequestingSession] = useState(false);
@@ -344,6 +549,7 @@ function ApiLabPage() {
       const data = (await res.json()) as SessionResponse;
       setSessionId(data.session_id || '');
       setExecutionResult(null);
+      setRelayInfo(null);
     } catch (err: any) {
       setActionError(err?.message || 'Session request failed');
     } finally {
@@ -381,6 +587,10 @@ function ApiLabPage() {
 
       const data = (await res.json()) as ExecutionResult;
       setExecutionResult(data);
+      setRelayInfo({
+        mode: res.headers.get('x-oahl-relay-mode') || 'unknown',
+        requestId: res.headers.get('x-oahl-request-id') || ''
+      });
     } catch (err: any) {
       if (err?.message?.includes('JSON')) {
         setActionError('Execute params must be valid JSON.');
@@ -413,6 +623,7 @@ function ApiLabPage() {
       }
 
       setSessionId('');
+      setRelayInfo(null);
     } catch (err: any) {
       setActionError(err?.message || 'Unable to stop session');
     } finally {
@@ -582,6 +793,12 @@ function ApiLabPage() {
             <CheckCircle2 className="h-4 w-4 text-oahl-tech" />
             Execution Result Envelope
           </p>
+          {relayInfo && (
+            <div className="mb-3 rounded-xl border border-oahl-border bg-oahl-surface px-3 py-2 text-xs text-oahl-textMuted">
+              Relay mode: <span className="font-semibold text-oahl-textMain">{relayInfo.mode}</span>
+              {relayInfo.requestId ? ` · Request ID: ${relayInfo.requestId}` : ''}
+            </div>
+          )}
           <pre className="code-scroll overflow-auto text-xs text-oahl-textMuted">{JSON.stringify(executionResult, null, 2)}</pre>
         </div>
       )}
@@ -617,50 +834,24 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function FlowStep({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return <div className="flow-step">{icon}{label}</div>;
-}
-
-function FlowConnector() {
+function LandingFeatureCard({ icon, title, detail }: { icon: React.ReactNode; title: string; detail: string }) {
   return (
-    <div className="flow-link">
-      <Activity className="h-4 w-4" />
+    <div className="landing-feature">
+      <div className="mb-2 inline-flex items-center justify-center rounded-lg border border-oahl-border/70 bg-black/40 p-1.5">
+        {icon}
+      </div>
+      <p className="text-xs font-semibold text-oahl-textMain">{title}</p>
+      <p className="mt-1 text-[11px] text-oahl-textMuted">{detail}</p>
     </div>
   );
 }
+
 
 function MiniInfo({ label, value }: { label: string; value: string }) {
   return (
     <div className="api-card">
       <p className="text-xs text-oahl-textMuted">{label}</p>
       <p className="mt-1 text-sm font-semibold text-oahl-textMain">{value}</p>
-    </div>
-  );
-}
-
-function ApiGroup({
-  title,
-  icon,
-  endpoints
-}: {
-  title: string;
-  icon: React.ReactNode;
-  endpoints: Array<{ method: string; path: string; purpose: string }>;
-}) {
-  return (
-    <div className="panel p-6">
-      <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">{icon}{title}</h3>
-      <div className="space-y-3">
-        {endpoints.map((endpoint) => (
-          <div key={`${endpoint.method}-${endpoint.path}`} className="api-card">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-mono text-oahl-tech">{endpoint.method}</span>
-              <span className="text-[11px] font-mono text-oahl-textMain">{endpoint.path}</span>
-            </div>
-            <p className="mt-2 text-xs leading-relaxed text-oahl-textMuted">{endpoint.purpose}</p>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

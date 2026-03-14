@@ -43,7 +43,7 @@ const redisClient = (0, redis_1.createClient)(redisOptions);
 redisClient.on('error', (err) => console.log('Redis Client Error', err));
 const providerSocketsByNode = new Map();
 const pendingWsResults = new Map();
-const WS_RESULT_TIMEOUT_MS = toPositiveInt(process.env.OAHL_WS_RESULT_TIMEOUT_MS, 30_000);
+const WS_FASTPATH_TIMEOUT_MS = toPositiveInt(process.env.OAHL_WS_FASTPATH_TIMEOUT_MS, 1_500);
 function toPositiveInt(value, defaultValue) {
     const parsed = Number.parseInt(String(value ?? ''), 10);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
@@ -464,7 +464,9 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
     if (nodeSocket && nodeSocket.readyState === ws_1.WebSocket.OPEN) {
         try {
             nodeSocket.send(JSON.stringify({ type: 'command', payload: relayPayload }));
-            const wsResult = await waitForWsResult(requestId, WS_RESULT_TIMEOUT_MS);
+            const wsResult = await waitForWsResult(requestId, WS_FASTPATH_TIMEOUT_MS);
+            res.setHeader('x-oahl-relay-mode', 'websocket');
+            res.setHeader('x-oahl-request-id', requestId);
             return res.json(wsResult);
         }
         catch (wsErr) {
@@ -478,9 +480,13 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
     try {
         const result = await redisClient.brPop(`result:${requestId}`, 30);
         if (result) {
+            res.setHeader('x-oahl-relay-mode', 'polling');
+            res.setHeader('x-oahl-request-id', requestId);
             res.json(JSON.parse(result.element));
         }
         else {
+            res.setHeader('x-oahl-relay-mode', 'polling-timeout');
+            res.setHeader('x-oahl-request-id', requestId);
             res.status(504).json({
                 error: "Hardware Node Timeout",
                 request_id: requestId,

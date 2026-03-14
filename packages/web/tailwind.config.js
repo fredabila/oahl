@@ -12,14 +12,14 @@ export default {
       },
       colors: {
         oahl: {
-          bg: '#050505',
-          surface: '#121212',
-          border: '#2A2A2A',
-          accent: '#FF3300', // Electric Orange
-          accentHover: '#FF5500',
-          tech: '#00FF41', // Matrix Green
-          textMain: '#F5F5F5',
-          textMuted: '#888888',
+          bg: '#0D0C0B',
+          surface: '#171615',
+          border: '#302E2B',
+          accent: '#D47E5B', // Anthropic-style clay
+          accentHover: '#C4704E',
+          tech: '#739580', // Elegant muted sage
+          textMain: '#EFECE6',
+          textMuted: '#A6A29C',
         }
       },
       animation: {
@@ -44,5 +44,7 @@ export default {
       }
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
 }

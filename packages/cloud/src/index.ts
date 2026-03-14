@@ -46,7 +46,7 @@ redisClient.on('error', (err) => console.log('Redis Client Error', err));
 
 const providerSocketsByNode = new Map<string, WebSocket>();
 const pendingWsResults = new Map<string, { resolve: (value: any) => void; timeout: NodeJS.Timeout }>();
-const WS_RESULT_TIMEOUT_MS = toPositiveInt(process.env.OAHL_WS_RESULT_TIMEOUT_MS, 30_000);
+const WS_FASTPATH_TIMEOUT_MS = toPositiveInt(process.env.OAHL_WS_FASTPATH_TIMEOUT_MS, 1_500);
 
 type AccessVisibility = 'public' | 'shared' | 'private';
 
@@ -538,7 +538,9 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
   if (nodeSocket && nodeSocket.readyState === WebSocket.OPEN) {
     try {
       nodeSocket.send(JSON.stringify({ type: 'command', payload: relayPayload }));
-      const wsResult = await waitForWsResult(requestId, WS_RESULT_TIMEOUT_MS);
+      const wsResult = await waitForWsResult(requestId, WS_FASTPATH_TIMEOUT_MS);
+      res.setHeader('x-oahl-relay-mode', 'websocket');
+      res.setHeader('x-oahl-request-id', requestId);
       return res.json(wsResult);
     } catch (wsErr: any) {
       console.error(`[Cloud WS] ❌ Fast-path execute failed for ${requestId}: ${wsErr.message}`);
@@ -554,8 +556,12 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
   try {
     const result = await redisClient.brPop(`result:${requestId}`, 30);
     if (result) {
+      res.setHeader('x-oahl-relay-mode', 'polling');
+      res.setHeader('x-oahl-request-id', requestId);
       res.json(JSON.parse(result.element));
     } else {
+      res.setHeader('x-oahl-relay-mode', 'polling-timeout');
+      res.setHeader('x-oahl-request-id', requestId);
       res.status(504).json({
         error: "Hardware Node Timeout",
         request_id: requestId,

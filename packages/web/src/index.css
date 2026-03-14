@@ -9,89 +9,92 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
+html, body {
   margin: 0;
-  background-color: #050505;
-  color: #F5F5F5;
+  background-color: #0D0C0B;
+  color: #EFECE6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
-/* Radar / Blueprint Grid that feels alive */
-.bg-blueprint {
-  background-size: 50px 50px;
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  mask-image: radial-gradient(circle at center, black 30%, transparent 80%);
-  -webkit-mask-image: radial-gradient(circle at center, black 30%, transparent 80%);
+/* Subtle architectural grain and warmth */
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: 
+    radial-gradient(circle at 15% 0%, rgba(212, 126, 91, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 85% 100%, rgba(115, 149, 128, 0.08) 0%, transparent 40%);
+  pointer-events: none;
 }
 
 .panel {
-  background: linear-gradient(180deg, rgba(20,20,20,0.95) 0%, rgba(14,14,14,0.95) 100%);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 18px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  background: linear-gradient(180deg, #1A1817 0%, #171615 100%);
+  border: 1px solid #302E2B;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.4);
   transition: transform 0.3s ease, border-color 0.3s ease;
 }
+
 .panel:hover {
-  border-color: rgba(255, 51, 0, 0.35);
+  border-color: #4A4641;
 }
 
 .input-field {
-  background-color: #0A0A0A;
-  border: 1px solid rgba(255,255,255,0.12);
-  color: #F5F5F5;
+  background-color: #0F0E0D;
+  border: 1px solid #302E2B;
+  color: #EFECE6;
   transition: all 0.2s ease;
 }
 .input-field:focus {
-  border-color: #FF3300;
-  box-shadow: 0 0 10px rgba(255, 51, 0, 0.1);
+  border-color: #D47E5B;
+  box-shadow: 0 0 0 1px #D47E5B;
   outline: none;
 }
 
-/* Custom scrollbar for horizontal code blocks */
 .code-scroll::-webkit-scrollbar {
   height: 6px;
   width: 6px;
 }
 .code-scroll::-webkit-scrollbar-track {
-  background: #0A0A0A;
+  background: #0F0E0D;
   border-radius: 4px;
 }
 .code-scroll::-webkit-scrollbar-thumb {
-  background: #333333;
+  background: #302E2B;
   border-radius: 4px;
 }
 .code-scroll::-webkit-scrollbar-thumb:hover {
-  background: #FF3300;
+  background: #4A4641;
 }
 
 .stat-card {
-  background-color: rgba(10,10,10,0.85);
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 14px;
+  background-color: rgba(28, 27, 25, 0.6);
+  border: 1px solid #302E2B;
+  border-radius: 8px;
   padding: 14px;
 }
 
 .stat-title {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
-  color: #888888;
+  color: #A6A29C;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .stat-value {
   margin-top: 6px;
-  color: #F5F5F5;
+  color: #EFECE6;
   font-weight: 600;
 }
 
 .api-card {
-  background-color: rgba(10,10,10,0.85);
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 14px;
+  background-color: rgba(26, 24, 23, 0.5);
+  border: 1px solid #302E2B;
+  border-radius: 8px;
   padding: 12px;
 }
 
@@ -99,9 +102,9 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background-color: rgba(10,10,10,0.85);
-  border-radius: 12px;
+  border: 1px solid #302E2B;
+  background-color: #171615;
+  border-radius: 8px;
   padding: 10px 12px;
   font-family: 'JetBrains Mono', monospace;
 }
@@ -109,19 +112,131 @@ body {
 .flow-link {
   display: flex;
   justify-content: center;
-  color: #888888;
+  color: #555;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid rgba(255, 51, 0, 0.4);
-  background: rgba(255, 51, 0, 0.1);
-  color: #FF3300;
+  border: 1px solid rgba(212, 126, 91, 0.3);
+  background: rgba(212, 126, 91, 0.1);
+  color: #D47E5B;
   font-size: 11px;
   font-family: 'JetBrains Mono', monospace;
-  padding: 6px 10px;
+  padding: 4px 8px;
+  border-radius: 4px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.landing-feature {
+  border: 1px solid #302E2B;
+  border-radius: 8px;
+  background: #171615;
+  padding: 12px;
+  transition: border-color .2s ease;
+}
+
+.landing-feature:hover {
+  border-color: #D47E5B;
+}
+
+.aesthetic-hero {
+  border: 1px solid #302E2B;
+  background: linear-gradient(180deg, #141312 0%, #0D0C0B 100%);
+}
+
+.hero-panel {
+  border: 1px solid #302E2B;
+  border-radius: 12px;
+  background: rgba(23, 22, 21, 0.7);
+  backdrop-filter: blur(12px);
+}
+
+.flow-rail {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.flow-rail-node {
+  border: 1px solid #302E2B;
+  border-radius: 8px;
+  background: rgba(26, 24, 23, 0.5);
+  padding: 12px;
+}
+
+.flow-rail-index {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: #302E2B;
+  color: #EFECE6;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
+.bento-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.bento-grid > :nth-child(1) { grid-column: span 7 / span 7; }
+.bento-grid > :nth-child(2),
+.bento-grid > :nth-child(3),
+.bento-grid > :nth-child(4) { grid-column: span 5 / span 5; }
+
+.api-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #302E2B;
+  border-radius: 6px;
+  background: #11100F;
+  padding: 8px 10px;
+}
+
+.cta-band {
+  background: linear-gradient(180deg, #171615 0%, #0D0C0B 100%);
+  border: 1px solid #302E2B;
+}
+
+/* Customizing the Typography typography plugin colors for our theme */
+.prose-oahl {
+  --tw-prose-body: #A6A29C;
+  --tw-prose-headings: #EFECE6;
+  --tw-prose-links: #D47E5B;
+  --tw-prose-bold: #EFECE6;
+  --tw-prose-quotes: #EFECE6;
+  --tw-prose-quote-borders: #302E2B;
+  --tw-prose-captions: #888;
+  --tw-prose-code: #D47E5B;
+  --tw-prose-pre-code: #EFECE6;
+  --tw-prose-pre-bg: #171615;
+  --tw-prose-hr: #302E2B;
+  --tw-prose-bullets: #D47E5B;
+  font-family: 'Georgia', ui-serif, serif; /* Bring elegant typography to the post body */
+}
+
+.prose-oahl h1, .prose-oahl h2, .prose-oahl h3 {
+  font-family: 'Space Grotesk', ui-sans-serif, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 1024px) {
+  .flow-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bento-grid > :nth-child(1),
+  .bento-grid > :nth-child(2),
+  .bento-grid > :nth-child(3),
+  .bento-grid > :nth-child(4) { grid-column: span 12 / span 12; }
+}
+
+@media (max-width: 640px) {
+  .flow-rail { grid-template-columns: repeat(1, minmax(0, 1fr)); }
 }
