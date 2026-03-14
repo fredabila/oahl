@@ -46,7 +46,8 @@ redisClient.on('error', (err) => console.log('Redis Client Error', err));
 
 const providerSocketsByNode = new Map<string, WebSocket>();
 const pendingWsResults = new Map<string, { resolve: (value: any) => void; timeout: NodeJS.Timeout }>();
-const WS_FASTPATH_TIMEOUT_MS = toPositiveInt(process.env.OAHL_WS_FASTPATH_TIMEOUT_MS, 1_500);
+const WS_FASTPATH_TIMEOUT_MS = toPositiveInt(process.env.OAHL_WS_FASTPATH_TIMEOUT_MS, 4_000);
+const WS_LATE_RESULT_GRACE_MS = toPositiveInt(process.env.OAHL_WS_LATE_RESULT_GRACE_MS, 1_500);
 
 type AccessVisibility = 'public' | 'shared' | 'private';
 
@@ -188,6 +189,15 @@ function waitForWsResult(requestId: string, timeoutMs: number): Promise<any> {
 
     pendingWsResults.set(requestId, { resolve, timeout });
   });
+}
+
+async function waitForLateResultFromQueue(requestId: string, timeoutMs: number): Promise<any | null> {
+  const timeoutSeconds = Math.max(1, Math.ceil(timeoutMs / 1000));
+  const result = await redisClient.brPop(`result:${requestId}`, timeoutSeconds);
+  if (!result) {
+    return null;
+  }
+  return JSON.parse(result.element);
 }
 
 function configureProviderWebSocket(server: HttpServer) {
@@ -543,7 +553,14 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
       res.setHeader('x-oahl-request-id', requestId);
       return res.json(wsResult);
     } catch (wsErr: any) {
-      console.error(`[Cloud WS] ❌ Fast-path execute failed for ${requestId}: ${wsErr.message}`);
+      console.warn(`[Cloud WS] ⚠️ Fast-path timed out for ${requestId}: ${wsErr.message}`);
+
+      const lateWsResult = await waitForLateResultFromQueue(requestId, WS_LATE_RESULT_GRACE_MS);
+      if (lateWsResult) {
+        res.setHeader('x-oahl-relay-mode', 'websocket-late');
+        res.setHeader('x-oahl-request-id', requestId);
+        return res.json(lateWsResult);
+      }
     }
   }
 
