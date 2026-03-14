@@ -1,382 +1,674 @@
-import React, { useState, useEffect } from 'react';
-import { Network, Server, Cpu, Activity, ShieldCheck, Zap, Code2, Terminal, CheckCircle2, Lock, Radio, Globe } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Activity,
+  CheckCircle2,
+  Cloud,
+  Code2,
+  Database,
+  Globe,
+  KeyRound,
+  Layers,
+  Network,
+  Play,
+  Search,
+  Server,
+  ShieldCheck,
+  Sparkles,
+  Square,
+  Terminal,
+  Waypoints
+} from 'lucide-react';
+
+type Page = 'home' | 'api-lab';
+type CapabilityLike = string | { name?: string; description?: string };
 
 interface Device {
   id: string;
   type: string;
-  capabilities: string[];
+  capabilities: CapabilityLike[];
   provider: string;
   node_id: string;
   status: string;
 }
 
-function App() {
-  const [apiKey, setApiKey] = useState('');
-  const [cloudUrl, setCloudUrl] = useState('https://oahl.onrender.com');
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'explorer' | 'code'>('explorer');
+interface CapabilitiesResponse {
+  devices: Device[];
+  pagination?: {
+    page: number;
+    page_size: number;
+    total: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+}
 
-  // Simple typing effect state
-  const [typedText, setTypedText] = useState('');
-  const fullText = "Physical infrastructure for AI agents.";
+interface SessionResponse {
+  session_id: string;
+  status: string;
+}
+
+interface ExecutionResult {
+  schema_version?: string;
+  operation_id?: string;
+  status?: string;
+  completion?: {
+    done?: boolean;
+    state?: string;
+    progress_pct?: number;
+  };
+  capability?: string;
+  device_id?: string;
+  timestamp?: string;
+  data?: unknown;
+  error?: unknown;
+}
+
+const AGENT_ENDPOINTS = [
+  { method: 'GET', path: '/v1/capabilities', purpose: 'Discover global hardware inventory with filtering and pagination.' },
+  { method: 'POST', path: '/v1/requests', purpose: 'Request a session by capability or deterministically by device_id (+ node_id).' },
+  { method: 'POST', path: '/v1/sessions/:id/execute', purpose: 'Execute capability calls through cloud relay.' },
+  { method: 'POST', path: '/v1/sessions/:id/stop', purpose: 'Release an active hardware session.' }
+];
+
+const PROVIDER_ENDPOINTS = [
+  { method: 'POST', path: '/v1/provider/nodes/register', purpose: 'Publish online node and device inventory.' },
+  { method: 'GET', path: '/v1/provider/nodes/:id/poll', purpose: 'Fetch queued execution requests for a provider node.' },
+  { method: 'POST', path: '/v1/provider/nodes/results', purpose: 'Return execution results back to cloud.' }
+];
+
+const LOCAL_ENDPOINTS = [
+  { method: 'GET', path: '/health', purpose: 'Node health status endpoint.' },
+  { method: 'GET', path: '/devices', purpose: 'List devices from loaded adapters on the node.' }
+];
+
+const FLOW_STEPS = [
+  { title: 'Discover', detail: 'Agent finds capabilities through /v1/capabilities.' },
+  { title: 'Allocate', detail: 'Agent acquires session_id through /v1/requests.' },
+  { title: 'Execute', detail: 'Agent sends command to /v1/sessions/:id/execute.' },
+  { title: 'Release', detail: 'Agent stops session using /v1/sessions/:id/stop.' }
+];
+
+function capabilityName(capability: CapabilityLike): string {
+  if (typeof capability === 'string') return capability;
+  return capability?.name || 'unknown.capability';
+}
+
+function detectPage(): Page {
+  return window.location.pathname.includes('api-lab') ? 'api-lab' : 'home';
+}
+
+function setPagePath(page: Page) {
+  const path = page === 'api-lab' ? '/api-lab' : '/';
+  window.history.pushState({}, '', path);
+}
+
+function App() {
+  const [page, setPage] = useState<Page>(() => detectPage());
 
   useEffect(() => {
-    let i = 0;
-    const typingInterval = setInterval(() => {
-      if (i < fullText.length) {
-        setTypedText(prev => prev + fullText.charAt(i));
-        i++;
-      } else {
-        clearInterval(typingInterval);
-      }
-    }, 50);
-    return () => clearInterval(typingInterval);
+    const onPopState = () => setPage(detectPage());
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
-  const fetchCapabilities = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    
-    try {
-      const res = await fetch(`${cloudUrl}/v1/capabilities`, {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`
-        }
-      });
-      
-      if (!res.ok) throw new Error('Unauthorized API Key or network error');
-      
-      const data = await res.json();
-      setDevices(data.devices || []);
-    } catch (err: any) {
-      setError(err.message || 'Failed to connect to Cloud Registry');
-    } finally {
-      setLoading(false);
-    }
+  const goToPage = (next: Page) => {
+    setPagePath(next);
+    setPage(next);
   };
 
   return (
-    <div className="min-h-screen bg-oahl-bg font-sans selection:bg-oahl-accent/30 selection:text-white relative pb-24 overflow-x-hidden">
-      
-      {/* Background scanline effect for "Life" */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute inset-0 bg-blueprint"></div>
-        <div className="absolute top-0 left-0 right-0 h-1 bg-oahl-accent/20 animate-scanline shadow-[0_0_20px_rgba(255,51,0,0.5)]"></div>
+    <div className="min-h-screen bg-oahl-bg text-oahl-textMain selection:bg-oahl-accent/20 selection:text-white">
+      <div className="pointer-events-none fixed inset-0 opacity-80">
+        <div className="absolute inset-0 bg-blueprint" />
+        <div className="absolute inset-x-0 top-0 h-1 bg-oahl-accent/20 animate-scanline" />
       </div>
 
-      {/* Header */}
-      <header className="border-b border-oahl-border bg-oahl-bg/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4 group cursor-default">
-            <div className="w-8 h-8 bg-oahl-textMain text-oahl-bg flex items-center justify-center font-bold font-mono tracking-tighter group-hover:bg-oahl-accent transition-colors">
+      <header className="sticky top-0 z-40 border-b border-oahl-border/80 bg-oahl-bg/85 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+          <button onClick={() => goToPage('home')} className="flex items-center gap-3 text-left">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-oahl-accent to-oahl-accentHover text-white font-mono font-bold shadow-lg shadow-oahl-accent/20">
               OA
             </div>
-            <h1 className="text-lg font-bold tracking-tight text-oahl-textMain">OPEN AGENT <span className="text-oahl-textMuted font-normal">HARDWARE LAYER</span></h1>
-          </div>
-          <div className="hidden md:flex items-center gap-8 text-sm font-bold text-oahl-textMuted font-mono">
-            <a href="#protocol" className="hover:text-oahl-accent transition-colors">/PROTOCOL</a>
-            <a href="#nodes" className="hover:text-oahl-accent transition-colors">/NODES</a>
-            <a href="https://github.com/your-username/oahl" className="hover:text-oahl-textMain transition-colors">/GITHUB</a>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-xs font-mono font-bold text-oahl-tech border border-oahl-border px-3 py-1.5 bg-black">
-              <div className="w-2 h-2 bg-oahl-tech rounded-full animate-pulse"></div>
-              SYS.ONLINE
+            <div>
+              <p className="text-sm font-semibold tracking-wide">OPEN AGENT HARDWARE LAYER</p>
+              <p className="text-xs text-oahl-textMuted">Sleek platform experience</p>
             </div>
-          </div>
+          </button>
+
+          <nav className="flex items-center gap-2 text-sm">
+            <NavButton active={page === 'home'} onClick={() => goToPage('home')} label="Home" />
+            <NavButton active={page === 'api-lab'} onClick={() => goToPage('api-lab')} label="API Lab" />
+          </nav>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 mt-16 relative z-10">
-        
-        {/* Hero Section */}
-        <div className="flex flex-col lg:flex-row gap-12 items-center justify-between border-b border-oahl-border pb-20 animate-slide-up">
-          
-          <div className="flex-1 max-w-3xl">
-            <div className="inline-flex items-center gap-2 font-mono text-xs text-oahl-tech mb-8 uppercase tracking-widest border border-oahl-tech/30 bg-oahl-tech/5 px-3 py-1.5">
-              <Activity className="w-3 h-3 animate-spin-slow" /> v0.1.0 Protocol Deployed
-            </div>
-            
-            <h2 className="text-5xl md:text-7xl font-bold text-oahl-textMain mb-6 tracking-tight leading-[1.1] min-h-[160px] md:min-h-[180px]">
-              {typedText}
-              <span className="animate-pulse text-oahl-accent">_</span>
-            </h2>
-            
-            <p className="text-lg text-oahl-textMuted mb-10 font-mono leading-relaxed border-l-2 border-oahl-border pl-6 py-2">
-              Stop building bespoke wrappers. OAHL is the standard protocol that turns physical webcams, SDRs, and robots into secure, global API endpoints.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row items-center gap-4 font-mono">
-              <button className="w-full sm:w-auto px-8 py-4 bg-oahl-textMain hover:bg-oahl-accent text-oahl-bg hover:text-white font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-3 transition-all">
-                <Server className="w-4 h-4" /> Start Node
-              </button>
-              <div className="w-full sm:w-auto px-6 py-4 panel text-sm text-oahl-textMuted flex items-center justify-between gap-4 group">
-                <span className="flex items-center gap-2 text-oahl-textMain"><span className="text-oahl-accent">❯</span> npm install -g @fredabila/oahl</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Interactive Graphic */}
-          <div className="hidden lg:flex w-full max-w-md panel p-8 flex-col gap-6 relative group cursor-crosshair">
-            <div className="absolute top-0 right-0 p-4 font-mono text-[10px] text-oahl-textMuted opacity-50">NODE_TOPOLOGY_MAP</div>
-            
-            {/* Diagram */}
-            <div className="flex items-center justify-between">
-              <div className="w-16 h-16 border-2 border-dashed border-oahl-border rounded-full flex items-center justify-center text-oahl-textMuted group-hover:text-oahl-textMain transition-colors">
-                <Terminal className="w-6 h-6" />
-              </div>
-              <div className="h-px flex-1 bg-gradient-to-r from-oahl-border via-oahl-accent to-oahl-border relative">
-                 <div className="absolute top-1/2 -translate-y-1/2 left-0 w-2 h-2 bg-oahl-accent rounded-full animate-[ping_2s_infinite]"></div>
-              </div>
-              <div className="w-20 h-20 bg-oahl-surface border-2 border-oahl-accent flex items-center justify-center text-oahl-accent relative shadow-[0_0_30px_rgba(255,51,0,0.15)]">
-                <Globe className="w-8 h-8" />
-                <div className="absolute -bottom-6 font-mono text-xs whitespace-nowrap text-oahl-textMain">REGISTRY</div>
-              </div>
-              <div className="h-px flex-1 bg-gradient-to-r from-oahl-border via-oahl-tech to-oahl-border relative">
-                <div className="absolute top-1/2 -translate-y-1/2 right-0 w-2 h-2 bg-oahl-tech rounded-full animate-[ping_2s_infinite_0.5s]"></div>
-              </div>
-              <div className="w-16 h-16 border-2 border-solid border-oahl-border bg-oahl-surface flex items-center justify-center text-oahl-tech group-hover:border-oahl-tech transition-colors">
-                <Cpu className="w-6 h-6" />
-              </div>
-            </div>
-            
-            {/* Live log simulation */}
-            <div className="mt-4 bg-black border border-oahl-border p-4 h-32 overflow-hidden font-mono text-xs flex flex-col justify-end">
-              <div className="text-oahl-textMuted opacity-50">[00:00:01] OAHL Core initialized</div>
-              <div className="text-oahl-textMuted opacity-70">[00:00:02] Loading adapter: usb-camera</div>
-              <div className="text-oahl-textMain opacity-90">[00:00:03] Device found: /dev/video0</div>
-              <div className="text-oahl-tech font-bold">[00:00:04] Node 🟢 ONLINE. Awaiting Agent.</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Feature Grid */}
-        <div id="protocol" className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-20 animate-slide-up" style={{animationDelay: '0.2s'}}>
-           <div className="panel p-8 group hover:-translate-y-1">
-             <div className="w-12 h-12 bg-[#FF3300]/10 border border-[#FF3300]/20 flex items-center justify-center mb-6 text-[#FF3300] group-hover:scale-110 transition-transform">
-               <ShieldCheck className="w-6 h-6" />
-             </div>
-             <h3 className="text-xl font-bold text-oahl-textMain mb-3 font-mono tracking-tight">ZERO_TRUST</h3>
-             <p className="text-oahl-textMuted text-sm leading-relaxed">
-               Hardware remains under total local control. JSON policies enforce strict duration limits and block unapproved parameters (e.g. locking radios to receive-only).
-             </p>
-           </div>
-           
-           <div className="panel p-8 group hover:-translate-y-1">
-             <div className="w-12 h-12 bg-[#00FF41]/10 border border-[#00FF41]/20 flex items-center justify-center mb-6 text-[#00FF41] group-hover:scale-110 transition-transform">
-               <Zap className="w-6 h-6" />
-             </div>
-             <h3 className="text-xl font-bold text-oahl-textMain mb-3 font-mono tracking-tight">ZERO_CODE</h3>
-             <p className="text-oahl-textMuted text-sm leading-relaxed">
-               Standard devices like USB webcams are plug-and-play. The CLI wizard auto-generates the local node setup without writing a single line of driver code.
-             </p>
-           </div>
-           
-           <div className="panel p-8 group hover:-translate-y-1">
-             <div className="w-12 h-12 bg-[#3388FF]/10 border border-[#3388FF]/20 flex items-center justify-center mb-6 text-[#3388FF] group-hover:scale-110 transition-transform">
-               <Network className="w-6 h-6" />
-             </div>
-             <h3 className="text-xl font-bold text-oahl-textMain mb-3 font-mono tracking-tight">ABSTRACTION</h3>
-             <p className="text-oahl-textMuted text-sm leading-relaxed">
-               Agents don't need USB/serial logic. They request standard schema definitions like <code className="text-[#3388FF]">camera.capture</code>, and the network dynamically routes it.
-             </p>
-           </div>
-        </div>
-
-        {/* Interactive Console */}
-        <div className="mt-24 panel overflow-hidden flex flex-col mb-12 animate-slide-up" style={{animationDelay: '0.4s'}}>
-          
-          {/* Tabs */}
-          <div className="flex border-b border-oahl-border font-mono text-sm bg-black">
-            <button 
-              onClick={() => setActiveTab('explorer')}
-              className={`px-6 py-4 font-bold tracking-widest transition-all border-b-2 flex items-center gap-3 ${activeTab === 'explorer' ? 'bg-oahl-surface text-oahl-accent border-oahl-accent' : 'text-oahl-textMuted hover:text-oahl-textMain border-transparent hover:bg-white/5'}`}
-            >
-              <Radio className="w-4 h-4" /> REGISTRY_SCANNER
-            </button>
-            <button 
-              onClick={() => setActiveTab('code')}
-              className={`px-6 py-4 font-bold tracking-widest transition-all border-b-2 border-l border-l-oahl-border flex items-center gap-3 ${activeTab === 'code' ? 'bg-oahl-surface text-oahl-textMain border-oahl-textMain' : 'text-oahl-textMuted hover:text-oahl-textMain border-transparent hover:bg-white/5'}`}
-            >
-              <Code2 className="w-4 h-4" /> AGENT_INTEGRATION
-            </button>
-          </div>
-
-          <div className="p-6 md:p-10 bg-oahl-surface min-h-[450px]">
-            {activeTab === 'explorer' ? (
-              <div className="space-y-8 animate-fade-in">
-                
-                {/* Form row */}
-                <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 border-b border-oahl-border pb-8">
-                  <div className="max-w-md">
-                    <h2 className="text-2xl font-bold text-oahl-textMain mb-2 font-mono uppercase">Live Network Explorer</h2>
-                    <p className="text-oahl-textMuted text-sm leading-relaxed">Authenticate to query the global capability map. The cloud registry will return currently online hardware capabilities.</p>
-                  </div>
-                  
-                  <form onSubmit={fetchCapabilities} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 font-mono">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] text-oahl-textMuted uppercase tracking-widest">Target Cloud URL</label>
-                      <input 
-                        type="url" 
-                        value={cloudUrl}
-                        onChange={(e) => setCloudUrl(e.target.value)}
-                        placeholder="CLOUD_URL"
-                        className="input-field w-full sm:w-64 px-4 py-3 text-sm rounded-none"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] text-oahl-textMuted uppercase tracking-widest">Agent API Key</label>
-                      <div className="relative">
-                        <Lock className="w-4 h-4 text-oahl-textMuted absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input 
-                          type="password" 
-                          value={apiKey}
-                          onChange={(e) => setApiKey(e.target.value)}
-                          placeholder="AGENT_KEY"
-                          className="input-field w-full sm:w-64 pl-10 pr-4 py-3 text-sm rounded-none"
-                        />
-                      </div>
-                    </div>
-                    <button 
-                      type="submit"
-                      disabled={loading || !apiKey}
-                      className="w-full sm:w-auto bg-oahl-textMain hover:bg-oahl-accent text-oahl-bg hover:text-white px-8 py-3 font-bold text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50 mt-auto"
-                    >
-                      {loading ? 'SCANNING...' : 'CONNECT'}
-                    </button>
-                  </form>
-                </div>
-
-                {/* Error State */}
-                {error && (
-                  <div className="border border-red-500/30 bg-red-500/10 text-red-500 px-4 py-3 text-sm font-mono flex items-center gap-3 animate-fade-in">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
-                    {error}
-                  </div>
-                )}
-
-                {/* Empty State / Awaiting Auth */}
-                {!loading && devices.length === 0 && !error && (
-                  <div className="flex flex-col items-center justify-center py-16 text-oahl-textMuted border border-dashed border-oahl-border bg-black/50">
-                    <Activity className="w-10 h-10 mb-4 opacity-50" />
-                    <p className="font-mono text-sm uppercase tracking-widest">
-                      {apiKey ? 'No active hardware found on network' : 'Awaiting authentication'}
-                    </p>
-                  </div>
-                )}
-
-                {/* Results State */}
-                {devices.length > 0 && (
-                  <div className="animate-fade-in">
-                     <div className="flex items-center justify-between mb-6">
-                        <div className="font-mono text-xs text-oahl-tech border border-oahl-tech/30 bg-oahl-tech/10 px-3 py-1 flex items-center gap-2">
-                          <div className="w-2 h-2 bg-oahl-tech rounded-full animate-pulse"></div>
-                          HARDWARE DEVICES FOUND: {devices.length}
-                        </div>
-                     </div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {devices.map((device) => (
-                        <div key={`${device.node_id}-${device.id}`} className="border border-oahl-border bg-black p-6 hover:border-oahl-accent transition-colors group relative overflow-hidden">
-                          {/* Accent line */}
-                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-oahl-border group-hover:bg-oahl-accent transition-colors"></div>
-                          
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="flex flex-col">
-                              <span className="font-mono text-[10px] text-oahl-accent uppercase tracking-widest">{device.type}</span>
-                              <span className="font-mono text-sm text-oahl-textMain font-bold">{device.id}</span>
-                            </div>
-                            <div className="flex items-center gap-2 border border-oahl-border px-2 py-1 bg-oahl-surface">
-                              <span className="text-[10px] font-mono text-oahl-textMuted">{device.status.toUpperCase()}</span>
-                            </div>
-                          </div>
-
-                          <div className="space-y-3 mb-6">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-[10px] text-oahl-textMuted uppercase font-mono tracking-tighter">Provider</span>
-                              <span className="text-xs text-oahl-textMain font-mono">{device.provider}</span>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <span className="text-[10px] text-oahl-textMuted uppercase font-mono tracking-tighter">Capabilities</span>
-                              <div className="flex flex-wrap gap-1">
-                                {device.capabilities.map(cap => (
-                                  <span key={cap} className="text-[9px] bg-oahl-accent/10 border border-oahl-accent/20 text-oahl-accent px-1.5 py-0.5 font-mono">
-                                    {cap}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 text-xs text-oahl-tech font-mono font-bold mt-auto">
-                            <CheckCircle2 className="w-4 h-4" /> NODE: {device.node_id}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="animate-fade-in h-full flex flex-col">
-                <div className="mb-6 flex items-center gap-4">
-                  <div>
-                    <h2 className="text-2xl font-bold text-oahl-textMain mb-2 font-mono uppercase">Agent SDK Integration</h2>
-                    <p className="text-oahl-textMuted text-sm leading-relaxed">Provide your LLM agent with this tool snippet to interface with real hardware via the Cloud.</p>
-                  </div>
-                </div>
-                
-                {/* Horizontal scroll fixed with better padding and scrollbar */}
-                <div className="flex-1 bg-[#050505] border border-oahl-border relative flex flex-col rounded-b-lg">
-                  <div className="border-b border-oahl-border bg-oahl-surface px-4 py-2 flex items-center justify-between">
-                    <span className="font-mono text-xs text-oahl-textMuted">agent_tool.py</span>
-                    <span className="font-mono text-[10px] text-oahl-accent border border-oahl-accent px-2">PYTHON</span>
-                  </div>
-                  <div className="p-6 overflow-y-auto overflow-x-hidden flex-1 code-scroll">
-<pre className="font-mono text-sm leading-loose text-[#A3A3A3] whitespace-pre-wrap break-words">
-<span className="text-[#FF3300] font-bold">from</span> oahl.sdk <span className="text-[#FF3300] font-bold">import</span> Client
-
-<span className="text-[#666666] italic"># 1. Initialize agent connection to the Cloud Registry</span>
-client = Client(api_key=<span className="text-[#00FF41]">"dev_agent_key"</span>)
-
-<span className="text-[#666666] italic"># 2. Agent requests a capability (Cloud routes to a physical node)</span>
-session = client.request_hardware(
-    capability=<span className="text-[#00FF41]">"camera.capture"</span>,
-    constraints=&#123;
-        <span className="text-[#00FF41]">"location"</span>: <span className="text-[#00FF41]">"US"</span>
-    &#125;
-)
-
-<span className="text-[#666666] italic"># 3. Execute action on remote hardware</span>
-result = session.execute(
-    args=&#123;
-        <span className="text-[#00FF41]">"resolution"</span>: <span className="text-[#00FF41]">"1080p"</span>
-    &#125;
-)
-
-<span className="text-[#3388FF]">print</span>(result.image_url)
-
-<span className="text-[#666666] italic"># 4. Release hardware back to pool</span>
-session.stop()
-</pre>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      <main className="relative z-10 mx-auto max-w-7xl px-6 pb-16 pt-10">
+        {page === 'home' ? <HomePage onOpenApiLab={() => goToPage('api-lab')} /> : <ApiLabPage />}
       </main>
-      
-      <footer className="max-w-7xl mx-auto px-6 pt-8 border-t border-oahl-border flex flex-col sm:flex-row justify-between items-center text-xs font-mono text-oahl-textMuted gap-4">
-        <p>OAHL PROTOCOL &copy; {new Date().getFullYear()}</p>
-        <div className="flex gap-4">
-          <a href="#" className="hover:text-oahl-textMain transition-colors">DOCUMENTATION</a>
-          <a href="#" className="hover:text-oahl-textMain transition-colors">GITHUB</a>
-          <a href="#" className="hover:text-oahl-textMain transition-colors">NPM</a>
+
+      <footer className="relative z-10 border-t border-oahl-border/70 py-6">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 text-xs text-oahl-textMuted">
+          <p>OAHL © {new Date().getFullYear()} · Standards-first hardware interface for AI agents</p>
+          <div className="flex items-center gap-4">
+            <a href="https://github.com/fredabila/oahl" target="_blank" rel="noreferrer" className="hover:text-oahl-accent transition-colors">GitHub</a>
+            <a href="https://oahl.onrender.com/v1/capabilities" target="_blank" rel="noreferrer" className="hover:text-oahl-accent transition-colors">Cloud API</a>
+            <span className="inline-flex items-center gap-1"><KeyRound className="h-3.5 w-3.5" /> Bearer-secured</span>
+          </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function HomePage({ onOpenApiLab }: { onOpenApiLab: () => void }) {
+  return (
+    <>
+      <section className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
+        <div className="panel p-8 md:p-10">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-oahl-tech/30 bg-oahl-tech/10 px-3 py-1 text-xs font-mono text-oahl-tech">
+            <Sparkles className="h-3.5 w-3.5" />
+            Protocol + Cloud + Node + Adapter
+          </div>
+          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight leading-tight">
+            A modern hardware cloud interface where agents discover, allocate, execute, and control real devices.
+          </h1>
+          <p className="mt-5 max-w-3xl text-oahl-textMuted leading-relaxed">
+            OAHL provides a consistent API contract across cloud relay and local hardware nodes. Use Home for architecture context, then switch to API Lab for live endpoint testing.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <button onClick={onOpenApiLab} className="rounded-2xl bg-oahl-accent px-5 py-2.5 text-sm font-semibold text-white hover:bg-oahl-accentHover transition-colors">
+              Open API Lab
+            </button>
+            <a href="https://github.com/fredabila/oahl" target="_blank" rel="noreferrer" className="rounded-2xl border border-oahl-border px-5 py-2.5 text-sm font-semibold text-oahl-textMain hover:border-oahl-accent transition-colors">
+              View Repository
+            </a>
+          </div>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            <StatCard label="Agent APIs" value="4 endpoints" />
+            <StatCard label="Provider APIs" value="3 endpoints" />
+            <StatCard label="Local Node APIs" value="2 endpoints" />
+          </div>
+        </div>
+
+        <div className="panel p-8">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+            <Waypoints className="h-5 w-5 text-oahl-accent" />
+            Architecture Flow
+          </h2>
+          <div className="space-y-3 text-sm text-oahl-textMuted">
+            <FlowStep icon={<Terminal className="h-4 w-4 text-oahl-tech" />} label="Agent/SDK" />
+            <FlowConnector />
+            <FlowStep icon={<Cloud className="h-4 w-4 text-oahl-accent" />} label="Cloud Registry" />
+            <FlowConnector />
+            <FlowStep icon={<Server className="h-4 w-4 text-oahl-tech" />} label="Provider Node" />
+            <FlowConnector />
+            <FlowStep icon={<Layers className="h-4 w-4 text-oahl-accent" />} label="Adapter + Device" />
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-10 grid gap-6 lg:grid-cols-3">
+        <ApiGroup title="Agent Cloud APIs" icon={<Globe className="h-4 w-4 text-oahl-accent" />} endpoints={AGENT_ENDPOINTS} />
+        <ApiGroup title="Provider Relay APIs" icon={<Network className="h-4 w-4 text-oahl-tech" />} endpoints={PROVIDER_ENDPOINTS} />
+        <ApiGroup title="Local Node APIs" icon={<Database className="h-4 w-4 text-oahl-accent" />} endpoints={LOCAL_ENDPOINTS} />
+      </section>
+
+      <section className="mt-10 panel p-8">
+        <h2 className="mb-5 flex items-center gap-2 text-xl font-semibold">
+          <ShieldCheck className="h-5 w-5 text-oahl-tech" />
+          Session Lifecycle
+        </h2>
+        <div className="grid gap-4 md:grid-cols-4">
+          {FLOW_STEPS.map((step, index) => (
+            <div key={step.title} className="api-card">
+              <div className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-oahl-border bg-black text-xs font-mono">
+                {index + 1}
+              </div>
+              <h3 className="mt-3 text-sm font-semibold">{step.title}</h3>
+              <p className="mt-2 text-xs text-oahl-textMuted leading-relaxed">{step.detail}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
+
+function ApiLabPage() {
+  const [cloudUrl, setCloudUrl] = useState('https://oahl.onrender.com');
+  const [apiKey, setApiKey] = useState('');
+
+  const [queryText, setQueryText] = useState('');
+  const [queryCapability, setQueryCapability] = useState('');
+  const [queryType, setQueryType] = useState('');
+  const [queryProvider, setQueryProvider] = useState('');
+  const [queryNodeId, setQueryNodeId] = useState('');
+
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [paginationLabel, setPaginationLabel] = useState('');
+  const [selectedDeviceId, setSelectedDeviceId] = useState('');
+  const [selectedCapability, setSelectedCapability] = useState('');
+
+  const [sessionId, setSessionId] = useState('');
+  const [executeParams, setExecuteParams] = useState('{\n  "sample": true\n}');
+  const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
+
+  const [loadingCapabilities, setLoadingCapabilities] = useState(false);
+  const [requestingSession, setRequestingSession] = useState(false);
+  const [executing, setExecuting] = useState(false);
+  const [stopping, setStopping] = useState(false);
+  const [actionError, setActionError] = useState('');
+
+  const selectedDevice = useMemo(() => devices.find((d) => d.id === selectedDeviceId) || null, [devices, selectedDeviceId]);
+
+  function bearerHeaders(includeJson = false): HeadersInit {
+    const headers: Record<string, string> = { Authorization: `Bearer ${apiKey}` };
+    if (includeJson) headers['Content-Type'] = 'application/json';
+    return headers;
+  }
+
+  function buildCapabilitiesUrl(): string {
+    const url = new URL(`${cloudUrl}/v1/capabilities`);
+    if (queryText.trim()) url.searchParams.set('q', queryText.trim());
+    if (queryCapability.trim()) url.searchParams.set('capability', queryCapability.trim());
+    if (queryType.trim()) url.searchParams.set('type', queryType.trim());
+    if (queryProvider.trim()) url.searchParams.set('provider', queryProvider.trim());
+    if (queryNodeId.trim()) url.searchParams.set('node_id', queryNodeId.trim());
+    url.searchParams.set('page', '1');
+    url.searchParams.set('page_size', '25');
+    return url.toString();
+  }
+
+  async function fetchCapabilities() {
+    setActionError('');
+    setLoadingCapabilities(true);
+
+    try {
+      const res = await fetch(buildCapabilitiesUrl(), { method: 'GET', headers: bearerHeaders(false) });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || 'Failed to fetch capabilities');
+      }
+
+      const data = (await res.json()) as CapabilitiesResponse;
+      const fetchedDevices = Array.isArray(data.devices) ? data.devices : [];
+      setDevices(fetchedDevices);
+
+      if (data.pagination) {
+        setPaginationLabel(`Page ${data.pagination.page}/${Math.max(data.pagination.total_pages, 1)} • Total ${data.pagination.total}`);
+      } else {
+        setPaginationLabel(`Found ${fetchedDevices.length} devices`);
+      }
+
+      if (fetchedDevices.length > 0 && !selectedDeviceId) {
+        const first = fetchedDevices[0];
+        setSelectedDeviceId(first.id);
+        setSelectedCapability(capabilityName(first.capabilities?.[0] || ''));
+      }
+    } catch (err: any) {
+      setActionError(err?.message || 'Unable to fetch capabilities');
+    } finally {
+      setLoadingCapabilities(false);
+    }
+  }
+
+  async function requestSession() {
+    if (!selectedCapability.trim()) {
+      setActionError('Select or enter a capability first.');
+      return;
+    }
+
+    setActionError('');
+    setRequestingSession(true);
+
+    try {
+      const payload: Record<string, string> = { capability: selectedCapability.trim() };
+      if (selectedDeviceId) {
+        payload.device_id = selectedDeviceId;
+        if (selectedDevice?.node_id) payload.node_id = selectedDevice.node_id;
+      }
+
+      const res = await fetch(`${cloudUrl}/v1/requests`, {
+        method: 'POST',
+        headers: bearerHeaders(true),
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || 'Unable to request session');
+      }
+
+      const data = (await res.json()) as SessionResponse;
+      setSessionId(data.session_id || '');
+      setExecutionResult(null);
+    } catch (err: any) {
+      setActionError(err?.message || 'Session request failed');
+    } finally {
+      setRequestingSession(false);
+    }
+  }
+
+  async function executeCapability() {
+    if (!sessionId.trim()) {
+      setActionError('Request or provide a session_id before execute.');
+      return;
+    }
+
+    if (!selectedCapability.trim()) {
+      setActionError('Capability is required for execute.');
+      return;
+    }
+
+    setActionError('');
+    setExecuting(true);
+
+    try {
+      const parsedParams = executeParams.trim() ? JSON.parse(executeParams) : {};
+
+      const res = await fetch(`${cloudUrl}/v1/sessions/${sessionId.trim()}/execute`, {
+        method: 'POST',
+        headers: bearerHeaders(true),
+        body: JSON.stringify({ capability: selectedCapability.trim(), params: parsedParams })
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || 'Execute failed');
+      }
+
+      const data = (await res.json()) as ExecutionResult;
+      setExecutionResult(data);
+    } catch (err: any) {
+      if (err?.message?.includes('JSON')) {
+        setActionError('Execute params must be valid JSON.');
+      } else {
+        setActionError(err?.message || 'Capability execution failed');
+      }
+    } finally {
+      setExecuting(false);
+    }
+  }
+
+  async function stopSession() {
+    if (!sessionId.trim()) {
+      setActionError('No active session_id to stop.');
+      return;
+    }
+
+    setActionError('');
+    setStopping(true);
+
+    try {
+      const res = await fetch(`${cloudUrl}/v1/sessions/${sessionId.trim()}/stop`, {
+        method: 'POST',
+        headers: bearerHeaders(false)
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || 'Stop session failed');
+      }
+
+      setSessionId('');
+    } catch (err: any) {
+      setActionError(err?.message || 'Unable to stop session');
+    } finally {
+      setStopping(false);
+    }
+  }
+
+  return (
+    <section className="space-y-6">
+      <div className="panel p-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">API Lab</h1>
+            <p className="mt-2 text-sm text-oahl-textMuted">Dedicated page for testing OAHL cloud session APIs end-to-end.</p>
+          </div>
+          <div className="badge"><Code2 className="h-3.5 w-3.5" /> /v1/capabilities · /v1/requests · /execute · /stop</div>
+        </div>
+
+        <div className="mt-6 grid gap-4 xl:grid-cols-5">
+          <Field label="Cloud URL" value={cloudUrl} onChange={setCloudUrl} placeholder="https://oahl.onrender.com" className="xl:col-span-2" />
+          <Field label="Agent API Key" value={apiKey} onChange={setApiKey} placeholder="dev_agent_key" className="xl:col-span-2" />
+          <button
+            onClick={fetchCapabilities}
+            disabled={loadingCapabilities || !apiKey.trim()}
+            className="h-[46px] self-end rounded-xl border border-oahl-accent bg-oahl-accent px-4 text-sm font-semibold text-white transition hover:bg-oahl-accentHover disabled:opacity-50"
+          >
+            {loadingCapabilities ? 'Fetching...' : 'Fetch Capabilities'}
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-5">
+          <Field label="q" value={queryText} onChange={setQueryText} placeholder="camera" />
+          <Field label="capability" value={queryCapability} onChange={setQueryCapability} placeholder="camera.capture" />
+          <Field label="type" value={queryType} onChange={setQueryType} placeholder="camera" />
+          <Field label="provider" value={queryProvider} onChange={setQueryProvider} placeholder="Local Lab" />
+          <Field label="node_id" value={queryNodeId} onChange={setQueryNodeId} placeholder="node-01" />
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+        <div className="panel p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="flex items-center gap-2 text-sm font-semibold"><Search className="h-4 w-4 text-oahl-accent" /> Capability Results</p>
+            <p className="text-xs text-oahl-textMuted">{paginationLabel || 'No query yet'}</p>
+          </div>
+
+          <div className="max-h-[520px] space-y-3 overflow-auto pr-1 code-scroll">
+            {devices.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-oahl-border p-8 text-center text-sm text-oahl-textMuted">
+                Run fetch to load capability inventory.
+              </div>
+            )}
+
+            {devices.map((device) => {
+              const isSelected = device.id === selectedDeviceId;
+              return (
+                <button
+                  key={`${device.node_id}-${device.id}`}
+                  onClick={() => {
+                    setSelectedDeviceId(device.id);
+                    setSelectedCapability(capabilityName(device.capabilities?.[0] || ''));
+                  }}
+                  className={`w-full rounded-2xl border p-4 text-left transition ${
+                    isSelected
+                      ? 'border-oahl-accent bg-oahl-accent/10'
+                      : 'border-oahl-border bg-oahl-surface hover:border-oahl-accent/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="font-mono text-sm font-semibold text-oahl-textMain">{device.id}</p>
+                    <p className="text-xs uppercase tracking-wide text-oahl-textMuted">{device.type}</p>
+                  </div>
+                  <p className="mt-1 text-xs text-oahl-textMuted">{device.provider} · {device.node_id}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {(device.capabilities || []).map((cap) => (
+                      <span key={`${device.id}-${capabilityName(cap)}`} className="rounded-full border border-oahl-border px-2 py-1 text-[11px] text-oahl-textMain">
+                        {capabilityName(cap)}
+                      </span>
+                    ))}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="panel p-5">
+            <p className="mb-3 text-sm font-semibold">1) Request Session</p>
+            <Field label="device_id" value={selectedDeviceId} onChange={setSelectedDeviceId} placeholder="camera-01" />
+            <Field label="capability" value={selectedCapability} onChange={setSelectedCapability} placeholder="camera.capture" className="mt-3" />
+            <Field label="node_id" value={selectedDevice?.node_id || ''} onChange={() => {}} disabled className="mt-3" />
+            <button
+              onClick={requestSession}
+              disabled={requestingSession || !apiKey.trim() || !selectedCapability.trim()}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-oahl-tech bg-oahl-tech/20 px-4 py-2.5 text-sm font-semibold text-oahl-tech hover:bg-oahl-tech/30 disabled:opacity-50"
+            >
+              <Play className="h-4 w-4" />
+              {requestingSession ? 'Requesting...' : 'Create Session'}
+            </button>
+          </div>
+
+          <div className="panel p-5">
+            <p className="mb-3 text-sm font-semibold">2) Execute Capability</p>
+            <Field label="session_id" value={sessionId} onChange={setSessionId} placeholder="sess-abc123" />
+            <div className="mt-3">
+              <label className="mb-1 block text-xs font-mono uppercase tracking-wider text-oahl-textMuted">params (JSON)</label>
+              <textarea
+                value={executeParams}
+                onChange={(e) => setExecuteParams(e.target.value)}
+                className="input-field h-28 w-full rounded-xl px-3 py-2 font-mono text-xs"
+              />
+            </div>
+            <button
+              onClick={executeCapability}
+              disabled={executing || !apiKey.trim() || !sessionId.trim()}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-oahl-accent bg-oahl-accent/20 px-4 py-2.5 text-sm font-semibold text-oahl-accent hover:bg-oahl-accent/30 disabled:opacity-50"
+            >
+              <Code2 className="h-4 w-4" />
+              {executing ? 'Executing...' : 'Execute'}
+            </button>
+          </div>
+
+          <div className="panel p-5">
+            <p className="mb-3 text-sm font-semibold">3) Stop Session</p>
+            <button
+              onClick={stopSession}
+              disabled={stopping || !apiKey.trim() || !sessionId.trim()}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-oahl-border bg-oahl-surface px-4 py-2.5 text-sm font-semibold text-oahl-textMain hover:border-oahl-accent disabled:opacity-50"
+            >
+              <Square className="h-4 w-4" />
+              {stopping ? 'Stopping...' : 'Stop Session'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {actionError && (
+        <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">{actionError}</div>
+      )}
+
+      {executionResult && (
+        <div className="panel p-5">
+          <p className="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <CheckCircle2 className="h-4 w-4 text-oahl-tech" />
+            Execution Result Envelope
+          </p>
+          <pre className="code-scroll overflow-auto text-xs text-oahl-textMuted">{JSON.stringify(executionResult, null, 2)}</pre>
+        </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <MiniInfo label="Cloud Auth" value="Bearer API key" />
+        <MiniInfo label="Routing" value="device_id + optional node_id" />
+        <MiniInfo label="Result Schema" value="oahl-execution-result v1.0" />
+      </div>
+    </section>
+  );
+}
+
+function NavButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-xl px-3 py-1.5 text-sm font-medium transition ${
+        active ? 'bg-oahl-accent/20 text-oahl-accent border border-oahl-accent/40' : 'text-oahl-textMuted border border-transparent hover:border-oahl-border hover:text-oahl-textMain'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="stat-card">
+      <p className="stat-title">{label}</p>
+      <p className="stat-value">{value}</p>
+    </div>
+  );
+}
+
+function FlowStep({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return <div className="flow-step">{icon}{label}</div>;
+}
+
+function FlowConnector() {
+  return (
+    <div className="flow-link">
+      <Activity className="h-4 w-4" />
+    </div>
+  );
+}
+
+function MiniInfo({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="api-card">
+      <p className="text-xs text-oahl-textMuted">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-oahl-textMain">{value}</p>
+    </div>
+  );
+}
+
+function ApiGroup({
+  title,
+  icon,
+  endpoints
+}: {
+  title: string;
+  icon: React.ReactNode;
+  endpoints: Array<{ method: string; path: string; purpose: string }>;
+}) {
+  return (
+    <div className="panel p-6">
+      <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">{icon}{title}</h3>
+      <div className="space-y-3">
+        {endpoints.map((endpoint) => (
+          <div key={`${endpoint.method}-${endpoint.path}`} className="api-card">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-mono text-oahl-tech">{endpoint.method}</span>
+              <span className="text-[11px] font-mono text-oahl-textMain">{endpoint.path}</span>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-oahl-textMuted">{endpoint.purpose}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  className = '',
+  disabled = false
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <div className={className}>
+      <label className="mb-1 block text-xs font-mono uppercase tracking-wider text-oahl-textMuted">{label}</label>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="input-field w-full rounded-xl px-3 py-2 text-sm disabled:opacity-70"
+      />
     </div>
   );
 }

@@ -61,6 +61,19 @@ if (fs.existsSync(configPath)) {
 // Initialize core components
 const sessionManager = new core_1.SessionManager();
 const adapters = [];
+function resolveAdapterClass(imported) {
+    if (!imported)
+        return undefined;
+    if (typeof imported === 'function')
+        return imported;
+    if (typeof imported.default === 'function')
+        return imported.default;
+    const exportCandidates = Object.values(imported).filter((value) => typeof value === 'function');
+    if (exportCandidates.length > 0) {
+        return exportCandidates[0];
+    }
+    return undefined;
+}
 function asExecutionResult(options) {
     const { requestId, deviceId, capability, adapterId, rawResult, error } = options;
     if (rawResult && typeof rawResult === 'object' &&
@@ -145,10 +158,13 @@ if (config.plugins && Array.isArray(config.plugins)) {
                 const localPath = path.resolve(process.cwd(), 'node_modules', pluginName);
                 imported = require(localPath);
             }
-            const PluginClass = imported.default || imported;
+            const PluginClass = resolveAdapterClass(imported);
             if (typeof PluginClass === 'function') {
                 adapters.push(new PluginClass());
                 console.log(`[Plugins] ✅ ${pluginName} loaded successfully.`);
+            }
+            else {
+                console.error(`[Plugins] ❌ ${pluginName} does not export a constructable adapter class.`);
             }
         }
         catch (err) {
@@ -264,7 +280,9 @@ async function startCloudHeartbeat(config, adapters) {
                         });
                     }
                 }
-                catch { }
+                catch (err) {
+                    console.error(`[Cloud] ❌ Failed collecting devices from adapter ${adapter.id || adapter.constructor.name}: ${err.message}`);
+                }
             }
             await fetch(`${config.cloud_url}/v1/provider/nodes/register`, {
                 method: 'POST',
@@ -278,7 +296,7 @@ async function startCloudHeartbeat(config, adapters) {
                     devices: activeDevices
                 })
             });
-            console.log(`[Cloud] 🟢 Hardware synced with registry`);
+            console.log(`[Cloud] 🟢 Hardware synced with registry (${activeDevices.length} device${activeDevices.length === 1 ? '' : 's'})`);
         }
         catch (err) {
             console.error(`[Cloud] ❌ Sync failed: ${err.message}`);

@@ -28,6 +28,19 @@ if (fs.existsSync(configPath)) {
 const sessionManager = new SessionManager();
 const adapters: Adapter[] = [];
 
+function resolveAdapterClass(imported: any): any {
+  if (!imported) return undefined;
+  if (typeof imported === 'function') return imported;
+  if (typeof imported.default === 'function') return imported.default;
+
+  const exportCandidates = Object.values(imported).filter((value: any) => typeof value === 'function');
+  if (exportCandidates.length > 0) {
+    return exportCandidates[0];
+  }
+
+  return undefined;
+}
+
 function asExecutionResult(options: {
   requestId: string;
   deviceId: string;
@@ -123,10 +136,12 @@ if (config.plugins && Array.isArray(config.plugins)) {
         const localPath = path.resolve(process.cwd(), 'node_modules', pluginName);
         imported = require(localPath);
       }
-      const PluginClass = imported.default || imported;
+      const PluginClass = resolveAdapterClass(imported);
       if (typeof PluginClass === 'function') {
         adapters.push(new PluginClass());
         console.log(`[Plugins] ✅ ${pluginName} loaded successfully.`);
+      } else {
+        console.error(`[Plugins] ❌ ${pluginName} does not export a constructable adapter class.`);
       }
     } catch (err: any) {
       console.error(`[Plugins] ❌ Failed to load adapter ${pluginName}: ${err.message}`);
@@ -243,7 +258,9 @@ async function startCloudHeartbeat(config: any, adapters: Adapter[]) {
               adapter: adapter.id || adapter.constructor.name
             });
           }
-        } catch {}
+        } catch (err: any) {
+          console.error(`[Cloud] ❌ Failed collecting devices from adapter ${adapter.id || adapter.constructor.name}: ${err.message}`);
+        }
       }
 
       await fetch(`${config.cloud_url}/v1/provider/nodes/register`, {
@@ -258,7 +275,7 @@ async function startCloudHeartbeat(config: any, adapters: Adapter[]) {
           devices: activeDevices
         })
       });
-      console.log(`[Cloud] 🟢 Hardware synced with registry`);
+      console.log(`[Cloud] 🟢 Hardware synced with registry (${activeDevices.length} device${activeDevices.length === 1 ? '' : 's'})`);
     } catch (err: any) {
       console.error(`[Cloud] ❌ Sync failed: ${err.message}`);
     }

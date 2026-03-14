@@ -6,7 +6,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Authorization', 'Content-Type'],
+  optionsSuccessStatus: 204,
+  maxAge: 86400
+}));
+app.options('*', cors());
 app.use(express.json());
 
 // Ensure secrets are set in production
