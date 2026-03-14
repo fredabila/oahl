@@ -3,6 +3,8 @@ import cors from 'cors';
 import { createClient } from 'redis';
 import dotenv from 'dotenv';
 import { randomUUID } from 'crypto';
+import type { Server as HttpServer } from 'http';
+import { WebSocketServer, WebSocket } from 'ws';
 
 dotenv.config();
 
@@ -41,6 +43,10 @@ if (rawRedisUrl.startsWith('rediss://')) {
 
 const redisClient = createClient(redisOptions);
 redisClient.on('error', (err) => console.log('Redis Client Error', err));
+
+const providerSocketsByNode = new Map<string, WebSocket>();
+const pendingWsResults = new Map<string, { resolve: (value: any) => void; timeout: NodeJS.Timeout }>();
+const WS_RESULT_TIMEOUT_MS = toPositiveInt(process.env.OAHL_WS_RESULT_TIMEOUT_MS, 30_000);
 
 type AccessVisibility = 'public' | 'shared' | 'private';
 
@@ -161,6 +167,80 @@ function isDeviceAccessibleToAgent(node: any, device: any, agent: AgentIdentity)
   return Boolean(explicitlyAllowed);
 }
 
+function completePendingWsResult(requestId: string, result: any): boolean {
+  const pending = pendingWsResults.get(requestId);
+  if (!pending) {
+    return false;
+  }
+
+  clearTimeout(pending.timeout);
+  pendingWsResults.delete(requestId);
+  pending.resolve(result);
+  return true;
+}
+
+function waitForWsResult(requestId: string, timeoutMs: number): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      pendingWsResults.delete(requestId);
+      reject(new Error(`WebSocket result timeout for request ${requestId}`));
+    }, timeoutMs);
+
+    pendingWsResults.set(requestId, { resolve, timeout });
+  });
+}
+
+function configureProviderWebSocket(server: HttpServer) {
+  const wss = new WebSocketServer({ server, path: '/ws/provider' });
+
+  wss.on('connection', (socket, req) => {
+    try {
+      const host = req.headers.host || 'localhost';
+      const requestUrl = new URL(req.url || '/ws/provider', `http://${host}`);
+      const nodeId = requestUrl.searchParams.get('node_id') || '';
+      const apiKey = requestUrl.searchParams.get('api_key') || '';
+
+      if (!nodeId || apiKey !== PROVIDER_API_KEY) {
+        socket.close(1008, 'Unauthorized provider websocket');
+        return;
+      }
+
+      providerSocketsByNode.set(nodeId, socket);
+      console.log(`[Cloud WS] 🔌 Provider websocket connected: ${nodeId}`);
+
+      socket.on('message', (rawMessage) => {
+        try {
+          const message = JSON.parse(String(rawMessage));
+          if (message?.type === 'result' && message?.requestId) {
+            const completed = completePendingWsResult(message.requestId, message.result);
+            if (!completed && message.result !== undefined) {
+              redisClient.lPush(`result:${message.requestId}`, JSON.stringify(message.result)).catch(() => undefined);
+              redisClient.expire(`result:${message.requestId}`, 60).catch(() => undefined);
+            }
+          }
+        } catch (err: any) {
+          console.error(`[Cloud WS] ❌ Invalid provider message: ${err.message}`);
+        }
+      });
+
+      socket.on('close', () => {
+        const existing = providerSocketsByNode.get(nodeId);
+        if (existing === socket) {
+          providerSocketsByNode.delete(nodeId);
+        }
+        console.log(`[Cloud WS] 🔌 Provider websocket disconnected: ${nodeId}`);
+      });
+
+      socket.on('error', (err) => {
+        console.error(`[Cloud WS] ❌ Socket error (${nodeId}): ${err.message}`);
+      });
+    } catch (err: any) {
+      console.error(`[Cloud WS] ❌ Connection setup failed: ${err.message}`);
+      socket.close(1011, 'Server error');
+    }
+  });
+}
+
 // Middleware: Authenticate Providers (Hardware Nodes)
 const authProvider = (req: express.Request, res: express.Response, next: express.NextFunction) => {
   const apiKey = req.headers['authorization']?.split(' ')[1];
@@ -230,6 +310,10 @@ app.get('/v1/provider/nodes/:id/poll', authProvider, async (req, res) => {
 app.post('/v1/provider/nodes/results', authProvider, async (req, res) => {
   const { requestId, result } = req.body;
   if (!requestId) return res.status(400).json({ error: "Missing requestId" });
+
+  if (completePendingWsResult(requestId, result)) {
+    return res.json({ status: "success", mode: "websocket" });
+  }
   
   await redisClient.lPush(`result:${requestId}`, JSON.stringify(result));
   await redisClient.expire(`result:${requestId}`, 60); // Expire results after 60s
@@ -436,17 +520,30 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
   const session = JSON.parse(sessionStr);
 
   const requestId = `cmd-${randomUUID()}`;
-  const relayPayload = JSON.stringify({
+  const relayPayload = {
     requestId,
     sessionId,
     deviceId: session.device_id,
     dispatchedAt: Date.now(),
     capability: command.capability,
     params: command.params
-  });
+  };
+
+  const nodeSocket = providerSocketsByNode.get(session.node_id);
+  if (nodeSocket && nodeSocket.readyState === WebSocket.OPEN) {
+    try {
+      nodeSocket.send(JSON.stringify({ type: 'command', payload: relayPayload }));
+      const wsResult = await waitForWsResult(requestId, WS_RESULT_TIMEOUT_MS);
+      return res.json(wsResult);
+    } catch (wsErr: any) {
+      console.error(`[Cloud WS] ❌ Fast-path execute failed for ${requestId}: ${wsErr.message}`);
+    }
+  }
+
+  const relayPayloadJson = JSON.stringify(relayPayload);
 
   // Push to node's queue
-  await redisClient.lPush(`commands:${session.node_id}`, relayPayload);
+  await redisClient.lPush(`commands:${session.node_id}`, relayPayloadJson);
 
   // Wait for result (timeout 30s)
   try {
@@ -478,7 +575,8 @@ app.post('/v1/sessions/:id/stop', authAgent, async (req, res) => {
 async function start() {
   await redisClient.connect();
   const PORT = process.env.PORT || 8000;
-  app.listen(PORT, () => console.log(`☁️ OAHL Cloud Service running on port ${PORT}`));
+  const server = app.listen(PORT, () => console.log(`☁️ OAHL Cloud Service running on port ${PORT}`));
+  configureProviderWebSocket(server);
 }
 
 start().catch(console.error);

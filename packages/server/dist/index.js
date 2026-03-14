@@ -40,6 +40,7 @@ const express_1 = __importDefault(require("express"));
 const core_1 = require("@oahl/core");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const ws_1 = require("ws");
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 const PORT = process.env.PORT || 3000;
@@ -181,6 +182,136 @@ async function getAdapterForDevice(deviceId) {
     }
     return undefined;
 }
+let isWebSocketRelayConnected = false;
+async function sendResultToCloud(config, requestId, result, resultType) {
+    const response = await fetch(`${config.cloud_url}/v1/provider/nodes/results`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${config.provider_api_key}`
+        },
+        body: JSON.stringify({
+            requestId,
+            result
+        })
+    });
+    if (!response.ok) {
+        const body = await response.text();
+        console.error(`[Cloud Relay] ❌ Failed to send ${resultType} result for ${requestId}: ${response.status} ${body}`);
+        return;
+    }
+    console.log(`[Cloud Relay] 📤 Sent ${resultType} result back for ${requestId}`);
+}
+async function handleRelayCommand(config, payload) {
+    console.log(`[Cloud Relay] 📥 Received command: ${payload.capability} for device ${payload.deviceId}`);
+    const relayStartedAt = Date.now();
+    const adapter = await getAdapterForDevice(payload.deviceId);
+    if (adapter) {
+        try {
+            const rawResult = await adapter.execute(payload.deviceId, payload.capability, payload.params || {});
+            const result = asExecutionResult({
+                requestId: payload.requestId,
+                deviceId: payload.deviceId,
+                capability: payload.capability,
+                adapterId: adapter.id || adapter.constructor.name,
+                rawResult
+            });
+            const dispatchTimestamp = Number(payload.dispatchedAt) || relayStartedAt;
+            result.meta = {
+                ...(result.meta || {}),
+                relay_latency_ms: Date.now() - dispatchTimestamp,
+                node_id: config.node_id
+            };
+            return { result, resultType: 'success' };
+        }
+        catch (execErr) {
+            console.error(`[Cloud Relay] ❌ Execution failed: ${execErr.message}`);
+            const result = asExecutionResult({
+                requestId: payload.requestId,
+                deviceId: payload.deviceId,
+                capability: payload.capability,
+                adapterId: adapter.id || adapter.constructor.name,
+                error: execErr
+            });
+            const dispatchTimestamp = Number(payload.dispatchedAt) || relayStartedAt;
+            result.meta = {
+                ...(result.meta || {}),
+                relay_latency_ms: Date.now() - dispatchTimestamp,
+                node_id: config.node_id
+            };
+            return { result, resultType: 'error' };
+        }
+    }
+    const result = asExecutionResult({
+        requestId: payload.requestId,
+        deviceId: payload.deviceId,
+        capability: payload.capability,
+        error: new Error(`No adapter found for device ${payload.deviceId}`)
+    });
+    const dispatchTimestamp = Number(payload.dispatchedAt) || relayStartedAt;
+    result.meta = {
+        ...(result.meta || {}),
+        relay_latency_ms: Date.now() - dispatchTimestamp,
+        node_id: config.node_id
+    };
+    return { result, resultType: 'no-adapter' };
+}
+function startCloudWebSocketRelay(config) {
+    if (!config.cloud_url || !config.provider_api_key || !config.node_id)
+        return;
+    const connect = () => {
+        try {
+            const wsBase = String(config.cloud_url)
+                .replace(/^http:\/\//i, 'ws://')
+                .replace(/^https:\/\//i, 'wss://');
+            const wsUrl = `${wsBase}/ws/provider?node_id=${encodeURIComponent(config.node_id)}&api_key=${encodeURIComponent(config.provider_api_key)}`;
+            const socket = new ws_1.WebSocket(wsUrl);
+            socket.on('open', () => {
+                isWebSocketRelayConnected = true;
+                console.log('[Cloud WS] 🟢 Provider websocket connected');
+            });
+            socket.on('message', async (rawMessage) => {
+                try {
+                    const message = JSON.parse(String(rawMessage));
+                    if (message?.type !== 'command' || !message?.payload?.requestId) {
+                        return;
+                    }
+                    const payload = message.payload;
+                    const { result, resultType } = await handleRelayCommand(config, payload);
+                    if (socket.readyState === ws_1.WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: 'result',
+                            requestId: payload.requestId,
+                            result
+                        }));
+                        console.log(`[Cloud WS] 📤 Sent ${resultType} result back for ${payload.requestId}`);
+                    }
+                    else {
+                        await sendResultToCloud(config, payload.requestId, result, resultType);
+                    }
+                }
+                catch (err) {
+                    console.error(`[Cloud WS] ❌ Failed handling websocket command: ${err.message}`);
+                }
+            });
+            socket.on('close', () => {
+                if (isWebSocketRelayConnected) {
+                    console.log('[Cloud WS] 🔌 Provider websocket disconnected, falling back to polling');
+                }
+                isWebSocketRelayConnected = false;
+                setTimeout(connect, 3000);
+            });
+            socket.on('error', (err) => {
+                console.error(`[Cloud WS] ❌ Websocket error: ${err.message}`);
+            });
+        }
+        catch (err) {
+            console.error(`[Cloud WS] ❌ Failed to connect websocket relay: ${err.message}`);
+            setTimeout(connect, 3000);
+        }
+    };
+    connect();
+}
 // --- CLOUD RELAY LISTENER (The Mailbox) ---
 async function startCloudRelay(config, adapters) {
     if (!config.cloud_url || !config.provider_api_key)
@@ -188,81 +319,15 @@ async function startCloudRelay(config, adapters) {
     console.log(`[Cloud Relay] 📬 Starting HTTP Command Listener (Polling)...`);
     const relayMaxConcurrency = Math.max(1, Number.parseInt(process.env.OAHL_RELAY_MAX_CONCURRENCY || '4', 10) || 4);
     const inFlightCommands = new Set();
-    const sendResultToCloud = async (requestId, result, resultType) => {
-        const response = await fetch(`${config.cloud_url}/v1/provider/nodes/results`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${config.provider_api_key}`
-            },
-            body: JSON.stringify({
-                requestId,
-                result
-            })
-        });
-        if (!response.ok) {
-            const body = await response.text();
-            console.error(`[Cloud Relay] ❌ Failed to send ${resultType} result for ${requestId}: ${response.status} ${body}`);
-            return;
-        }
-        console.log(`[Cloud Relay] 📤 Sent ${resultType} result back for ${requestId}`);
-    };
     const handlePolledCommand = async (payload) => {
-        console.log(`[Cloud Relay] 📥 Received command: ${payload.capability} for device ${payload.deviceId}`);
-        const relayStartedAt = Date.now();
-        const adapter = await getAdapterForDevice(payload.deviceId);
-        if (adapter) {
-            try {
-                const rawResult = await adapter.execute(payload.deviceId, payload.capability, payload.params || {});
-                const result = asExecutionResult({
-                    requestId: payload.requestId,
-                    deviceId: payload.deviceId,
-                    capability: payload.capability,
-                    adapterId: adapter.id || adapter.constructor.name,
-                    rawResult
-                });
-                const dispatchTimestamp = Number(payload.dispatchedAt) || relayStartedAt;
-                result.meta = {
-                    ...(result.meta || {}),
-                    relay_latency_ms: Date.now() - dispatchTimestamp,
-                    node_id: config.node_id
-                };
-                await sendResultToCloud(payload.requestId, result, 'success');
-            }
-            catch (execErr) {
-                console.error(`[Cloud Relay] ❌ Execution failed: ${execErr.message}`);
-                const result = asExecutionResult({
-                    requestId: payload.requestId,
-                    deviceId: payload.deviceId,
-                    capability: payload.capability,
-                    adapterId: adapter.id || adapter.constructor.name,
-                    error: execErr
-                });
-                const dispatchTimestamp = Number(payload.dispatchedAt) || relayStartedAt;
-                result.meta = {
-                    ...(result.meta || {}),
-                    relay_latency_ms: Date.now() - dispatchTimestamp,
-                    node_id: config.node_id
-                };
-                await sendResultToCloud(payload.requestId, result, 'error');
-            }
-            return;
-        }
-        const result = asExecutionResult({
-            requestId: payload.requestId,
-            deviceId: payload.deviceId,
-            capability: payload.capability,
-            error: new Error(`No adapter found for device ${payload.deviceId}`)
-        });
-        const dispatchTimestamp = Number(payload.dispatchedAt) || relayStartedAt;
-        result.meta = {
-            ...(result.meta || {}),
-            relay_latency_ms: Date.now() - dispatchTimestamp,
-            node_id: config.node_id
-        };
-        await sendResultToCloud(payload.requestId, result, 'no-adapter');
+        const { result, resultType } = await handleRelayCommand(config, payload);
+        await sendResultToCloud(config, payload.requestId, result, resultType);
     };
     while (true) {
+        if (isWebSocketRelayConnected) {
+            await new Promise((resolve) => setTimeout(resolve, 250));
+            continue;
+        }
         try {
             // Poll the Cloud Registry for any pending commands
             const response = await fetch(`${config.cloud_url}/v1/provider/nodes/${config.node_id}/poll`, {
@@ -380,6 +445,7 @@ async function start() {
         }
     }
     startCloudHeartbeat(config, adapters);
+    startCloudWebSocketRelay(config);
     startCloudRelay(config, adapters).catch(console.error);
     app.listen(PORT, () => console.log(`OAHL Server running on port ${PORT}`));
 }
