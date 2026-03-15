@@ -178,13 +178,32 @@ export default class MyVibratingAdapter implements Adapter {
 ---
 
 ## 🛠️ 5. Installation & Marketplace Usage
-Once your adapter is published (or even if it's a local folder), any OAHL node can use it:
+Once your adapter is built, any OAHL node can use it. You can install adapters published to the npm registry, or install them locally directly from your file system.
 
+### Option A: Installing from npm (Published Adapters)
 1.  **Install via CLI:**
     ```bash
     oahl install @oahl/adapter-my-device
     ```
-2.  **Verify Configuration:** The CLI automatically adds the plugin to your `oahl-config.json`.
+2.  **Start the Node:**
+    ```bash
+    oahl start
+    ```
+
+### Option B: Installing a Local Directory (Unpublished)
+If you are developing an adapter locally or have downloaded the source code:
+1.  **Install the local path using npm:**
+    Navigate to the directory containing your `oahl-config.json` and run:
+    ```bash
+    npm install ./path/to/your/adapter/directory
+    ```
+2.  **Add it to your config:**
+    Open `oahl-config.json` and manually add the package name (the exact `"name"` found in the adapter's `package.json`) to the `plugins` array:
+    ```json
+    "plugins": [
+      "my-local-adapter-name"
+    ]
+    ```
 3.  **Start the Node:**
     ```bash
     oahl start
