@@ -613,6 +613,78 @@ app.get('/v1/portal/capabilities', authPortal, async (req, res) => {
 });
 
 /**
+ * 0c. PROVIDER PORTAL ENDPOINTS
+ */
+
+// Get Provider Stats (Earnings & Device Count)
+app.get('/v1/portal/provider/stats', authPortal, async (req, res) => {
+  try {
+    const email = (req as any).portalUser.email;
+    const keys = await redisClient.keys('node:*');
+    let totalEarnings = 0;
+    let deviceCount = 0;
+    const activeNodes = [];
+
+    for (const key of keys) {
+      const nodeStr = await redisClient.get(key);
+      if (nodeStr) {
+        const node = JSON.parse(nodeStr);
+        // Match by email provided in the node registration
+        if (node.owner_email === email) {
+          totalEarnings += (node.earnings || 0);
+          deviceCount += (node.devices?.length || 0);
+          activeNodes.push({
+            node_id: node.node_id,
+            status: 'online',
+            last_seen: node.last_seen,
+            earnings: node.earnings || 0,
+            device_count: node.devices?.length || 0
+          });
+        }
+      }
+    }
+
+    res.json({
+      total_earnings: totalEarnings,
+      device_count: deviceCount,
+      nodes: activeNodes
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// List Provider's Specific Devices
+app.get('/v1/portal/provider/devices', authPortal, async (req, res) => {
+  try {
+    const email = (req as any).portalUser.email;
+    const keys = await redisClient.keys('node:*');
+    const myDevices = [];
+
+    for (const key of keys) {
+      const nodeStr = await redisClient.get(key);
+      if (nodeStr) {
+        const node = JSON.parse(nodeStr);
+        if (node.owner_email === email) {
+          if (node.devices) {
+            for (const device of node.devices) {
+              myDevices.push({
+                ...device,
+                node_id: node.node_id,
+                earnings: node.device_earnings?.[device.id] || 0
+              });
+            }
+          }
+        }
+      }
+    }
+    res.json({ devices: myDevices });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
  * 1. NODE REGISTRATION
  */
 app.post('/v1/provider/nodes/register', authProvider, async (req, res) => {

@@ -625,6 +625,8 @@ async function startCloudHeartbeat(config: any, adapters: Adapter[]) {
         body: JSON.stringify({
           node_id: config.node_id,
           owner_id: config.owner_id || config.provider?.owner_id,
+          owner_email: process.env.OAHL_OWNER_EMAIL,
+          owner_pin: process.env.OAHL_OWNER_PIN,
           provider: config.provider,
           devices: activeDevices
         })

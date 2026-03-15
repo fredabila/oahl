@@ -660,11 +660,95 @@ async function runTui(configPath: string) {
   }
 }
 
+async function ensureProviderAuth(): Promise<{ email: string; pin: string } | undefined> {
+  const sessionPath = path.resolve(process.cwd(), '.oahl-session.json');
+  
+  if (fs.existsSync(sessionPath)) {
+    try {
+      const session = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
+      if (session.email && session.pin) {
+        return session;
+      }
+    } catch {
+      // Ignore corrupted session
+    }
+  }
+
+  console.log('🔐 Provider Authentication Required');
+  console.log('Enter your Developer Portal credentials to link this node to your account.\n');
+
+  const response = await prompts([
+    {
+      type: 'text',
+      name: 'email',
+      message: 'Email Address',
+      validate: (value: string) => value.includes('@') || 'Please enter a valid email'
+    },
+    {
+      type: 'password',
+      name: 'pin',
+      message: '6-Digit PIN',
+      validate: (value: string) => /^\d{6}$/.test(value) || 'PIN must be exactly 6 digits'
+    },
+    {
+      type: 'confirm',
+      name: 'save',
+      message: 'Remember these credentials on this machine?',
+      initial: true
+    }
+  ]);
+
+  if (!response.email || !response.pin) {
+    return undefined;
+  }
+
+  const credentials = { email: response.email, pin: response.pin };
+
+  if (response.save) {
+    fs.writeFileSync(sessionPath, JSON.stringify(credentials, null, 2));
+    console.log(`✅ Credentials saved to ${sessionPath}\n`);
+  }
+
+  return credentials;
+}
+
+program
+  .command('login')
+  .description('Link this machine to your OAHL Developer Portal account')
+  .action(async () => {
+    const auth = await ensureProviderAuth();
+    if (auth) {
+      console.log(`✨ Successfully logged in as ${auth.email}`);
+    } else {
+      console.log('❌ Login cancelled.');
+    }
+  });
+
+program
+  .command('logout')
+  .description('Remove saved credentials from this machine')
+  .action(() => {
+    const sessionPath = path.resolve(process.cwd(), '.oahl-session.json');
+    if (fs.existsSync(sessionPath)) {
+      fs.unlinkSync(sessionPath);
+      console.log('👋 Logged out. Credentials removed.');
+    } else {
+      console.log('ℹ️ No active session found.');
+    }
+  });
+
 program
   .command('init')
   .description('Interactively create a new oahl-config.json file for your hardware node')
   .action(async () => {
     console.log('🤖 Welcome to the OAHL Node Setup Wizard!\n');
+
+    // Check for auth early
+    const auth = await ensureProviderAuth();
+    if (!auth) {
+      console.log('❌ Auth required to initialize node.');
+      process.exit(1);
+    }
 
     const response = await prompts([
       {
@@ -1042,6 +1126,13 @@ program
   .action(async (options) => {
     console.log('🚀 Starting OAHL Node...');
     
+    // Check for auth
+    const auth = await ensureProviderAuth();
+    if (!auth) {
+      console.error('❌ Error: Authentication required to start node.');
+      process.exit(1);
+    }
+
     // Check if config exists
     const configPath = path.resolve(process.cwd(), options.config);
     if (!fs.existsSync(configPath)) {
@@ -1052,6 +1143,8 @@ program
 
     // Pass environment variables to the server process
     process.env.PORT = options.port;
+    process.env.OAHL_OWNER_EMAIL = auth.email;
+    process.env.OAHL_OWNER_PIN = auth.pin;
     
     try {
       const serverPath = path.resolve(__dirname, '../../server/dist/index.js');

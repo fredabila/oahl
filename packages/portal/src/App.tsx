@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, KeyRound, LayoutDashboard, LogOut, Wallet, Plus, CreditCard, ChevronRight, Cpu, Globe, Search, Copy, Check, Trash2 } from 'lucide-react';
+import { Bot, KeyRound, LayoutDashboard, LogOut, Wallet, Plus, CreditCard, ChevronRight, Cpu, Globe, Search, Copy, Check, Trash2, RefreshCw, User, HardDrive } from 'lucide-react';
 
 type Developer = {
   email: string;
@@ -14,6 +14,12 @@ type Agent = {
   created_at: number;
 };
 
+type ProviderStats = {
+  total_earnings: number;
+  device_count: number;
+  nodes: any[];
+};
+
 type Device = {
   id: string;
   type: string;
@@ -21,6 +27,7 @@ type Device = {
   capabilities: any[];
   provider: string;
   node_id: string;
+  earnings?: number;
   pricing?: {
     rate_per_minute?: number;
     rate_per_execution?: number;
@@ -43,13 +50,22 @@ function App() {
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
+  // Portal Mode (Developer vs Provider)
+  const [portalMode, setPortalMode] = useState<'developer' | 'provider'>('developer');
+
   // Dashboard state
-  const [activeTab, setActiveTab] = useState<'agents' | 'billing' | 'hardware'>('agents');
+  const [activeTab, setActiveTab] = useState<'agents' | 'billing' | 'hardware' | 'earnings'>('agents');
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loadingAgents, setLoadingAgents] = useState(false);
   const [devices, setDevices] = useState<Device[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Provider state
+  const [providerStats, setProviderStats] = useState<ProviderStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [providerDevices, setProviderDevices] = useState<Device[]>([]);
+  const [loadingProviderDevices, setLoadingProviderDevices] = useState(false);
 
   // New Agent Form
   const [newAgentName, setNewAgentName] = useState('');
@@ -80,12 +96,15 @@ function App() {
 
   useEffect(() => {
     if (token) {
-      fetchAgents();
-      if (activeTab === 'hardware') {
-        fetchCapabilities();
+      if (portalMode === 'developer') {
+        fetchAgents();
+        if (activeTab === 'hardware') fetchCapabilities();
+      } else {
+        fetchProviderStats();
+        fetchProviderDevices();
       }
     }
-  }, [token, activeTab]);
+  }, [token, portalMode, activeTab]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,6 +176,40 @@ function App() {
       console.error("Failed to fetch capabilities", err);
     } finally {
       setLoadingDevices(false);
+    }
+  };
+
+  const fetchProviderStats = async () => {
+    if (!token) return;
+    setLoadingStats(true);
+    try {
+      const res = await fetch(`${cloudUrl}/v1/portal/provider/stats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setProviderStats(data);
+    } catch (err) {
+      console.error("Failed to fetch provider stats", err);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  const fetchProviderDevices = async () => {
+    if (!token) return;
+    setLoadingProviderDevices(true);
+    try {
+      const res = await fetch(`${cloudUrl}/v1/portal/provider/devices`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setProviderDevices(data.devices || []);
+    } catch (err) {
+      console.error("Failed to fetch provider devices", err);
+    } finally {
+      setLoadingProviderDevices(false);
     }
   };
 
@@ -333,38 +386,81 @@ function App() {
 
       <div className="mx-auto max-w-6xl px-6 py-8 flex flex-col md:flex-row gap-8">
         {/* Sidebar */}
-        <aside className="w-full md:w-64 shrink-0">
+        <aside className="w-full md:w-64 shrink-0 space-y-6">
+          {/* Mode Switcher */}
+          <div className="p-1 bg-black/40 border border-oahl-border rounded-2xl flex">
+            <button 
+              onClick={() => { setPortalMode('developer'); setActiveTab('agents'); }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all ${portalMode === 'developer' ? 'bg-oahl-accent text-white shadow-lg shadow-oahl-accent/20' : 'text-oahl-textMuted hover:text-white'}`}
+            >
+              <User className="w-3.5 h-3.5" /> Developer
+            </button>
+            <button 
+              onClick={() => { setPortalMode('provider'); setActiveTab('earnings'); }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all ${portalMode === 'provider' ? 'bg-oahl-tech text-white shadow-lg shadow-oahl-tech/20' : 'text-oahl-textMuted hover:text-white'}`}
+            >
+              <HardDrive className="w-3.5 h-3.5" /> Provider
+            </button>
+          </div>
+
           <nav className="space-y-1">
-            <button
-              onClick={() => setActiveTab('agents')}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                activeTab === 'agents' 
-                  ? 'bg-oahl-accent/10 text-oahl-accent border border-oahl-accent/20' 
-                  : 'text-oahl-textMuted hover:bg-oahl-surface hover:text-oahl-text-main border border-transparent'
-              }`}
-            >
-              <Bot className="w-4 h-4" /> Agents & Keys
-            </button>
-            <button
-              onClick={() => setActiveTab('hardware')}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                activeTab === 'hardware' 
-                  ? 'bg-oahl-accent/10 text-oahl-accent border border-oahl-accent/20' 
-                  : 'text-oahl-textMuted hover:bg-oahl-surface hover:text-oahl-text-main border border-transparent'
-              }`}
-            >
-              <Cpu className="w-4 h-4" /> Hardware Explorer
-            </button>
-            <button
-              onClick={() => setActiveTab('billing')}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                activeTab === 'billing' 
-                  ? 'bg-oahl-accent/10 text-oahl-accent border border-oahl-accent/20' 
-                  : 'text-oahl-textMuted hover:bg-oahl-surface hover:text-oahl-text-main border border-transparent'
-              }`}
-            >
-              <Wallet className="w-4 h-4" /> Wallets & Billing
-            </button>
+            {portalMode === 'developer' ? (
+              <>
+                <button
+                  onClick={() => setActiveTab('agents')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    activeTab === 'agents' 
+                      ? 'bg-oahl-accent/10 text-oahl-accent border border-oahl-accent/20' 
+                      : 'text-oahl-textMuted hover:bg-oahl-surface hover:text-oahl-text-main border border-transparent'
+                  }`}
+                >
+                  <Bot className="w-4 h-4" /> Agents & Keys
+                </button>
+                <button
+                  onClick={() => setActiveTab('hardware')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    activeTab === 'hardware' 
+                      ? 'bg-oahl-accent/10 text-oahl-accent border border-oahl-accent/20' 
+                      : 'text-oahl-textMuted hover:bg-oahl-surface hover:text-oahl-text-main border border-transparent'
+                  }`}
+                >
+                  <Cpu className="w-4 h-4" /> Hardware Explorer
+                </button>
+                <button
+                  onClick={() => setActiveTab('billing')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    activeTab === 'billing' 
+                      ? 'bg-oahl-accent/10 text-oahl-accent border border-oahl-accent/20' 
+                      : 'text-oahl-textMuted hover:bg-oahl-surface hover:text-oahl-text-main border border-transparent'
+                  }`}
+                >
+                  <Wallet className="w-4 h-4" /> Wallets & Billing
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setActiveTab('earnings')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    activeTab === 'earnings' 
+                      ? 'bg-oahl-tech/10 text-oahl-tech border border-oahl-tech/20' 
+                      : 'text-oahl-textMuted hover:bg-oahl-surface hover:text-oahl-text-main border border-transparent'
+                  }`}
+                >
+                  <LayoutDashboard className="w-4 h-4" /> Earnings & Nodes
+                </button>
+                <button
+                  onClick={() => setActiveTab('hardware')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    activeTab === 'hardware' 
+                      ? 'bg-oahl-tech/10 text-oahl-tech border border-oahl-tech/20' 
+                      : 'text-oahl-textMuted hover:bg-oahl-surface hover:text-oahl-text-main border border-transparent'
+                  }`}
+                >
+                  <HardDrive className="w-4 h-4" /> My Hardware
+                </button>
+              </>
+            )}
           </nav>
 
           <div className="mt-8 panel p-4 bg-oahl-surface/20">
@@ -384,9 +480,19 @@ function App() {
           
           {activeTab === 'agents' && (
             <>
-              <div>
-                <h2 className="text-2xl font-semibold tracking-tight">Agent Identities</h2>
-                <p className="text-sm text-oahl-textMuted mt-1">Manage API keys for your autonomous workloads.</p>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-semibold tracking-tight">Agent Identities</h2>
+                  <p className="text-sm text-oahl-textMuted mt-1">Manage API keys for your autonomous workloads.</p>
+                </div>
+                <button 
+                  onClick={fetchAgents}
+                  disabled={loadingAgents}
+                  className="p-2 rounded-xl bg-white/5 border border-oahl-border hover:bg-white/10 transition disabled:opacity-50"
+                  title="Refresh Agents"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingAgents ? 'animate-spin' : ''}`} />
+                </button>
               </div>
 
               <div className="panel p-6">
@@ -469,22 +575,31 @@ function App() {
             </>
           )}
 
-          {activeTab === 'hardware' && (
+          {activeTab === 'hardware' && portalMode === 'developer' && (
             <>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-semibold tracking-tight">Hardware Explorer</h2>
                   <p className="text-sm text-oahl-textMuted mt-1">Discover and inspect real-world hardware available on the OAHL network.</p>
                 </div>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-oahl-textMuted" />
-                  <input 
-                    type="text"
-                    placeholder="Search hardware..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="input-field pl-10 pr-4 py-2 rounded-xl text-sm w-full sm:w-64"
-                  />
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-oahl-textMuted" />
+                    <input 
+                      type="text"
+                      placeholder="Search hardware..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="input-field pl-10 pr-4 py-2 rounded-xl text-sm w-full sm:w-64"
+                    />
+                  </div>
+                  <button 
+                    onClick={fetchCapabilities}
+                    disabled={loadingDevices}
+                    className="p-2 rounded-xl bg-white/5 border border-oahl-border hover:bg-white/10 transition disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${loadingDevices ? 'animate-spin' : ''}`} />
+                  </button>
                 </div>
               </div>
 
@@ -549,9 +664,18 @@ function App() {
 
           {activeTab === 'billing' && (
             <>
-              <div>
-                <h2 className="text-2xl font-semibold tracking-tight">Wallets & Billing</h2>
-                <p className="text-sm text-oahl-textMuted mt-1">Add credits so your agents can rent physical hardware.</p>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-semibold tracking-tight">Wallets & Billing</h2>
+                  <p className="text-sm text-oahl-textMuted mt-1">Add credits so your agents can rent physical hardware.</p>
+                </div>
+                <button 
+                  onClick={fetchAgents}
+                  disabled={loadingAgents}
+                  className="p-2 rounded-xl bg-white/5 border border-oahl-border hover:bg-white/10 transition disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingAgents ? 'animate-spin' : ''}`} />
+                </button>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -609,6 +733,127 @@ function App() {
                   <div className="sm:col-span-2 lg:col-span-3 panel border-dashed p-8 text-center text-sm text-oahl-textMuted">
                     Provision an agent first to manage its wallet.
                   </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {activeTab === 'earnings' && portalMode === 'provider' && (
+            <>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-semibold tracking-tight">Provider Earnings</h2>
+                  <p className="text-sm text-oahl-textMuted mt-1">Track revenue generated by your hardware nodes.</p>
+                </div>
+                <button 
+                  onClick={fetchProviderStats}
+                  disabled={loadingStats}
+                  className="p-2 rounded-xl bg-white/5 border border-oahl-border hover:bg-white/10 transition disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingStats ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="panel p-6 bg-gradient-to-br from-oahl-tech/10 to-transparent border-oahl-tech/20">
+                  <p className="text-[10px] uppercase tracking-wider font-mono text-oahl-textMuted mb-1">Total Revenue</p>
+                  <p className="text-4xl font-mono text-oahl-tech font-bold">
+                    {loadingStats ? <RefreshCw className="w-8 h-8 animate-spin opacity-20" /> : `$${(providerStats?.total_earnings || 0).toFixed(2)}`}
+                  </p>
+                </div>
+                <div className="panel p-6 bg-oahl-surface/40">
+                  <p className="text-[10px] uppercase tracking-wider font-mono text-oahl-textMuted mb-1">Active Devices</p>
+                  <p className="text-4xl font-mono text-white font-bold">
+                    {loadingStats ? <RefreshCw className="w-8 h-8 animate-spin opacity-20" /> : providerStats?.device_count || 0}
+                  </p>
+                </div>
+                <div className="panel p-6 bg-oahl-surface/40">
+                  <p className="text-[10px] uppercase tracking-wider font-mono text-oahl-textMuted mb-1">Online Nodes</p>
+                  <p className="text-4xl font-mono text-white font-bold">
+                    {loadingStats ? <RefreshCw className="w-8 h-8 animate-spin opacity-20" /> : providerStats?.nodes?.length || 0}
+                  </p>
+                </div>
+              </div>
+
+              <div className="panel overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead>
+                      <tr className="border-b border-oahl-border bg-black/20 text-oahl-textMuted text-xs uppercase tracking-wider">
+                        <th className="px-6 py-4 font-medium">Node ID</th>
+                        <th className="px-6 py-4 font-medium">Status</th>
+                        <th className="px-6 py-4 font-medium">Devices</th>
+                        <th className="px-6 py-4 font-medium">Earnings</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-oahl-border/50">
+                      {loadingStats ? (
+                        <tr><td colSpan={4} className="px-6 py-8 text-center text-oahl-textMuted">Loading stats...</td></tr>
+                      ) : (providerStats?.nodes || []).map(node => (
+                        <tr key={node.node_id} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="px-6 py-4 font-mono text-xs">{node.node_id}</td>
+                          <td className="px-6 py-4">
+                            <span className="flex items-center gap-1.5 text-green-400 text-xs">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Online
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-oahl-text-main">{node.device_count}</td>
+                          <td className="px-6 py-4 font-mono text-oahl-tech">${node.earnings.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'hardware' && portalMode === 'provider' && (
+            <>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-semibold tracking-tight">Your Hardware</h2>
+                  <p className="text-sm text-oahl-textMuted mt-1">Manage and monitor the status of your connected devices.</p>
+                </div>
+                <button 
+                  onClick={fetchProviderDevices}
+                  disabled={loadingProviderDevices}
+                  className="p-2 rounded-xl bg-white/5 border border-oahl-border hover:bg-white/10 transition disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingProviderDevices ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+
+              <div className="grid gap-4">
+                {loadingProviderDevices ? (
+                  <div className="panel p-12 text-center text-oahl-textMuted italic">Fetching device status...</div>
+                ) : providerDevices.length === 0 ? (
+                  <div className="panel p-12 text-center text-oahl-textMuted italic">No hardware registered under this account. Run 'oahl start' on your local node.</div>
+                ) : (
+                  providerDevices.map(device => (
+                    <div key={device.id} className="panel p-6 flex flex-col lg:flex-row lg:items-center gap-6">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="px-2 py-0.5 rounded-md bg-oahl-tech/10 text-oahl-tech text-[10px] font-mono uppercase font-bold border border-oahl-tech/20">
+                            {device.type}
+                          </span>
+                          <h3 className="text-lg font-semibold">{device.name}</h3>
+                        </div>
+                        <div className="text-xs text-oahl-textMuted font-mono">ID: {device.id}</div>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {device.capabilities.map((cap: any) => (
+                            <span key={typeof cap === 'string' ? cap : cap.name} className="px-2 py-1 rounded-lg bg-white/5 border border-oahl-border text-xs font-mono">
+                              {typeof cap === 'string' ? cap : cap.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="lg:w-48 lg:border-l border-oahl-border lg:pl-6">
+                        <p className="text-[10px] uppercase tracking-wider font-mono text-oahl-textMuted mb-1">Device Earnings</p>
+                        <p className="text-2xl font-mono text-oahl-tech font-bold">${(device.earnings || 0).toFixed(2)}</p>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             </>
