@@ -80,6 +80,13 @@
           "type": { "type": "string" },
           "adapter": { "type": "string" },
           "owner_id": { "type": "string" },
+          "manufacturer": { "type": "string" },
+          "model": { "type": "string" },
+          "serial_number": { "type": "string" },
+          "semantic_context": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
           "capabilities": {
             "type": "array",
             "items": { "type": "string" }

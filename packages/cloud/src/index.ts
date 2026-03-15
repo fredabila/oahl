@@ -399,9 +399,14 @@ app.get('/v1/capabilities', authAgent, async (req, res) => {
           availableDevices.push({
             id: device.id,
             type: device.type,
+            name: device.name,
             capabilities,
             provider: providerName,
             node_id: node.node_id,
+            manufacturer: device.manufacturer,
+            model: device.model,
+            serial_number: device.serial_number,
+            semantic_context: device.semantic_context,
             status: "available"
           });
         }

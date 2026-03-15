@@ -3,12 +3,19 @@ export interface Device {
   type: string;
   name: string;
   isPublic: boolean;
+  manufacturer?: string;
+  model?: string;
+  serial_number?: string;
+  semantic_context?: string[]; // For W3C WoT @context alignment
+  metadata?: Record<string, any>;
 }
 
 export interface Capability {
   name: string;
   description: string;
   schema: any; // JSON Schema for arguments
+  instructions?: string; // Natural language instructions for AI Agents (MCP style)
+  semantic_type?: string; // e.g. "ActionAffordance" from WoT
   helper_url?: string;
   template?: string;
   context?: string;

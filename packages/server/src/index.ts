@@ -603,6 +603,10 @@ async function startCloudHeartbeat(config: any, adapters: Adapter[]) {
               capabilities,
               adapter: adapter.id || adapter.constructor.name,
               owner_id: configured.owner_id || config.owner_id || config.provider?.owner_id,
+              manufacturer: configured.manufacturer,
+              model: configured.model,
+              serial_number: configured.serial_number,
+              semantic_context: configured.semantic_context,
               access_policy: normalizedAccessPolicy
             });
           }
