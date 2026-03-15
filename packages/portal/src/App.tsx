@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, KeyRound, LayoutDashboard, LogOut, Wallet, Plus, CreditCard, ChevronRight, Cpu, Globe, Search, Copy, Check, Trash2, RefreshCw, User, HardDrive } from 'lucide-react';
+import { Bot, LayoutDashboard, LogOut, Wallet, Plus, CreditCard, ChevronRight, Cpu, Globe, Search, Copy, Check, Trash2, RefreshCw, User, HardDrive } from 'lucide-react';
 
 type Developer = {
   email: string;

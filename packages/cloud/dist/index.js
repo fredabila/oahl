@@ -325,6 +325,275 @@ app.post('/v1/admin/agents/:key/fund', authAdmin, async (req, res) => {
     }
 });
 /**
+ * 0b. DEVELOPER PORTAL ENDPOINTS (Simulated User Auth)
+ */
+// Middleware: Authenticate Portal User
+const authPortal = async (req, res, next) => {
+    const token = req.headers['authorization']?.split(' ')[1];
+    if (!token) {
+        return res.status(401).json({ error: 'Unauthorized. Missing portal token.' });
+    }
+    try {
+        const sessionStr = await redisClient.get(`portal_session:${token}`);
+        if (!sessionStr) {
+            return res.status(401).json({ error: 'Unauthorized. Invalid or expired portal token.' });
+        }
+        const sessionData = JSON.parse(sessionStr);
+        req.portalUser = sessionData; // attach user to request
+        next();
+    }
+    catch (err) {
+        console.error(`[Portal Auth] Error:`, err);
+        res.status(500).json({ error: 'Internal server error during authentication' });
+    }
+};
+// Login or Register a Developer
+app.post('/v1/portal/auth', async (req, res) => {
+    try {
+        const { email, pin } = req.body;
+        if (!email || !pin || pin.length !== 6) {
+            return res.status(400).json({ error: "Valid email and 6-digit pin required" });
+        }
+        const emailKey = email.toLowerCase().trim();
+        const devKey = `developer:${emailKey}`;
+        let devStr = await redisClient.get(devKey);
+        if (!devStr) {
+            // Auto-register new developer
+            const newDev = {
+                email: emailKey,
+                pin: pin, // In production, hash this!
+                org_id: `org_${(0, crypto_1.randomUUID)().split('-')[0]}`,
+                created_at: Date.now()
+            };
+            await redisClient.set(devKey, JSON.stringify(newDev));
+            devStr = JSON.stringify(newDev);
+        }
+        const devData = JSON.parse(devStr);
+        // Verify PIN
+        if (devData.pin !== pin) {
+            return res.status(401).json({ error: "Invalid PIN" });
+        }
+        // Create session token
+        const token = `pt_${(0, crypto_1.randomUUID)()}`;
+        const sessionData = { email: devData.email, org_id: devData.org_id };
+        // Sessions expire in 24 hours
+        await redisClient.set(`portal_session:${token}`, JSON.stringify(sessionData), { EX: 86400 });
+        res.json({
+            status: "success",
+            token,
+            developer: { email: devData.email, org_id: devData.org_id }
+        });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// List Agents for the logged-in Developer
+app.get('/v1/portal/agents', authPortal, async (req, res) => {
+    try {
+        const orgId = req.portalUser.org_id;
+        const keys = await redisClient.keys('agent_key:*');
+        const agents = [];
+        for (const key of keys) {
+            const dataStr = await redisClient.get(key);
+            if (dataStr) {
+                const agentData = JSON.parse(dataStr);
+                if (agentData.org_id === orgId) {
+                    agents.push({
+                        key: key.replace('agent_key:', ''),
+                        ...agentData
+                    });
+                }
+            }
+        }
+        res.json({ agents });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// Create a new Agent Key for this Developer
+app.post('/v1/portal/agents', authPortal, async (req, res) => {
+    try {
+        const orgId = req.portalUser.org_id;
+        const { name } = req.body;
+        const newKey = `sk-agent-${(0, crypto_1.randomUUID)()}`;
+        const agentData = {
+            name: name || 'Unnamed Agent',
+            org_id: orgId,
+            balance: 0,
+            created_at: Date.now()
+        };
+        await redisClient.set(`agent_key:${newKey}`, JSON.stringify(agentData));
+        res.json({
+            status: "success",
+            api_key: newKey,
+            agent: agentData
+        });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// Revoke an Agent Key
+app.delete('/v1/portal/agents/:key', authPortal, async (req, res) => {
+    try {
+        const orgId = req.portalUser.org_id;
+        const key = req.params.key;
+        const dataStr = await redisClient.get(`agent_key:${key}`);
+        if (!dataStr) {
+            return res.status(404).json({ error: "Agent key not found" });
+        }
+        const agentData = JSON.parse(dataStr);
+        // Security check: ensure the developer owns this agent
+        if (agentData.org_id !== orgId) {
+            return res.status(403).json({ error: "You do not own this agent" });
+        }
+        await redisClient.del(`agent_key:${key}`);
+        res.json({
+            status: "success",
+            message: "Agent key revoked"
+        });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// Add funds to a specific Agent (Simulated Stripe flow for the developer)
+app.post('/v1/portal/agents/:key/fund', authPortal, async (req, res) => {
+    try {
+        const orgId = req.portalUser.org_id;
+        const { amount } = req.body;
+        const key = req.params.key;
+        if (typeof amount !== 'number' || amount <= 0) {
+            return res.status(400).json({ error: "amount must be a positive number" });
+        }
+        const dataStr = await redisClient.get(`agent_key:${key}`);
+        if (!dataStr) {
+            return res.status(404).json({ error: "Agent key not found" });
+        }
+        const agentData = JSON.parse(dataStr);
+        // Security check: ensure the developer owns this agent
+        if (agentData.org_id !== orgId) {
+            return res.status(403).json({ error: "You do not own this agent" });
+        }
+        agentData.balance = (agentData.balance || 0) + amount;
+        await redisClient.set(`agent_key:${key}`, JSON.stringify(agentData));
+        res.json({
+            status: "success",
+            agent: agentData
+        });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// List Available Capabilities for Portal Users
+app.get('/v1/portal/capabilities', authPortal, async (req, res) => {
+    try {
+        // Reuse discovery logic but for portal users (no agent identity needed for browsing)
+        const keys = await redisClient.keys('node:*');
+        const availableDevices = [];
+        for (const key of keys) {
+            const nodeStr = await redisClient.get(key);
+            if (nodeStr) {
+                const node = JSON.parse(nodeStr);
+                if (node.devices) {
+                    for (const device of node.devices) {
+                        // For portal browsing, we show all "public" or "shared" devices 
+                        // In a real system, we'd filter by what this specific developer's org can see
+                        const policy = resolveDeviceAccessPolicy(device);
+                        if (policy.visibility === 'private')
+                            continue;
+                        availableDevices.push({
+                            id: device.id,
+                            type: device.type,
+                            name: device.name,
+                            capabilities: device.capabilities,
+                            provider: node.provider?.name || "Unknown Provider",
+                            node_id: node.node_id,
+                            pricing: device.pricing,
+                            status: "available"
+                        });
+                    }
+                }
+            }
+        }
+        res.json({ devices: availableDevices });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+/**
+ * 0c. PROVIDER PORTAL ENDPOINTS
+ */
+// Get Provider Stats (Earnings & Device Count)
+app.get('/v1/portal/provider/stats', authPortal, async (req, res) => {
+    try {
+        const email = req.portalUser.email;
+        const keys = await redisClient.keys('node:*');
+        let totalEarnings = 0;
+        let deviceCount = 0;
+        const activeNodes = [];
+        for (const key of keys) {
+            const nodeStr = await redisClient.get(key);
+            if (nodeStr) {
+                const node = JSON.parse(nodeStr);
+                // Match by email provided in the node registration
+                if (node.owner_email === email) {
+                    totalEarnings += (node.earnings || 0);
+                    deviceCount += (node.devices?.length || 0);
+                    activeNodes.push({
+                        node_id: node.node_id,
+                        status: 'online',
+                        last_seen: node.last_seen,
+                        earnings: node.earnings || 0,
+                        device_count: node.devices?.length || 0
+                    });
+                }
+            }
+        }
+        res.json({
+            total_earnings: totalEarnings,
+            device_count: deviceCount,
+            nodes: activeNodes
+        });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// List Provider's Specific Devices
+app.get('/v1/portal/provider/devices', authPortal, async (req, res) => {
+    try {
+        const email = req.portalUser.email;
+        const keys = await redisClient.keys('node:*');
+        const myDevices = [];
+        for (const key of keys) {
+            const nodeStr = await redisClient.get(key);
+            if (nodeStr) {
+                const node = JSON.parse(nodeStr);
+                if (node.owner_email === email) {
+                    if (node.devices) {
+                        for (const device of node.devices) {
+                            myDevices.push({
+                                ...device,
+                                node_id: node.node_id,
+                                earnings: node.device_earnings?.[device.id] || 0
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        res.json({ devices: myDevices });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+/**
  * 1. NODE REGISTRATION
  */
 app.post('/v1/provider/nodes/register', authProvider, async (req, res) => {

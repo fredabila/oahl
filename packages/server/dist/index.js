@@ -570,6 +570,11 @@ async function startCloudHeartbeat(config, adapters) {
                             capabilities,
                             adapter: adapter.id || adapter.constructor.name,
                             owner_id: configured.owner_id || config.owner_id || config.provider?.owner_id,
+                            manufacturer: configured.manufacturer,
+                            model: configured.model,
+                            serial_number: configured.serial_number,
+                            semantic_context: configured.semantic_context,
+                            pricing: configured.pricing,
                             access_policy: normalizedAccessPolicy
                         });
                     }
@@ -587,6 +592,8 @@ async function startCloudHeartbeat(config, adapters) {
                 body: JSON.stringify({
                     node_id: config.node_id,
                     owner_id: config.owner_id || config.provider?.owner_id,
+                    owner_email: process.env.OAHL_OWNER_EMAIL,
+                    owner_pin: process.env.OAHL_OWNER_PIN,
                     provider: config.provider,
                     devices: activeDevices
                 })

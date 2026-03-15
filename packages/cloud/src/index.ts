@@ -688,12 +688,30 @@ app.get('/v1/portal/provider/devices', authPortal, async (req, res) => {
  * 1. NODE REGISTRATION
  */
 app.post('/v1/provider/nodes/register', authProvider, async (req, res) => {
-  const nodeData = req.body;
-  if (!nodeData.node_id) return res.status(400).json({ error: "Missing node_id" });
-  nodeData.last_seen = Date.now();
-  await redisClient.set(`node:${nodeData.node_id}`, JSON.stringify(nodeData), { EX: 300 });
-  console.log(`[Cloud] 🟢 Node registered: ${nodeData.node_id}`);
-  res.json({ status: "success" });
+  try {
+    const nodeData = req.body;
+    if (!nodeData.node_id) return res.status(400).json({ error: "Missing node_id" });
+    
+    // Simulation: If a node registers, we preserve its cumulative earnings if it already existed
+    const existingNodeStr = await redisClient.get(`node:${nodeData.node_id}`);
+    if (existingNodeStr) {
+      const existing = JSON.parse(existingNodeStr);
+      // Keep existing financial data if not provided in update
+      nodeData.earnings = nodeData.earnings !== undefined ? nodeData.earnings : (existing.earnings || 0);
+      nodeData.device_earnings = nodeData.device_earnings || existing.device_earnings || {};
+    } else {
+      nodeData.earnings = nodeData.earnings || 0;
+      nodeData.device_earnings = nodeData.device_earnings || {};
+    }
+
+    nodeData.last_seen = Date.now();
+    await redisClient.set(`node:${nodeData.node_id}`, JSON.stringify(nodeData), { EX: 300 });
+    
+    console.log(`[Cloud] 🟢 Node registered: ${nodeData.node_id} (Owner: ${nodeData.owner_email || 'anonymous'})`);
+    res.json({ status: "success" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/v1/provider/nodes/:id', authProvider, async (req, res) => {
