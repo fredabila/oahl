@@ -531,7 +531,7 @@ app.get('/v1/portal/capabilities', authPortal, async (req, res) => {
 // Get Provider Stats (Earnings & Device Count)
 app.get('/v1/portal/provider/stats', authPortal, async (req, res) => {
     try {
-        const email = req.portalUser.email;
+        const email = req.portalUser.email.toLowerCase().trim();
         const keys = await redisClient.keys('node:*');
         let totalEarnings = 0;
         let deviceCount = 0;
@@ -540,8 +540,8 @@ app.get('/v1/portal/provider/stats', authPortal, async (req, res) => {
             const nodeStr = await redisClient.get(key);
             if (nodeStr) {
                 const node = JSON.parse(nodeStr);
-                // Match by email provided in the node registration
-                if (node.owner_email === email) {
+                // Match by email provided in the node registration (normalized)
+                if (node.owner_email && node.owner_email.toLowerCase().trim() === email) {
                     totalEarnings += (node.earnings || 0);
                     deviceCount += (node.devices?.length || 0);
                     activeNodes.push({
@@ -567,14 +567,14 @@ app.get('/v1/portal/provider/stats', authPortal, async (req, res) => {
 // List Provider's Specific Devices
 app.get('/v1/portal/provider/devices', authPortal, async (req, res) => {
     try {
-        const email = req.portalUser.email;
+        const email = req.portalUser.email.toLowerCase().trim();
         const keys = await redisClient.keys('node:*');
         const myDevices = [];
         for (const key of keys) {
             const nodeStr = await redisClient.get(key);
             if (nodeStr) {
                 const node = JSON.parse(nodeStr);
-                if (node.owner_email === email) {
+                if (node.owner_email && node.owner_email.toLowerCase().trim() === email) {
                     if (node.devices) {
                         for (const device of node.devices) {
                             myDevices.push({
@@ -597,13 +597,34 @@ app.get('/v1/portal/provider/devices', authPortal, async (req, res) => {
  * 1. NODE REGISTRATION
  */
 app.post('/v1/provider/nodes/register', authProvider, async (req, res) => {
-    const nodeData = req.body;
-    if (!nodeData.node_id)
-        return res.status(400).json({ error: "Missing node_id" });
-    nodeData.last_seen = Date.now();
-    await redisClient.set(`node:${nodeData.node_id}`, JSON.stringify(nodeData), { EX: 300 });
-    console.log(`[Cloud] 🟢 Node registered: ${nodeData.node_id}`);
-    res.json({ status: "success" });
+    try {
+        const nodeData = req.body;
+        if (!nodeData.node_id)
+            return res.status(400).json({ error: "Missing node_id" });
+        // Normalize owner email
+        if (nodeData.owner_email) {
+            nodeData.owner_email = nodeData.owner_email.toLowerCase().trim();
+        }
+        // Simulation: If a node registers, we preserve its cumulative earnings if it already existed
+        const existingNodeStr = await redisClient.get(`node:${nodeData.node_id}`);
+        if (existingNodeStr) {
+            const existing = JSON.parse(existingNodeStr);
+            // Keep existing financial data if not provided in update
+            nodeData.earnings = nodeData.earnings !== undefined ? nodeData.earnings : (existing.earnings || 0);
+            nodeData.device_earnings = nodeData.device_earnings || existing.device_earnings || {};
+        }
+        else {
+            nodeData.earnings = nodeData.earnings || 0;
+            nodeData.device_earnings = nodeData.device_earnings || {};
+        }
+        nodeData.last_seen = Date.now();
+        await redisClient.set(`node:${nodeData.node_id}`, JSON.stringify(nodeData), { EX: 300 });
+        console.log(`[Cloud] 🟢 Node registered: ${nodeData.node_id} (Owner: ${nodeData.owner_email || 'anonymous'})`);
+        res.json({ status: "success" });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 app.get('/v1/provider/nodes/:id', authProvider, async (req, res) => {
     const nodeId = req.params.id;

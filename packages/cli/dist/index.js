@@ -729,6 +729,8 @@ program
     ]);
     const config = {
         node_id: response.nodeId,
+        cloud_url: "https://oahl.onrender.com",
+        provider_api_key: "123456",
         provider: {
             name: response.providerName
         },

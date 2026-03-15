@@ -47,12 +47,15 @@ const PORT = process.env.PORT || 3000;
 // Load configuration
 let config = {
     node_id: 'default-node',
+    cloud_url: 'https://oahl.onrender.com',
+    provider_api_key: '123456',
     devices: []
 };
 const configPath = path.resolve(process.cwd(), 'oahl-config.json');
 if (fs.existsSync(configPath)) {
     try {
-        config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        const fileConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        config = { ...config, ...fileConfig };
         console.log(`[Config] 🟢 Loaded config from ${configPath}`);
     }
     catch (err) {
