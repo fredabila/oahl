@@ -2,23 +2,151 @@
   "node_id": "my-laptop-01",
   "cloud_url": "https://oahl.onrender.com",
   "provider_api_key": "123456",
+  "provider": {
+    "name": "My Personal Test Node"
+  },
   "plugins": [
     "@oahl/adapter-mock",
     "@oahl/adapter-usb-camera",
     "@oahl/adapter-rtl-sdr",
     "@oahl/adapter-android"
   ],
-  "provider": {
-    "name": "My Personal Test Node"
-  },
   "devices": [
     {
       "id": "usb-cam-1",
       "type": "camera",
-      "adapter": "usb-camera",
+      "adapter": "usb-camera-adapter",
       "capabilities": [
-        "camera.capture"
-      ]
+        "capture_image",
+        "hardware.baseline"
+      ],
+      "policy": {
+        "public": false,
+        "max_session_minutes": 30
+      }
+    },
+    {
+      "id": "mock-device-1",
+      "type": "mock",
+      "adapter": "mock-adapter",
+      "capabilities": [
+        "ping",
+        "hardware.baseline"
+      ],
+      "policy": {
+        "public": true,
+        "max_session_minutes": 30
+      }
+    },
+    {
+      "id": "rtl-sdr-1",
+      "type": "sdr",
+      "adapter": "rtl-sdr-adapter",
+      "capabilities": [
+        "tune",
+        "read_samples",
+        "hardware.baseline"
+      ],
+      "policy": {
+        "public": false,
+        "max_session_minutes": 30
+      }
+    },
+    {
+      "id": "adb-085552528H003259-83cftS._adb-tls-connect._tcp",
+      "type": "android",
+      "adapter": "@oahl/adapter-android",
+      "capabilities": [
+        "screen.screenshot",
+        "screen.record",
+        "input.tap",
+        "input.swipe",
+        "input.text",
+        "input.keyevent",
+        "camera.photo",
+        "camera.video",
+        "camera.list",
+        "media.pull_latest",
+        "media.list",
+        "microphone.record",
+        "notification.list",
+        "notification.send",
+        "notification.dismiss_all",
+        "sms.list",
+        "sms.send",
+        "call.initiate",
+        "call.end",
+        "call.log",
+        "sensor.gps",
+        "sensor.accelerometer",
+        "sensor.gyroscope",
+        "sensor.light",
+        "sensor.battery",
+        "sensor.list",
+        "app.launch",
+        "app.stop",
+        "app.install",
+        "app.uninstall",
+        "app.list",
+        "file.push",
+        "file.pull",
+        "system.info",
+        "system.shell",
+        "logcat.dump",
+        "ui.dump",
+        "ui.find",
+        "ui.current_app",
+        "ui.current_activity",
+        "ui.get_text",
+        "ui.tap_element",
+        "ui.long_press_element",
+        "input.long_press",
+        "input.double_tap",
+        "input.drag",
+        "input.pinch",
+        "ui.clear_text",
+        "ui.clear_and_type",
+        "ui.wait_for_element",
+        "ui.wait_for_gone",
+        "ui.wait_for_activity",
+        "ui.scroll_to",
+        "ui.scroll",
+        "ui.dismiss_dialog",
+        "ui.handle_permission_dialog",
+        "ui.check_dialog",
+        "app.current",
+        "app.clear_data",
+        "app.info",
+        "app.permissions.list",
+        "app.permissions.grant",
+        "app.permissions.revoke",
+        "app.broadcast",
+        "system.clipboard.set",
+        "system.clipboard.get",
+        "system.wake",
+        "system.lock",
+        "system.rotate",
+        "system.volume",
+        "system.wifi",
+        "system.airplane_mode",
+        "system.setting.get",
+        "system.setting.set",
+        "system.props",
+        "file.list",
+        "file.delete",
+        "file.exists",
+        "file.read"
+      ],
+      "access_policy": {
+        "visibility": "public",
+        "allowed_agents": [],
+        "allowed_orgs": [],
+        "denied_agents": []
+      },
+      "policy": {
+        "public": true,
+        "max_session_minutes": 30
+      }
     }
   ]
 }

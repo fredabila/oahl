@@ -328,8 +328,12 @@ async function managePlugins(config) {
         }
     }
 }
-async function promptDevice(existing) {
+async function promptDevice(plugins, existing) {
     const initialVisibility = existing?.access_policy?.visibility || (existing?.policy?.public ? 'public' : 'private');
+    const adapterChoices = plugins.map(p => ({ title: p, value: p }));
+    adapterChoices.push({ title: 'Manual entry...', value: '__manual__' });
+    const initialAdapterIndex = existing?.adapter ? adapterChoices.findIndex(c => c.value === existing.adapter) : 0;
+    const safeAdapterIndex = initialAdapterIndex >= 0 ? initialAdapterIndex : adapterChoices.length - 1;
     const response = await (0, prompts_1.default)([
         {
             type: 'text',
@@ -344,9 +348,16 @@ async function promptDevice(existing) {
             initial: existing?.type || 'custom'
         },
         {
-            type: 'text',
-            name: 'adapter',
-            message: 'Adapter name',
+            type: 'select',
+            name: 'adapterSelection',
+            message: 'Adapter plugin',
+            choices: adapterChoices,
+            initial: safeAdapterIndex
+        },
+        {
+            type: (prev) => prev === '__manual__' ? 'text' : null,
+            name: 'customAdapter',
+            message: 'Enter adapter name',
             initial: existing?.adapter || 'mock'
         },
         {
@@ -404,10 +415,11 @@ async function promptDevice(existing) {
     }
     const visibility = (response.visibility || 'public');
     const parsedOwnerId = (response.owner_id || '').trim();
+    const adapter = (response.adapterSelection === '__manual__' ? response.customAdapter : response.adapterSelection) || 'mock';
     return {
         id,
         type: (response.type || 'custom').trim(),
-        adapter: (response.adapter || 'mock').trim(),
+        adapter: adapter.trim(),
         capabilities: parseCsv(response.capabilities || ''),
         ...(parsedOwnerId ? { owner_id: parsedOwnerId } : {}),
         access_policy: {
@@ -438,7 +450,7 @@ async function manageDevices(config) {
         if (!choice.action || choice.action === 'back')
             return;
         if (choice.action === 'add') {
-            const device = await promptDevice();
+            const device = await promptDevice(config.plugins);
             if (device) {
                 config.devices.push(device);
             }
@@ -460,7 +472,7 @@ async function manageDevices(config) {
             const index = config.devices.findIndex((device) => device.id === select.deviceId);
             if (index < 0)
                 continue;
-            const updated = await promptDevice(config.devices[index]);
+            const updated = await promptDevice(config.plugins, config.devices[index]);
             if (updated) {
                 config.devices[index] = updated;
             }
@@ -1088,6 +1100,26 @@ program
     }
     catch (err) {
         console.error(`❌ Failed to start server: ${err.message}`);
+    }
+});
+program
+    .command('mcp')
+    .description('Start an MCP server to expose OAHL capabilities to an agent')
+    .option('-u, --url <url>', 'Cloud URL', 'https://oahl.onrender.com')
+    .option('-k, --key <key>', 'Agent API Key (or set OAHL_AGENT_API_KEY)')
+    .action(async (options) => {
+    const apiKey = options.key || process.env.OAHL_AGENT_API_KEY;
+    if (!apiKey) {
+        console.error('❌ Error: Agent API Key is required via --key or OAHL_AGENT_API_KEY');
+        process.exit(1);
+    }
+    try {
+        const { runMcpServer } = require('./mcp');
+        await runMcpServer(options.url, apiKey);
+    }
+    catch (err) {
+        console.error(`❌ MCP Server error: ${err.message}`);
+        process.exit(1);
     }
 });
 program.parse();

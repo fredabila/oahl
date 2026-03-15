@@ -28,6 +28,14 @@ export interface Capability {
     metadata?: Record<string, any>;
     pricing?: PricingDescriptor;
 }
+export interface ExecutionResult {
+    status: 'success' | 'error';
+    error_code?: string;
+    message?: string;
+    data?: any;
+    agent_recovery_hints?: string[];
+    [key: string]: any;
+}
 export interface Adapter {
     id: string;
     initialize(): Promise<void>;
@@ -37,7 +45,7 @@ export interface Adapter {
     }>;
     getDevices(): Promise<Device[]>;
     getCapabilities(deviceId: string): Promise<Capability[]>;
-    execute(deviceId: string, capabilityName: string, args: any): Promise<any>;
+    execute(deviceId: string, capabilityName: string, args: any): Promise<any | ExecutionResult>;
 }
 export interface Session {
     id: string;

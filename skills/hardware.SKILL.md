@@ -125,6 +125,35 @@ Before execute, reconfirm that:
 
 ---
 
+## 5.1) Execute Batch API (For multiple commands)
+
+To reduce latency, you can send multiple commands to the reserved hardware session sequentially.
+
+### Endpoint
+`POST /v1/sessions/{session_id}/execute-batch`
+
+### Body
+```json
+{
+  "commands": [
+    { "capability": "arm.move", "params": { "x": 10 } },
+    { "capability": "arm.close", "params": {} }
+  ],
+  "timeout_ms": 120000
+}
+```
+
+---
+
+## 5.2) Events API (For asynchronous observation)
+
+If you need to wait for a physical event, do not aggressively poll. Subscribe to the SSE endpoint.
+
+### Endpoint
+`GET /v1/sessions/{session_id}/events?capability=sensor.motion`
+
+---
+
 ## 6) Stop API
 
 ### Endpoint
@@ -151,6 +180,10 @@ Always call stop once the task is complete (success or failure path).
 - `504 Hardware Node Timeout`
   - Cause: node offline/slow.
   - Action: surface timeout, attempt session stop, offer retry.
+
+- `Hardware Execution Error` (Response body contains `status: "error"`)
+  - Cause: The physical hardware failed to execute the task.
+  - Action: Check the `error.agent_recovery_hints` array in the JSON response. These are natural-language instructions from the hardware developer on how you can autonomously fix the issue (e.g., "Reset the camera", "Reduce the resolution"). If hints are provided, execute the suggested fix and retry boundedly.
 
 Do not perform unlimited retries. Keep retries bounded and explicit.
 

@@ -71,6 +71,12 @@
         "retryable": {
           "type": "boolean"
         },
+        "agent_recovery_hints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "details": {
           "type": ["object", "array", "string", "number", "boolean", "null"]
         }

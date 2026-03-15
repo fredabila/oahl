@@ -31,13 +31,22 @@ export interface Capability {
   pricing?: PricingDescriptor;
 }
 
+export interface ExecutionResult {
+  status: 'success' | 'error';
+  error_code?: string;
+  message?: string;
+  data?: any;
+  agent_recovery_hints?: string[]; // Natural language hints for AI Agents to recover from errors
+  [key: string]: any;
+}
+
 export interface Adapter {
   id: string;
   initialize(): Promise<void>;
   healthCheck(): Promise<{ status: 'ok' | 'error'; message?: string }>;
   getDevices(): Promise<Device[]>;
   getCapabilities(deviceId: string): Promise<Capability[]>;
-  execute(deviceId: string, capabilityName: string, args: any): Promise<any>;
+  execute(deviceId: string, capabilityName: string, args: any): Promise<any | ExecutionResult>;
 }
 
 export interface Session {

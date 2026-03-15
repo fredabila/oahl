@@ -970,6 +970,12 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
   const session = JSON.parse(sessionStr);
 
   const requestId = `cmd-${randomUUID()}`;
+  const requestedTimeoutMs = typeof command.timeout_ms === 'number' ? command.timeout_ms : undefined;
+  
+  const fastPathTimeout = requestedTimeoutMs || WS_FASTPATH_TIMEOUT_MS;
+  const graceTimeout = requestedTimeoutMs ? 0 : WS_LATE_RESULT_GRACE_MS;
+  const pollingTimeoutS = requestedTimeoutMs ? Math.ceil(requestedTimeoutMs / 1000) : POLLING_RESULT_TIMEOUT_S;
+
   const relayPayload = {
     requestId,
     sessionId,
@@ -984,7 +990,7 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
   if (nodeSocket && nodeSocket.readyState === WebSocket.OPEN) {
     try {
       nodeSocket.send(JSON.stringify({ type: 'command', payload: relayPayload }));
-      const wsResult = await waitForWsResult(requestId, WS_FASTPATH_TIMEOUT_MS);
+      const wsResult = await waitForWsResult(requestId, fastPathTimeout);
       res.setHeader('x-oahl-relay-mode', 'websocket');
       res.setHeader('x-oahl-request-id', requestId);
       return res.json(wsResult);
@@ -992,17 +998,19 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
       console.warn(`[Cloud WS] ⚠️ Fast-path timed out for ${requestId}: ${wsErr.message}`);
       wsFastPathTimedOut = true;
 
-      const lateWsResult = await waitForLateResultFromQueue(requestId, WS_LATE_RESULT_GRACE_MS);
-      if (lateWsResult) {
-        res.setHeader('x-oahl-relay-mode', 'websocket-late');
-        res.setHeader('x-oahl-request-id', requestId);
-        return res.json(lateWsResult);
+      if (graceTimeout > 0) {
+        const lateWsResult = await waitForLateResultFromQueue(requestId, graceTimeout);
+        if (lateWsResult) {
+          res.setHeader('x-oahl-relay-mode', 'websocket-late');
+          res.setHeader('x-oahl-request-id', requestId);
+          return res.json(lateWsResult);
+        }
       }
     }
   }
 
   if (wsFastPathTimedOut && nodeSocket?.readyState === WebSocket.OPEN) {
-    console.warn(`[Cloud WS] 🛑 WebSocket total timeout for ${requestId} after ${WS_FASTPATH_TIMEOUT_MS + WS_LATE_RESULT_GRACE_MS}ms`);
+    console.warn(`[Cloud WS] 🛑 WebSocket total timeout for ${requestId} after ${fastPathTimeout + graceTimeout}ms`);
     res.setHeader('x-oahl-relay-mode', 'websocket-timeout');
     res.setHeader('x-oahl-request-id', requestId);
     return res.status(504).json({
@@ -1021,7 +1029,7 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
 
   // Wait for result (timeout configurable)
   try {
-    const result = await redisClient.brPop(`result:${requestId}`, POLLING_RESULT_TIMEOUT_S);
+    const result = await redisClient.brPop(`result:${requestId}`, pollingTimeoutS);
     if (result) {
       res.setHeader('x-oahl-relay-mode', 'polling');
       res.setHeader('x-oahl-request-id', requestId);
@@ -1040,6 +1048,145 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: "Relay error: " + err.message });
   }
+});
+
+/**
+ * 4b. AGENT EXECUTE BATCH (COMMAND RELAY)
+ */
+app.post('/v1/sessions/:id/execute-batch', authAgent, async (req, res) => {
+  const sessionId = req.params.id;
+  const { commands, timeout_ms } = req.body;
+
+  if (!Array.isArray(commands)) {
+    return res.status(400).json({ error: "Expected an array of 'commands'" });
+  }
+
+  const sessionStr = await redisClient.get(`session:${sessionId}`);
+  if (!sessionStr) return res.status(404).json({ error: "Session not found" });
+  const session = JSON.parse(sessionStr);
+
+  const requestId = `batch-${randomUUID()}`;
+  const requestedTimeoutMs = typeof timeout_ms === 'number' ? timeout_ms : undefined;
+  
+  const fastPathTimeout = requestedTimeoutMs || (WS_FASTPATH_TIMEOUT_MS * commands.length);
+  const graceTimeout = requestedTimeoutMs ? 0 : WS_LATE_RESULT_GRACE_MS;
+  const pollingTimeoutS = requestedTimeoutMs ? Math.ceil(requestedTimeoutMs / 1000) : (POLLING_RESULT_TIMEOUT_S * commands.length);
+
+  const relayPayload = {
+    requestId,
+    sessionId,
+    deviceId: session.device_id,
+    dispatchedAt: Date.now(),
+    commands
+  };
+
+  const nodeSocket = providerSocketsByNode.get(session.node_id);
+  let wsFastPathTimedOut = false;
+  if (nodeSocket && nodeSocket.readyState === WebSocket.OPEN) {
+    try {
+      nodeSocket.send(JSON.stringify({ type: 'command-batch', payload: relayPayload }));
+      const wsResult = await waitForWsResult(requestId, fastPathTimeout);
+      res.setHeader('x-oahl-relay-mode', 'websocket');
+      res.setHeader('x-oahl-request-id', requestId);
+      return res.json(wsResult);
+    } catch (wsErr: any) {
+      console.warn(`[Cloud WS] ⚠️ Fast-path timed out for batch ${requestId}: ${wsErr.message}`);
+      wsFastPathTimedOut = true;
+
+      if (graceTimeout > 0) {
+        const lateWsResult = await waitForLateResultFromQueue(requestId, graceTimeout);
+        if (lateWsResult) {
+          res.setHeader('x-oahl-relay-mode', 'websocket-late');
+          res.setHeader('x-oahl-request-id', requestId);
+          return res.json(lateWsResult);
+        }
+      }
+    }
+  }
+
+  if (wsFastPathTimedOut && nodeSocket?.readyState === WebSocket.OPEN) {
+    console.warn(`[Cloud WS] 🛑 WebSocket total timeout for batch ${requestId}`);
+    res.setHeader('x-oahl-relay-mode', 'websocket-timeout');
+    res.setHeader('x-oahl-request-id', requestId);
+    return res.status(504).json({
+      error: 'WebSocket batch command timed out waiting for provider result',
+      request_id: requestId,
+      session_id: sessionId,
+      node_id: session.node_id,
+      device_id: session.device_id
+    });
+  }
+
+  const relayPayloadJson = JSON.stringify({ type: 'command-batch', payload: relayPayload });
+
+  // Push to node's queue
+  await redisClient.lPush(`commands:${session.node_id}`, relayPayloadJson);
+
+  // Wait for result (timeout configurable)
+  try {
+    const result = await redisClient.brPop(`result:${requestId}`, pollingTimeoutS);
+    if (result) {
+      res.setHeader('x-oahl-relay-mode', 'polling');
+      res.setHeader('x-oahl-request-id', requestId);
+      res.json(JSON.parse(result.element));
+    } else {
+      res.setHeader('x-oahl-relay-mode', 'polling-timeout');
+      res.setHeader('x-oahl-request-id', requestId);
+      res.status(504).json({
+        error: "Hardware Node Timeout",
+        request_id: requestId,
+        session_id: sessionId,
+        node_id: session.node_id,
+        device_id: session.device_id
+      });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: "Relay error: " + err.message });
+  }
+});
+
+/**
+ * 4c. AGENT ASYNCHRONOUS EVENT SUBSCRIPTIONS (SSE)
+ */
+app.get('/v1/sessions/:id/events', authAgent, async (req, res) => {
+  const sessionId = req.params.id;
+  const capability = typeof req.query.capability === 'string' ? req.query.capability : undefined;
+
+  const sessionStr = await redisClient.get(`session:${sessionId}`);
+  if (!sessionStr) {
+    return res.status(404).json({ error: "Session not found" });
+  }
+  const session = JSON.parse(sessionStr);
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const subscriberId = `sub-${randomUUID()}`;
+  const channel = `events:${session.node_id}:${session.device_id}`;
+  
+  // Use a dedicated redis client for subscribing
+  const subClient = redisClient.duplicate();
+  await subClient.connect();
+
+  await subClient.subscribe(channel, (message) => {
+    try {
+      const event = JSON.parse(message);
+      if (capability && event.capability !== capability) {
+        return; // Filter by capability if specified
+      }
+      res.write(`data: ${JSON.stringify(event)}\n\n`);
+    } catch (err) {
+      console.error(`[SSE] Error parsing event message:`, err);
+    }
+  });
+
+  req.on('close', async () => {
+    console.log(`[SSE] Client disconnected, closing subscription ${subscriberId}`);
+    await subClient.unsubscribe(channel);
+    await subClient.disconnect();
+  });
 });
 
 /**

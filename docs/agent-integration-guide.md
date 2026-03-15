@@ -6,9 +6,10 @@ Your agents should not connect directly to the hardware node. Instead, they shou
 
 ## Integration Options
 
-You can integrate in two ways:
+You can integrate in three ways:
 1. **Direct API calls**: Calling the hosted API to discover, reserve, and use capabilities.
 2. **Tool or Skill Wrappers**: Providing tools for an LLM agent that act as capability wrappers.
+3. **Native MCP Server**: Expose OAHL hardware directly to MCP-compatible agents.
 
 ---
 
@@ -17,8 +18,8 @@ You can integrate in two ways:
 The recommended lifecycle is:
 1. Discover compatible capabilities.
 2. Request a session.
-3. Execute the capability.
-4. Retrieve results.
+3. Execute the capability (or a batch of capabilities).
+4. Retrieve results (or listen to SSE events).
 5. Close the session.
 
 ### Example Flow
@@ -43,13 +44,25 @@ POST /v1/requests
 POST /v1/sessions/{id}/execute
 {
   "capability": "camera.capture",
-  "params": { "resolution": "1080p" }
+  "params": { "resolution": "1080p" },
+  "timeout_ms": 60000
 }
 ```
 
-**Read result:**
+**Batch Execute tasks (Reduces latency):**
 ```http
-GET /v1/results/{id}
+POST /v1/sessions/{id}/execute-batch
+{
+  "commands": [
+    { "capability": "arm.move", "params": { "x": 10 } },
+    { "capability": "arm.close", "params": {} }
+  ]
+}
+```
+
+**Listen for hardware events:**
+```http
+GET /v1/sessions/{id}/events?capability=sensor.motion
 ```
 
 **Stop session:**
@@ -70,7 +83,7 @@ Examples:
 
 The wrapper handles:
 - endpoint calls
-- retry logic
+- retry logic (especially checking `agent_recovery_hints` in the error response)
 - polling
 - result parsing
 - session cleanup
@@ -91,7 +104,8 @@ def capture_remote_image(region="ghana", resolution="1080p"):
     # 2. Execute on assigned hardware
     result = post(f"/v1/sessions/{session_id}/execute", {
         "capability": "camera.capture",
-        "params": {"resolution": resolution, "format": "jpg"}
+        "params": {"resolution": resolution, "format": "jpg"},
+        "timeout_ms": 120000
     })
     
     # 3. Stop session (handled in finally block usually)
@@ -99,6 +113,18 @@ def capture_remote_image(region="ghana", resolution="1080p"):
 
     return result
 ```
+
+---
+
+## 3. Native Model Context Protocol (MCP) Server
+
+If your agent framework supports the standard Model Context Protocol (e.g., Anthropic's Claude Desktop, LangChain, Cursor), you do not need to write API wrappers.
+
+You can launch the built-in OAHL MCP server:
+```bash
+oahl mcp --url https://oahl.onrender.com --key <YOUR_AGENT_API_KEY>
+```
+The server will automatically fetch all available hardware capabilities from the cloud and present them as callable MCP Tools to the LLM. It automatically manages `session_id` reservation and cleanup.
 
 ## Agent Skill (`SKILL.md`)
 

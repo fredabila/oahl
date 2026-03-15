@@ -57,6 +57,7 @@ export interface CloudSessionRequestResponse {
 export interface CloudExecuteInput {
   capability: string;
   params?: JsonObject;
+  timeout_ms?: number;
 }
 
 export interface CloudStopSessionResponse {

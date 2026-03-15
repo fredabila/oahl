@@ -1,6 +1,6 @@
 {
   "name": "@oahl/cli",
-  "version": "0.1.4-rc.1",
+  "version": "0.1.4-rc.2",
   "main": "dist/index.js",
   "bin": {
     "oahl": "dist/index.js"
@@ -9,6 +9,7 @@
     "build": "tsc"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "commander": "^11.1.0",
     "prompts": "^2.4.2"
   },

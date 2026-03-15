@@ -410,6 +410,52 @@ async function handleRelayCommand(config, payload) {
     };
     return { result, resultType: 'no-adapter' };
 }
+async function handleBatchCommand(config, payload) {
+    console.log(`[Cloud Relay] 📥 Received batch commands for device ${payload.deviceId}`);
+    const relayStartedAt = Date.now();
+    const results = [];
+    const adapter = await getAdapterForDevice(payload.deviceId);
+    if (!adapter) {
+        const errResult = asExecutionResult({
+            requestId: payload.requestId,
+            deviceId: payload.deviceId,
+            capability: 'batch',
+            error: new Error(`No adapter found for device ${payload.deviceId}`)
+        });
+        return { result: errResult, resultType: 'no-adapter' };
+    }
+    let hasError = false;
+    for (const cmd of payload.commands || []) {
+        try {
+            const rawResult = await adapter.execute(payload.deviceId, cmd.capability, cmd.params || {});
+            results.push({ capability: cmd.capability, status: 'success', data: rawResult });
+        }
+        catch (execErr) {
+            console.error(`[Cloud Relay] ❌ Batch execution failed on ${cmd.capability}: ${execErr.message}`);
+            results.push({ capability: cmd.capability, status: 'error', error: execErr.message });
+            hasError = true;
+            break; // Stop on first error
+        }
+    }
+    const result = asExecutionResult({
+        requestId: payload.requestId,
+        deviceId: payload.deviceId,
+        capability: 'batch',
+        adapterId: adapter.id || adapter.constructor.name,
+        rawResult: results
+    });
+    if (hasError) {
+        result.status = 'error';
+        result.error = { code: 'BATCH_ERROR', message: 'One or more commands failed in batch' };
+    }
+    const dispatchTimestamp = Number(payload.dispatchedAt) || relayStartedAt;
+    result.meta = {
+        ...(result.meta || {}),
+        relay_latency_ms: Date.now() - dispatchTimestamp,
+        node_id: config.node_id
+    };
+    return { result, resultType: hasError ? 'error' : 'success' };
+}
 function startCloudWebSocketRelay(config) {
     if (!config.cloud_url || !config.provider_api_key || !config.node_id)
         return;
@@ -438,11 +484,20 @@ function startCloudWebSocketRelay(config) {
             socket.on('message', async (rawMessage) => {
                 try {
                     const message = JSON.parse(String(rawMessage));
-                    if (message?.type !== 'command' || !message?.payload?.requestId) {
+                    if (!message?.type || !message?.payload?.requestId) {
                         return;
                     }
                     const payload = message.payload;
-                    const { result, resultType } = await handleRelayCommand(config, payload);
+                    let result, resultType;
+                    if (message.type === 'command-batch') {
+                        ({ result, resultType } = await handleBatchCommand(config, payload));
+                    }
+                    else if (message.type === 'command') {
+                        ({ result, resultType } = await handleRelayCommand(config, payload));
+                    }
+                    else {
+                        return;
+                    }
                     if (socket.readyState === ws_1.WebSocket.OPEN) {
                         socket.send(JSON.stringify({
                             type: 'result',
@@ -492,9 +547,17 @@ async function startCloudRelay(config, adapters) {
     console.log(`[Cloud Relay] 📬 Starting HTTP Command Listener (Polling)...`);
     const relayMaxConcurrency = Math.max(1, Number.parseInt(process.env.OAHL_RELAY_MAX_CONCURRENCY || '4', 10) || 4);
     const inFlightCommands = new Set();
-    const handlePolledCommand = async (payload) => {
-        const { result, resultType } = await handleRelayCommand(config, payload);
-        await sendResultToCloud(config, payload.requestId, result, resultType);
+    const handlePolledCommand = async (payloadMsg) => {
+        let result, resultType;
+        if (payloadMsg.type === 'command-batch') {
+            ({ result, resultType } = await handleBatchCommand(config, payloadMsg.payload));
+            await sendResultToCloud(config, payloadMsg.payload.requestId, result, resultType);
+        }
+        else {
+            const actualPayload = payloadMsg.type === 'command' ? payloadMsg.payload : payloadMsg;
+            ({ result, resultType } = await handleRelayCommand(config, actualPayload));
+            await sendResultToCloud(config, actualPayload.requestId, result, resultType);
+        }
     };
     while (true) {
         try {
