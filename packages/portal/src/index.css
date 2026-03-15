@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@theme {
+  --color-oahl-bg: #0a0a0a;
+  --color-oahl-surface: #121212;
+  --color-oahl-border: #2a2a2a;
+  --color-oahl-text-main: #ffffff;
+  --color-oahl-text-muted: #8a8a8a;
+  --color-oahl-accent: #d47e5b;
+  --color-oahl-accent-hover: #bf6c4b;
+  --color-oahl-tech: #739580;
+
+  --font-sans: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-oahl-bg text-oahl-text-main font-sans;
+    margin: 0;
+  }
+}
+
+@layer utilities {
+  .panel {
+    @apply rounded-3xl border border-oahl-border bg-oahl-surface/40 backdrop-blur-md shadow-2xl;
+  }
+  
+  .input-field {
+    @apply bg-black/40 border border-oahl-border text-oahl-text-main placeholder:text-oahl-border focus:border-oahl-accent focus:outline-none focus:ring-1 focus:ring-oahl-accent/50 transition-all;
+  }
+}
