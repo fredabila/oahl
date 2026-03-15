@@ -23,6 +23,7 @@ app.use(express_1.default.json());
 // Ensure secrets are set in production
 const PROVIDER_API_KEY = process.env.PROVIDER_API_KEY || '123456';
 const AGENT_API_KEY = process.env.AGENT_API_KEY || '123456';
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY || 'admin123';
 let rawRedisUrl = (process.env.REDIS_URL || 'redis://localhost:6379')
     .replace(/\s+/g, '')
     .replace(/^['"]|['"]$/g, '')
@@ -222,13 +223,107 @@ const authProvider = (req, res, next) => {
 // - x-agent-id
 // - x-agent-org-id
 // - x-agent-roles (comma-separated)
-const authAgent = (req, res, next) => {
+const authAgent = async (req, res, next) => {
     const apiKey = req.headers['authorization']?.split(' ')[1];
-    if (apiKey !== AGENT_API_KEY) {
-        return res.status(401).json({ error: 'Unauthorized. Invalid Agent API Key.' });
+    if (!apiKey) {
+        return res.status(401).json({ error: 'Unauthorized. Missing Agent API Key.' });
+    }
+    // 1. Check the master/fallback environment key
+    if (apiKey === AGENT_API_KEY) {
+        return next();
+    }
+    // 2. Check dynamically provisioned keys in Redis (For Marketplace/Multi-tenant)
+    try {
+        const keyDataStr = await redisClient.get(`agent_key:${apiKey}`);
+        if (keyDataStr) {
+            // Key exists in the database
+            // You could attach wallet balance or explicit org ID to the request object here:
+            // req.agent_wallet = JSON.parse(keyDataStr);
+            return next();
+        }
+    }
+    catch (err) {
+        console.error(`[Cloud Auth] ❌ Redis error checking agent key:`, err);
+    }
+    return res.status(401).json({ error: 'Unauthorized. Invalid Agent API Key.' });
+};
+// Middleware: Authenticate Admin (for Dashboard)
+const authAdmin = (req, res, next) => {
+    const apiKey = req.headers['authorization']?.split(' ')[1];
+    if (apiKey !== ADMIN_API_KEY && apiKey !== PROVIDER_API_KEY) {
+        return res.status(401).json({ error: 'Unauthorized. Invalid Admin API Key.' });
     }
     next();
 };
+/**
+ * 0. ADMIN / DASHBOARD ENDPOINTS
+ */
+// List all provisioned agents
+app.get('/v1/admin/agents', authAdmin, async (req, res) => {
+    try {
+        const keys = await redisClient.keys('agent_key:*');
+        const agents = [];
+        for (const key of keys) {
+            const dataStr = await redisClient.get(key);
+            if (dataStr) {
+                agents.push({
+                    key: key.replace('agent_key:', ''),
+                    ...JSON.parse(dataStr)
+                });
+            }
+        }
+        res.json({ agents });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// Create a new agent key
+app.post('/v1/admin/agents', authAdmin, async (req, res) => {
+    try {
+        const { org_id, name, initial_balance } = req.body;
+        const newKey = `sk-agent-${(0, crypto_1.randomUUID)()}`;
+        const agentData = {
+            name: name || 'Unnamed Agent',
+            org_id: org_id || 'default-org',
+            balance: typeof initial_balance === 'number' ? initial_balance : 0,
+            created_at: Date.now()
+        };
+        await redisClient.set(`agent_key:${newKey}`, JSON.stringify(agentData));
+        res.json({
+            status: "success",
+            api_key: newKey,
+            agent: agentData
+        });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// Add funds to an agent
+app.post('/v1/admin/agents/:key/fund', authAdmin, async (req, res) => {
+    try {
+        const { amount } = req.body;
+        const key = req.params.key;
+        if (typeof amount !== 'number') {
+            return res.status(400).json({ error: "amount must be a number" });
+        }
+        const dataStr = await redisClient.get(`agent_key:${key}`);
+        if (!dataStr) {
+            return res.status(404).json({ error: "Agent key not found" });
+        }
+        const agentData = JSON.parse(dataStr);
+        agentData.balance = (agentData.balance || 0) + amount;
+        await redisClient.set(`agent_key:${key}`, JSON.stringify(agentData));
+        res.json({
+            status: "success",
+            agent: agentData
+        });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 /**
  * 1. NODE REGISTRATION
  */
@@ -337,9 +432,15 @@ app.get('/v1/capabilities', authAgent, async (req, res) => {
                     availableDevices.push({
                         id: device.id,
                         type: device.type,
+                        name: device.name,
                         capabilities,
                         provider: providerName,
                         node_id: node.node_id,
+                        manufacturer: device.manufacturer,
+                        model: device.model,
+                        serial_number: device.serial_number,
+                        semantic_context: device.semantic_context,
+                        pricing: device.pricing,
                         status: "available"
                     });
                 }

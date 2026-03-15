@@ -1,3 +1,10 @@
+export interface PricingDescriptor {
+  currency: string;
+  rate_per_minute?: number;
+  rate_per_execution?: number;
+  payment_address?: string; // e.g., Stripe Connect ID or Crypto Wallet
+}
+
 export interface Device {
   id: string;
   type: string;
@@ -8,6 +15,7 @@ export interface Device {
   serial_number?: string;
   semantic_context?: string[]; // For W3C WoT @context alignment
   metadata?: Record<string, any>;
+  pricing?: PricingDescriptor;
 }
 
 export interface Capability {
@@ -20,6 +28,7 @@ export interface Capability {
   template?: string;
   context?: string;
   metadata?: Record<string, any>;
+  pricing?: PricingDescriptor;
 }
 
 export interface Adapter {

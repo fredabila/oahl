@@ -607,6 +607,7 @@ async function startCloudHeartbeat(config: any, adapters: Adapter[]) {
               model: configured.model,
               serial_number: configured.serial_number,
               semantic_context: configured.semantic_context,
+              pricing: configured.pricing,
               access_policy: normalizedAccessPolicy
             });
           }

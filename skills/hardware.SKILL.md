@@ -7,6 +7,9 @@ Use this skill when an agent must discover, reserve, execute, and release real h
 - Base URL: `https://oahl.onrender.com`
 - Auth header (required on every request):
   - `Authorization: Bearer <AGENT_API_KEY>`
+- Identity headers (highly recommended for billing and access control):
+  - `x-agent-id: <your_unique_agent_identifier>`
+  - `x-agent-org-id: <your_organization_identifier>`
 - Content type for POST requests:
   - `Content-Type: application/json`
 
@@ -18,10 +21,11 @@ If auth is missing or invalid, stop and surface a clear authorization error.
 
 1. Discover hardware with `GET /v1/capabilities`.
 2. Select a concrete device and capability.
-3. Validate execution params against the capability `schema`.
-4. Reserve with `POST /v1/requests` and obtain `session_id`.
-5. Execute with `POST /v1/sessions/{session_id}/execute`.
-6. Always cleanup with `POST /v1/sessions/{session_id}/stop`.
+3. Check the `pricing` block on the device. Ensure you have the budget for `rate_per_execution` or `rate_per_minute` before proceeding.
+4. Validate execution params against the capability `schema`.
+5. Reserve with `POST /v1/requests` and obtain `session_id`.
+6. Execute with `POST /v1/sessions/{session_id}/execute`.
+7. Always cleanup with `POST /v1/sessions/{session_id}/stop`.
 
 If any step fails after session creation, still attempt session stop in a final cleanup step.
 
@@ -47,6 +51,10 @@ If any step fails after session creation, still attempt session stop in a final 
   - `type`
   - `provider`
   - `node_id`
+  - `pricing` (IMPORTANT: Verify the agent's budget against this block before reserving)
+    - `currency`
+    - `rate_per_minute`
+    - `rate_per_execution`
   - `capabilities[]`
     - `name`
     - `description`

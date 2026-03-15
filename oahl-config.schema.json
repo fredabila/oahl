@@ -87,6 +87,16 @@
             "type": "array",
             "items": { "type": "string" }
           },
+          "pricing": {
+            "type": "object",
+            "properties": {
+              "currency": { "type": "string" },
+              "rate_per_minute": { "type": "number" },
+              "rate_per_execution": { "type": "number" },
+              "payment_address": { "type": "string" }
+            },
+            "required": ["currency"]
+          },
           "capabilities": {
             "type": "array",
             "items": { "type": "string" }
