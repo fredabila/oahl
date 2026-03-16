@@ -65,7 +65,7 @@ function Home({ adapters, loading }: { adapters: Adapter[], loading: boolean }) 
                   <Link 
                     key={`${adapter.id}-${idx}`} 
                     to={`/adapter/${adapter.id}`}
-                    className="w-80 flex-shrink-0 bg-oahl-surface border border-oahl-border hover:border-oahl-accent/50 p-6 flex flex-col group transition-all"
+                    className="glass-card-featured w-80 flex-shrink-0 p-6 flex flex-col group"
                   >
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-lg font-medium tracking-tight group-hover:text-oahl-accent transition-colors truncate">
@@ -76,8 +76,8 @@ function Home({ adapters, loading }: { adapters: Adapter[], loading: boolean }) 
                     <p className="text-sm text-oahl-textMuted line-clamp-2 mb-4 flex-grow">
                       {adapter.description}
                     </p>
-                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-oahl-border/50">
-                      <span className="font-mono text-xs text-oahl-tech px-2 py-1 bg-oahl-bg border border-oahl-border">
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
+                      <span className="glass-tag font-mono text-xs text-oahl-textMuted px-3 py-1">
                         {adapter.hardware_tags[0] ? `#${adapter.hardware_tags[0]}` : 'adapter'}
                       </span>
                       <span className="font-mono text-[10px] text-oahl-textMuted">
@@ -92,13 +92,13 @@ function Home({ adapters, loading }: { adapters: Adapter[], loading: boolean }) 
         )}
 
         {/* Search */}
-        <div className="relative mb-12 max-w-4xl mx-auto group">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+        <div className="glass-search relative mb-12 max-w-4xl mx-auto group">
+          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
             <span className="text-oahl-tech font-mono font-bold">{'>'}</span>
           </div>
           <input
             type="text"
-            className="block w-full pl-10 pr-4 py-4 bg-oahl-surface border-2 border-oahl-border text-oahl-textMain placeholder-oahl-textMuted focus:outline-none focus:border-oahl-tech transition-colors font-mono text-sm"
+            className="block w-full pl-11 pr-4 py-4 bg-transparent text-oahl-textMain placeholder-oahl-textMuted focus:outline-none font-mono text-sm"
             placeholder="Search by hardware type, capability, or tag..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -116,7 +116,7 @@ function Home({ adapters, loading }: { adapters: Adapter[], loading: boolean }) 
               <Link 
                 to={`/adapter/${adapter.id}`}
                 key={adapter.id} 
-                className="bg-oahl-surface border border-oahl-border hover:border-oahl-tech/50 transition-colors p-6 flex flex-col group relative block"
+                className="glass-card p-6 flex flex-col group relative block"
               >
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
@@ -124,7 +124,7 @@ function Home({ adapters, loading }: { adapters: Adapter[], loading: boolean }) 
                     {adapter.featured && <span title="Featured Adapter"><Star size={16} className="text-oahl-accent" fill="currentColor" /></span>}
                     {adapter.name}
                   </h3>
-                  <span className="font-mono text-[10px] uppercase text-oahl-textMuted border border-oahl-border px-1.5 py-0.5 bg-oahl-bg">
+                  <span className="glass-license font-mono text-[10px] uppercase text-oahl-tech px-3 py-1">
                     {adapter.license}
                   </span>
                 </div>
@@ -158,8 +158,8 @@ function Home({ adapters, loading }: { adapters: Adapter[], loading: boolean }) 
                   {/* Tags */}
                   <div className="flex flex-wrap gap-2 pt-2">
                     {adapter.hardware_tags.map(tag => (
-                      <span key={tag} className="font-mono text-[10px] text-oahl-textMuted bg-oahl-bg border border-oahl-border px-2 py-1">
-                        {tag}
+                      <span key={tag} className="glass-tag font-mono text-[10px] text-oahl-textMuted px-3 py-1">
+                        #{tag}
                       </span>
                     ))}
                   </div>
@@ -180,7 +180,7 @@ function Home({ adapters, loading }: { adapters: Adapter[], loading: boolean }) 
         )}
 
         {!loading && filtered.length === 0 && (
-          <div className="text-center py-20 border-2 border-dashed border-oahl-border bg-oahl-surface">
+          <div className="glass-empty text-center py-20">
             <span className="font-mono text-oahl-textMuted">0 results found for '{search}'</span>
           </div>
         )}

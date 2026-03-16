@@ -143,3 +143,171 @@ body {
   max-width: 100%;
   border-radius: 8px;
 }
+
+/* ═══════════════════════════════════════════
+   LIQUID GLASS CARD SYSTEM
+   ═══════════════════════════════════════════ */
+
+/* SVG grain texture rendered inline via filter */
+.glass-card {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(30, 27, 24, 0.72) 0%,
+    rgba(20, 18, 16, 0.60) 50%,
+    rgba(30, 27, 24, 0.68) 100%
+  );
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow:
+    /* outer ambient lift */
+    0 8px 32px rgba(0, 0, 0, 0.55),
+    /* inner top-left highlight (liquid sheen) */
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    /* inner bottom-right depth */
+    inset 0 -1px 0 rgba(0, 0, 0, 0.30);
+  transition:
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.28s ease,
+    border-color 0.22s ease;
+  overflow: hidden;
+}
+
+/* Animated top-edge sheen pseudo-element */
+.glass-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0.055) 0%,
+    transparent 45%,
+    transparent 70%,
+    rgba(212, 126, 91, 0.04) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Grain texture overlay */
+.glass-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 2;
+  mix-blend-mode: overlay;
+}
+
+/* Make children sit above the pseudo-elements */
+.glass-card > * {
+  position: relative;
+  z-index: 3;
+}
+
+.glass-card:hover {
+  transform: translateY(-4px) scale(1.012);
+  border-color: rgba(212, 126, 91, 0.28);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(212, 126, 91, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.30);
+}
+
+/* Featured marquee card variant — slightly lighter glass */
+.glass-card-featured {
+  background: linear-gradient(
+    135deg,
+    rgba(35, 31, 27, 0.78) 0%,
+    rgba(25, 22, 19, 0.65) 100%
+  );
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border-radius: 18px;
+  border: 1px solid rgba(212, 126, 91, 0.18);
+  box-shadow:
+    0 6px 28px rgba(0, 0, 0, 0.50),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.28);
+  transition:
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.25s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+.glass-card-featured::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+.glass-card-featured > * {
+  position: relative;
+  z-index: 2;
+}
+
+.glass-card-featured:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.60),
+    0 0 0 1px rgba(212, 126, 91, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* Rounded liquid tag pill */
+.glass-tag {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.glass-tag:hover {
+  background: rgba(212, 126, 91, 0.1);
+  border-color: rgba(212, 126, 91, 0.3);
+}
+
+/* License badge pill */
+.glass-license {
+  border-radius: 999px;
+  background: rgba(115, 149, 128, 0.08);
+  border: 1px solid rgba(115, 149, 128, 0.2);
+  backdrop-filter: blur(6px);
+}
+
+/* Search bar glass style */
+.glass-search {
+  background: rgba(23, 22, 21, 0.55);
+  backdrop-filter: blur(14px);
+  border-radius: 14px;
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.glass-search:focus-within {
+  border-color: rgba(115, 149, 128, 0.5);
+  box-shadow: 0 0 0 3px rgba(115, 149, 128, 0.08);
+}
+
+/* Empty-state dashed box */
+.glass-empty {
+  border-radius: 20px;
+  border: 1.5px dashed rgba(48, 46, 43, 0.7);
+  background: rgba(23, 22, 21, 0.35);
+  backdrop-filter: blur(10px);
+}
