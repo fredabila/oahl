@@ -1,16 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="100%" height="100%">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="100%" stop-color="#1e1b4b" />
+      <stop offset="0%" stop-color="#020617" />
+      <stop offset="100%" stop-color="#0f172a" />
     </linearGradient>
-    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#38bdf8" />
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee" />
+      <stop offset="100%" stop-color="#0891b2" />
+    </linearGradient>
+    <linearGradient id="pinkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f472b6" />
+      <stop offset="100%" stop-color="#db2777" />
+    </linearGradient>
+    <linearGradient id="bridgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f472b6" />
       <stop offset="50%" stop-color="#818cf8" />
-      <stop offset="100%" stop-color="#c084fc" />
+      <stop offset="100%" stop-color="#22d3ee" />
     </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="8" result="blur" />
+    <filter id="neon" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <filter id="heavyGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="15" result="blur" />
       <feComposite in="SourceGraphic" in2="blur" operator="over" />
     </filter>
   </defs>
@@ -18,59 +30,95 @@
   <!-- Background -->
   <rect width="1200" height="400" fill="url(#bgGrad)" />
 
-  <!-- Grid Pattern -->
-  <g stroke="#ffffff" stroke-width="1" stroke-opacity="0.05">
-    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-      <path d="M 40 0 L 0 0 0 40" fill="none" />
+  <!-- Background Hex Grid -->
+  <g opacity="0.1" stroke="#334155" stroke-width="1" fill="none">
+    <pattern id="hexagons" width="52" height="90" patternUnits="userSpaceOnUse" patternTransform="scale(0.8)">
+      <path d="M26 0 L52 15 L52 45 L26 60 L0 45 L0 15 Z" />
+      <path d="M26 30 L52 45 L52 75 L26 90 L0 75 L0 45 Z" />
     </pattern>
-    <rect width="1200" height="400" fill="url(#grid)" />
+    <rect width="1200" height="400" fill="url(#hexagons)" />
   </g>
 
-  <!-- Connection Lines -->
-  <g stroke="url(#glowGrad)" stroke-width="3" fill="none" opacity="0.6">
-    <!-- Left to Center -->
-    <path d="M 250 200 C 400 200, 450 150, 600 150" stroke-dasharray="10, 5">
-      <animate attributeName="stroke-dashoffset" from="15" to="0" dur="1s" repeatCount="indefinite" />
+  <!-- Connection Lines (Neural Path) -->
+  <g stroke="url(#bridgeGrad)" stroke-width="2" fill="none" opacity="0.4" filter="url(#neon)">
+    <!-- Main Bridge -->
+    <path d="M 250 200 C 450 200, 750 200, 950 200" stroke-dasharray="1, 10">
+        <animate attributeName="stroke-dashoffset" from="11" to="0" dur="2s" repeatCount="indefinite" />
     </path>
-    <!-- Right to Center -->
-    <path d="M 950 200 C 800 200, 750 150, 600 150" stroke-dasharray="10, 5">
-      <animate attributeName="stroke-dashoffset" from="15" to="0" dur="1s" repeatCount="indefinite" />
-    </path>
-    <!-- Center to Top (Cloud) -->
-    <path d="M 600 150 L 600 80" />
+    <!-- Branches Left -->
+    <path d="M 250 200 L 180 130" />
+    <path d="M 250 200 L 180 270" />
+    <!-- Branches Right -->
+    <path d="M 950 200 L 1020 130" />
+    <path d="M 950 200 L 1020 270" />
   </g>
 
-  <!-- Hardware Node (Left) -->
-  <g transform="translate(180, 160)">
-    <rect x="0" y="0" width="80" height="80" rx="16" fill="#1e293b" stroke="#38bdf8" stroke-width="4" filter="url(#glow)" />
-    <circle cx="40" cy="40" r="15" fill="#38bdf8" />
-    <circle cx="40" cy="40" r="6" fill="#0f172a" />
-    <text x="40" y="110" font-family="monospace" font-size="16" fill="#94a3b8" text-anchor="middle">HARDWARE</text>
-  </g>
-
-  <!-- AI Agent Node (Right) -->
-  <g transform="translate(900, 160)">
-    <rect x="0" y="0" width="80" height="80" rx="40" fill="#1e293b" stroke="#c084fc" stroke-width="4" filter="url(#glow)" />
-    <polygon points="40,20 60,60 20,60" fill="#c084fc" />
-    <text x="40" y="110" font-family="monospace" font-size="16" fill="#94a3b8" text-anchor="middle">AI AGENT</text>
-  </g>
-
-  <!-- Center Hub (OAHL Layer) -->
-  <g transform="translate(520, 110)">
-    <rect x="0" y="0" width="160" height="80" rx="12" fill="#334155" stroke="#818cf8" stroke-width="4" filter="url(#glow)" />
-    <text x="80" y="48" font-family="sans-serif" font-weight="bold" font-size="32" fill="#ffffff" text-anchor="middle">OAHL</text>
-  </g>
-
-  <!-- Main Title -->
-  <text x="600" y="300" font-family="sans-serif" font-weight="900" font-size="48" fill="#ffffff" text-anchor="middle" letter-spacing="2">OPEN AGENT HARDWARE LAYER</text>
-  
-  <!-- Subtitle -->
-  <text x="600" y="340" font-family="monospace" font-size="20" fill="#94a3b8" text-anchor="middle">THE PHYSICAL WORLD API FOR AI</text>
-
-  <!-- Status Dots -->
-  <circle cx="560" cy="18" r="6" fill="#22c55e" filter="url(#glow)">
-     <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite" />
+  <!-- Data Packets -->
+  <circle r="4" fill="#ffffff" filter="url(#heavyGlow)">
+    <animateMotion path="M 250 200 C 450 200, 750 200, 950 200" dur="3s" repeatCount="indefinite" rotate="auto" />
   </circle>
-  <text x="580" y="24" font-family="monospace" font-size="14" fill="#22c55e" font-weight="bold">SYSTEM ONLINE</text>
+  <circle r="3" fill="#ffffff" filter="url(#heavyGlow)">
+    <animateMotion path="M 950 200 C 750 200, 450 200, 250 200" dur="4.5s" repeatCount="indefinite" rotate="auto" begin="1s" />
+  </circle>
+
+  <!-- Hardware Side (Left Cluster) -->
+  <g transform="translate(150, 200)">
+    <!-- Main Hub -->
+    <path d="M -40 0 L -20 -35 L 20 -35 L 40 0 L 20 35 L -20 35 Z" fill="#0f172a" stroke="#22d3ee" stroke-width="3" filter="url(#neon)" />
+    <!-- Small modules -->
+    <g transform="translate(-60, -70) scale(0.6)">
+        <path d="M -40 0 L -20 -35 L 20 -35 L 40 0 L 20 35 L -20 35 Z" fill="#0f172a" stroke="#22d3ee" stroke-width="2" />
+        <circle cx="0" cy="0" r="10" fill="#22d3ee" opacity="0.5" />
+    </g>
+    <g transform="translate(-60, 70) scale(0.6)">
+        <path d="M -40 0 L -20 -35 L 20 -35 L 40 0 L 20 35 L -20 35 Z" fill="#0f172a" stroke="#22d3ee" stroke-width="2" />
+        <path d="M -10 -10 L 10 10 M -10 10 L 10 -10" stroke="#22d3ee" stroke-width="3" />
+    </g>
+    <text y="70" font-family="sans-serif" font-weight="bold" font-size="14" fill="#22d3ee" text-anchor="middle" letter-spacing="2">HARDWARE LAYER</text>
+  </g>
+
+  <!-- AI Agent Side (Right Cluster) -->
+  <g transform="translate(1050, 200)">
+    <!-- Brain Core -->
+    <circle r="45" fill="#0f172a" stroke="#f472b6" stroke-width="3" filter="url(#neon)">
+        <animate attributeName="stroke-width" values="3;5;3" dur="3s" repeatCount="indefinite" />
+    </circle>
+    <!-- Inner complex lines -->
+    <g stroke="#f472b6" stroke-width="1.5" opacity="0.6">
+        <circle r="25" fill="none" />
+        <path d="M -20 0 L 20 0 M 0 -20 L 0 20" />
+        <circle r="5" fill="#f472b6" filter="url(#heavyGlow)">
+            <animate attributeName="opacity" values="1;0.4;1" dur="1.5s" repeatCount="indefinite" />
+        </circle>
+    </g>
+    <text y="70" font-family="sans-serif" font-weight="bold" font-size="14" fill="#f472b6" text-anchor="middle" letter-spacing="2">AI AGENT LAYER</text>
+  </g>
+
+  <!-- OAHL BRIDGE (Center) -->
+  <g transform="translate(600, 200)">
+    <!-- Prisms/Filters -->
+    <g opacity="0.8">
+        <rect x="-60" y="-40" width="120" height="80" rx="8" fill="none" stroke="url(#bridgeGrad)" stroke-width="4" filter="url(#neon)">
+            <animate attributeName="stroke-width" values="4;2;4" dur="4s" repeatCount="indefinite" />
+        </rect>
+        <rect x="-40" y="-30" width="80" height="60" rx="4" fill="none" stroke="url(#bridgeGrad)" stroke-width="1" opacity="0.5" />
+    </g>
+    
+    <!-- Title Text -->
+    <text y="-70" font-family="sans-serif" font-weight="900" font-size="56" fill="#ffffff" text-anchor="middle" letter-spacing="12" filter="url(#heavyGlow)">OAHL</text>
+    <text y="5" font-family="sans-serif" font-weight="200" font-size="12" fill="#818cf8" text-anchor="middle" letter-spacing="4">STANDARDIZED PROTOCOL</text>
+  </g>
+
+  <!-- Tagline -->
+  <g transform="translate(600, 340)">
+     <text font-family="monospace" font-size="18" fill="#94a3b8" text-anchor="middle" letter-spacing="1">
+        <tspan fill="#f472b6">AGENTS</tspan>
+        <tspan fill="#64748b"> • </tspan>
+        <tspan fill="#818cf8">OAHL</tspan>
+        <tspan fill="#64748b"> • </tspan>
+        <tspan fill="#22d3ee">PHYSICAL WORLD</tspan>
+     </text>
+     <path d="M -200 20 L 200 20" stroke="#1e293b" stroke-width="1" />
+  </g>
 
 </svg>
