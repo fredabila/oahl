@@ -1,0 +1,12 @@
+{
+  "id": "oahl-adapter-android",
+  "name": "Android Device Adapter",
+  "description": "Connects to physical Android devices via ADB, exposing shell execution, screen capture, and touch interactions to AI agents.",
+  "author": "fredabila",
+  "repository": "https://github.com/fredabila/oahl/tree/main/adapters/adapter-android",
+  "npm_package": "@oahl/adapter-android",
+  "hardware_tags": ["android", "mobile", "adb", "testing", "smartphone"],
+  "capabilities": ["android.shell", "android.screen_capture", "android.tap", "android.swipe", "android.keyevent"],
+  "license": "Apache-2.0",
+  "featured": true
+}
