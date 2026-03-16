@@ -115,7 +115,21 @@ function resolveWorkspaceDirs(rootPackage) {
     }
   }
 
+  // Add support for pyproject.toml
+  const pyprojectPath = path.join(rootDir, 'sdk-python', 'pyproject.toml');
+  if (fs.existsSync(pyprojectPath)) {
+    workspaceDirs.push(path.join(rootDir, 'sdk-python'));
+  }
+
   return workspaceDirs;
+}
+
+function readPyproject(filePath) {
+  return fs.readFileSync(filePath, 'utf8');
+}
+
+function writePyproject(filePath, content) {
+  fs.writeFileSync(filePath, content, 'utf8');
 }
 
 function main() {
@@ -132,27 +146,46 @@ function main() {
 
   for (const workspaceDir of workspaceDirs) {
     const packageJsonPath = path.join(workspaceDir, 'package.json');
-    const packageJson = readJson(packageJsonPath);
+    const pyprojectPath = path.join(workspaceDir, 'pyproject.toml');
 
-    if (packageJson.private) {
-      continue;
-    }
+    if (fs.existsSync(packageJsonPath)) {
+      const packageJson = readJson(packageJsonPath);
+      if (packageJson.private || !packageJson.version || !packageJson.name) {
+        continue;
+      }
 
-    if (!packageJson.version || !packageJson.name) {
-      continue;
-    }
+      const nextVersion = bumpVersion(packageJson.version, release);
+      updates.push({
+        path: packageJsonPath,
+        name: packageJson.name,
+        from: packageJson.version,
+        to: nextVersion,
+        type: 'json'
+      });
 
-    const nextVersion = bumpVersion(packageJson.version, release);
-    updates.push({
-      packageJsonPath,
-      name: packageJson.name,
-      from: packageJson.version,
-      to: nextVersion
-    });
+      if (!dryRun) {
+        packageJson.version = nextVersion;
+        writeJson(packageJsonPath, packageJson);
+      }
+    } else if (fs.existsSync(pyprojectPath)) {
+      let content = readPyproject(pyprojectPath);
+      const versionMatch = content.match(/^version\s*=\s*"(.*?)"/m);
+      if (!versionMatch) continue;
 
-    if (!dryRun) {
-      packageJson.version = nextVersion;
-      writeJson(packageJsonPath, packageJson);
+      const currentVersion = versionMatch[1];
+      const nextVersion = bumpVersion(currentVersion, release);
+      updates.push({
+        path: pyprojectPath,
+        name: 'oahl (python)',
+        from: currentVersion,
+        to: nextVersion,
+        type: 'toml'
+      });
+
+      if (!dryRun) {
+        content = content.replace(/^version\s*=\s*"(.*?)"/m, `version = "${nextVersion}"`);
+        writePyproject(pyprojectPath, content);
+      }
     }
   }
 

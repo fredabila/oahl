@@ -109,14 +109,16 @@ This separation keeps core platform development distinct from adapter ecosystem 
 
 ## SDKs
 
-OAHL currently includes two client SDKs:
+OAHL provides official SDKs to integrate hardware capabilities into your AI agents:
 
-- JavaScript SDK: `@oahl/sdk` (`packages/sdk-js`)
-- Python SDK: `sdk-python/client.py`
+- **[JavaScript/TypeScript SDK](./packages/sdk-js)** ([@oahl/sdk](https://www.npmjs.com/package/@oahl/sdk))  
+  Full-featured SDK for Node.js and Web. Supports both local node and cloud relay.
+- **[Python SDK](./sdk-python)** ([oahl](https://pypi.org/project/oahl/))  
+  Lightweight Python client for AI agents. Supports local node and cloud relay.
 
-Current scope:
-- JavaScript SDK supports both local node and cloud relay endpoints via `OahlClient` and `CloudClient`.
-- Python SDK currently targets local node endpoints.
+Both SDKs provide:
+- `OahlClient`: For direct interaction with a local hardware node.
+- `CloudClient`: For discovering and executing capabilities via the OAHL Cloud relay.
 
 ## Publishing packages
 

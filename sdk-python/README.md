@@ -1,0 +1,63 @@
+# OAHL Python SDK
+
+The Python SDK for the Open Agent Hardware Layer (OAHL).
+
+## Installation
+
+```bash
+pip install oahl
+```
+
+## Development
+
+If you are working on the SDK locally:
+
+```bash
+pip install -e ./sdk-python
+```
+
+## Usage
+
+### Local Client
+
+```python
+from oahl import OahlClient
+
+client = OahlClient("http://localhost:3000")
+
+# List devices
+devices = client.get_devices()
+
+# Start a session
+session = client.start_session("my-device-id")
+
+# Execute a capability
+result = client.execute(session['id'], "camera.capture", {"resolution": "1080p"})
+
+# Stop session
+client.stop_session(session['id'])
+```
+
+### Cloud Client
+
+```python
+from oahl import CloudClient
+
+client = CloudClient(agent_api_key="your-api-key")
+
+# Query capabilities across the network
+capabilities = client.get_capabilities({"q": "camera"})
+
+# Request a session
+session_req = client.request_session({"capability": "camera.capture"})
+session_id = session_req['session_id']
+
+# Execute
+result = client.execute(session_id, {
+    "capability": "camera.capture",
+    "params": {"resolution": "720p"}
+})
+
+# Stop
+client.stop_session(session_id)
+```
