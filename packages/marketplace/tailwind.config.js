@@ -23,7 +23,7 @@ export default {
         }
       },
       animation: {
-        'marquee': 'marquee 25s linear infinite',
+        'marquee': 'marquee 40s linear infinite',
       },
       keyframes: {
         marquee: {
@@ -33,5 +33,7 @@ export default {
       }
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
 }

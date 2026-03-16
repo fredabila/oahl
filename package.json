@@ -15,6 +15,7 @@
     "dev:portal": "npm run dev --workspace=@oahl/portal",
     "dev:marketplace": "npm run dev --workspace=@oahl/marketplace",
     "dev:all": "npm run dev:web & npm run dev:portal & npm run dev:marketplace",
+    "generate:registry": "node registry/scripts/generate-registry.mjs && node -e \"require('fs').copyFileSync('registry/registry.json', 'packages/marketplace/public/registry.json')\"",
     "version:bump:patch": "node ./scripts/bump-workspace-versions.mjs --release patch",
     "version:bump:minor": "node ./scripts/bump-workspace-versions.mjs --release minor",
     "version:bump:major": "node ./scripts/bump-workspace-versions.mjs --release major",
@@ -33,7 +34,7 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "@oahl/adapter-android": "^0.1.6",
+    "@oahl/adapter-android": "^0.1.8",
     "@oahl/adapter-arduino": "^0.1.1"
   }
 }

@@ -1,0 +1,6 @@
+{
+  "name": "Mock Hardware Adapter",
+  "description": "A simulated hardware adapter for testing OAHL core and client SDKs without physical devices.",
+  "hardware_tags": ["mock", "testing", "simulation"],
+  "capabilities": ["mock.ping", "mock.echo"]
+}

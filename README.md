@@ -119,7 +119,7 @@ OAHL provides official SDKs to integrate hardware capabilities into your AI agen
 - **[Adapter Marketplace](https://oahl.org/marketplace)**  
   Browse community-contributed hardware adapters.
 - **[Adapter Registry](./registry)**  
-  Submit your own adapter to the registry.
+  Publish your adapter to NPM with an `oahl-manifest.json` to get listed automatically.
 
 Both SDKs provide:
 - `OahlClient`: For direct interaction with a local hardware node.

@@ -1,12 +1,7 @@
 {
-  "id": "oahl-adapter-usb-camera",
   "name": "USB Camera Adapter",
   "description": "Standard USB Camera adapter for OAHL, supporting image capture and streaming.",
-  "author": "fredabila",
-  "repository": "https://github.com/fredabila/oahl/tree/main/adapters/adapter-usb-camera",
-  "npm_package": "@oahl/adapter-usb-camera",
   "hardware_tags": ["camera", "usb", "v4l2"],
   "capabilities": ["camera.capture", "camera.stream"],
-  "license": "Apache-2.0",
   "featured": true
 }

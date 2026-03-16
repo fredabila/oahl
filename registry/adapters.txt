@@ -1,0 +1,4 @@
+@oahl/adapter-usb-camera
+@oahl/adapter-rtl-sdr
+@oahl/adapter-mock
+@oahl/adapter-android

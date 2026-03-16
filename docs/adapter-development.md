@@ -177,7 +177,25 @@ export default class MyVibratingAdapter implements Adapter {
 
 ---
 
-## 🛠️ 5. Installation & Marketplace Usage
+## 🛠️ 5. The Adapter Manifest
+
+To be listed on the [OAHL Marketplace](https://oahl.org/marketplace), your adapter must include an `oahl-manifest.json` file in its root directory before publishing to NPM. This allows the registry crawler to automatically extract your adapter's capabilities without you needing to manually update a central repository.
+
+**Example `oahl-manifest.json`:**
+```json
+{
+  "name": "My Cool Sensor Adapter",
+  "description": "Reads temperature and humidity via I2C.",
+  "hardware_tags": ["sensor", "i2c", "environment"],
+  "capabilities": ["sensor.read_temperature", "sensor.read_humidity"]
+}
+```
+
+Once your adapter is published to NPM, open a PR to add your package name to the `adapters.txt` file in the [Registry Repository](https://github.com/fredabila/oahl/tree/main/registry). The crawler will handle the rest.
+
+---
+
+## 🛠️ 6. Installation & Marketplace Usage
 Once your adapter is built, any OAHL node can use it. You can install adapters published to the npm registry, or install them locally directly from your file system.
 
 ### Option A: Installing from npm (Published Adapters)

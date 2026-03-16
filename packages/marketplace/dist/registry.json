@@ -1,0 +1,66 @@
+[
+  {
+    "id": "oahl-adapter-usb-camera",
+    "name": "USB Camera Adapter",
+    "description": "Standard USB Camera adapter for OAHL, supporting image capture and streaming.",
+    "author": "fredabila",
+    "repository": "https://www.npmjs.com/package/@oahl/adapter-usb-camera",
+    "npm_package": "@oahl/adapter-usb-camera",
+    "version": "0.1.4-rc.2",
+    "hardware_tags": [
+      "camera",
+      "usb",
+      "v4l2"
+    ],
+    "capabilities": [
+      "camera.capture",
+      "camera.stream"
+    ],
+    "license": "Unknown",
+    "featured": true,
+    "readme_url": "https://unpkg.com/@oahl/adapter-usb-camera@0.1.4-rc.2/README.md"
+  },
+  {
+    "id": "oahl-adapter-rtl-sdr",
+    "name": "RTL-SDR Radio Adapter",
+    "description": "Adapter for RTL2832U based Software Defined Radio (SDR) dongles.",
+    "author": "fredabila",
+    "repository": "https://www.npmjs.com/package/@oahl/adapter-rtl-sdr",
+    "npm_package": "@oahl/adapter-rtl-sdr",
+    "version": "0.1.4-rc.2",
+    "hardware_tags": [
+      "radio",
+      "sdr",
+      "usb",
+      "rtl2832u"
+    ],
+    "capabilities": [
+      "radio.scan",
+      "radio.capture"
+    ],
+    "license": "Unknown",
+    "featured": true,
+    "readme_url": "https://unpkg.com/@oahl/adapter-rtl-sdr@0.1.4-rc.2/README.md"
+  },
+  {
+    "id": "oahl-adapter-mock",
+    "name": "Mock Hardware Adapter",
+    "description": "A simulated hardware adapter for testing OAHL core and client SDKs without physical devices.",
+    "author": "fredabila",
+    "repository": "https://www.npmjs.com/package/@oahl/adapter-mock",
+    "npm_package": "@oahl/adapter-mock",
+    "version": "0.1.4-rc.2",
+    "hardware_tags": [
+      "mock",
+      "testing",
+      "simulation"
+    ],
+    "capabilities": [
+      "mock.ping",
+      "mock.echo"
+    ],
+    "license": "Unknown",
+    "featured": false,
+    "readme_url": "https://unpkg.com/@oahl/adapter-mock@0.1.4-rc.2/README.md"
+  }
+]
