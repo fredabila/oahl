@@ -1,0 +1,59 @@
+[
+  {
+    "id": "oahl-adapter-mock",
+    "name": "Mock Hardware Adapter",
+    "description": "A simulated hardware adapter for testing OAHL core and client SDKs without physical devices.",
+    "author": "fredabila",
+    "repository": "https://github.com/fredabila/oahl/tree/main/adapters/adapter-mock",
+    "npm_package": "@oahl/adapter-mock",
+    "hardware_tags": [
+      "mock",
+      "testing",
+      "simulation"
+    ],
+    "capabilities": [
+      "mock.ping",
+      "mock.echo"
+    ],
+    "license": "Apache-2.0"
+  },
+  {
+    "id": "oahl-adapter-rtl-sdr",
+    "name": "RTL-SDR Radio Adapter",
+    "description": "Adapter for RTL2832U based Software Defined Radio (SDR) dongles.",
+    "author": "fredabila",
+    "repository": "https://github.com/fredabila/oahl/tree/main/adapters/adapter-rtl-sdr",
+    "npm_package": "@oahl/adapter-rtl-sdr",
+    "hardware_tags": [
+      "radio",
+      "sdr",
+      "usb",
+      "rtl2832u"
+    ],
+    "capabilities": [
+      "radio.scan",
+      "radio.capture"
+    ],
+    "license": "Apache-2.0",
+    "featured": true
+  },
+  {
+    "id": "oahl-adapter-usb-camera",
+    "name": "USB Camera Adapter",
+    "description": "Standard USB Camera adapter for OAHL, supporting image capture and streaming.",
+    "author": "fredabila",
+    "repository": "https://github.com/fredabila/oahl/tree/main/adapters/adapter-usb-camera",
+    "npm_package": "@oahl/adapter-usb-camera",
+    "hardware_tags": [
+      "camera",
+      "usb",
+      "v4l2"
+    ],
+    "capabilities": [
+      "camera.capture",
+      "camera.stream"
+    ],
+    "license": "Apache-2.0",
+    "featured": true
+  }
+]

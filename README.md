@@ -116,6 +116,11 @@ OAHL provides official SDKs to integrate hardware capabilities into your AI agen
 - **[Python SDK](./sdk-python)** ([oahl](https://pypi.org/project/oahl/))  
   Lightweight Python client for AI agents. Supports local node and cloud relay.
 
+- **[Adapter Marketplace](https://oahl.org/marketplace)**  
+  Browse community-contributed hardware adapters.
+- **[Adapter Registry](./registry)**  
+  Submit your own adapter to the registry.
+
 Both SDKs provide:
 - `OahlClient`: For direct interaction with a local hardware node.
 - `CloudClient`: For discovering and executing capabilities via the OAHL Cloud relay.

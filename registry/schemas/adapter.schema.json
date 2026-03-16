@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OAHL Adapter Metadata",
+  "type": "object",
+  "required": ["id", "name", "description", "author", "repository", "hardware_tags", "capabilities", "license"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^oahl-adapter-[a-z0-9-]+$",
+      "description": "Unique identifier for the adapter, starting with 'oahl-adapter-'."
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name of the adapter."
+    },
+    "description": {
+      "type": "string",
+      "description": "A short description of what the adapter does."
+    },
+    "author": {
+      "type": "string",
+      "description": "The GitHub username or organization name of the author."
+    },
+    "repository": {
+      "type": "string",
+      "format": "uri",
+      "description": "The URL of the source code repository."
+    },
+    "npm_package": {
+      "type": "string",
+      "description": "(Optional) The name of the NPM package if published."
+    },
+    "pypi_package": {
+      "type": "string",
+      "description": "(Optional) The name of the PyPI package if published."
+    },
+    "hardware_tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tags for searching (e.g., ['camera', 'usb', 'linux', 'sdr'])."
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of standard capabilities this adapter exposes (e.g., ['camera.capture'])."
+    },
+    "license": {
+      "type": "string",
+      "description": "The license type (e.g., 'MIT', 'Apache-2.0')."
+    },
+    "featured": {
+      "type": "boolean",
+      "description": "Indicates if the adapter is featured on the marketplace. Maintained by OAHL core team."
+    }
+  }
+}

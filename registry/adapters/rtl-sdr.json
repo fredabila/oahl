@@ -1,0 +1,12 @@
+{
+  "id": "oahl-adapter-rtl-sdr",
+  "name": "RTL-SDR Radio Adapter",
+  "description": "Adapter for RTL2832U based Software Defined Radio (SDR) dongles.",
+  "author": "fredabila",
+  "repository": "https://github.com/fredabila/oahl/tree/main/adapters/adapter-rtl-sdr",
+  "npm_package": "@oahl/adapter-rtl-sdr",
+  "hardware_tags": ["radio", "sdr", "usb", "rtl2832u"],
+  "capabilities": ["radio.scan", "radio.capture"],
+  "license": "Apache-2.0",
+  "featured": true
+}
