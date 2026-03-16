@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ArrowLeft, Github, Package, Copy, CheckCircle2, Terminal } from 'lucide-react';
+import rehypeRaw from 'rehype-raw';
+import { ArrowLeft, Github, Package, Copy, CheckCircle2, Terminal, X } from 'lucide-react';
 
 interface Adapter {
   id: string;
@@ -25,6 +26,7 @@ export default function AdapterDetail({ adapters }: { adapters: Adapter[] }) {
   const [readme, setReadme] = useState<string>('');
   const [loadingReadme, setLoadingReadme] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showAllCaps, setShowAllCaps] = useState(false);
 
   useEffect(() => {
     if (adapter?.readme_url) {
@@ -61,6 +63,9 @@ export default function AdapterDetail({ adapters }: { adapters: Adapter[] }) {
     }
   };
 
+  const VISIBLE_CAPS_LIMIT = 5;
+  const hasMoreCaps = adapter.capabilities.length > VISIBLE_CAPS_LIMIT;
+
   return (
     <div className="max-w-6xl mx-auto px-6 py-12 pt-32">
       <Link to="/" className="inline-flex items-center gap-2 text-oahl-textMuted hover:text-oahl-textMain transition-colors mb-8 font-mono text-sm">
@@ -68,11 +73,11 @@ export default function AdapterDetail({ adapters }: { adapters: Adapter[] }) {
         [back_to_registry]
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 relative">
         {/* Main Content (Left, 2 columns) */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-8 min-w-0">
           <div>
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
               <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">{adapter.name}</h1>
               {adapter.version && (
                 <span className="font-mono text-sm text-oahl-tech border border-oahl-border px-2 py-0.5 rounded-full">
@@ -87,11 +92,16 @@ export default function AdapterDetail({ adapters }: { adapters: Adapter[] }) {
 
           <div className="border-t border-oahl-border pt-8">
             <h3 className="font-mono text-oahl-tech uppercase tracking-widest text-sm mb-6">Documentation</h3>
-            <div className="prose prose-invert prose-slate max-w-none prose-headings:font-sans prose-headings:font-medium prose-a:text-oahl-accent prose-code:text-oahl-tech prose-pre:bg-oahl-surface prose-pre:border-oahl-border prose-pre:border bg-oahl-surface/30 p-8 rounded-xl border border-oahl-border/50">
+            <div className="bg-oahl-surface/30 p-4 sm:p-8 rounded-xl border border-oahl-border/50 overflow-hidden break-words markdown-content">
               {loadingReadme ? (
                 <div className="animate-pulse font-mono text-oahl-textMuted text-sm">Loading README.md from npm...</div>
               ) : (
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{readme}</ReactMarkdown>
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]} 
+                  rehypePlugins={[rehypeRaw]}
+                >
+                  {readme}
+                </ReactMarkdown>
               )}
             </div>
           </div>
@@ -105,11 +115,11 @@ export default function AdapterDetail({ adapters }: { adapters: Adapter[] }) {
             <h3 className="font-mono text-xs text-oahl-textMuted uppercase tracking-wider mb-3 flex items-center gap-2">
               <Terminal size={14} /> Install via CLI
             </h3>
-            <div className="bg-oahl-bg border border-oahl-border/50 p-3 rounded-lg flex items-center justify-between font-mono text-sm">
+            <div className="bg-[#090808] border border-oahl-border p-3 rounded-lg flex items-center justify-between font-mono text-sm">
               <span className="text-oahl-textMain truncate mr-4">oahl install {adapter.npm_package || 'unknown'}</span>
               <button 
                 onClick={copyInstall}
-                className="text-oahl-textMuted hover:text-oahl-textMain transition-colors p-1"
+                className="text-oahl-textMuted hover:text-oahl-textMain transition-colors p-1 flex-shrink-0"
                 title="Copy command"
               >
                 {copied ? <CheckCircle2 size={16} className="text-oahl-tech" /> : <Copy size={16} />}
@@ -118,7 +128,38 @@ export default function AdapterDetail({ adapters }: { adapters: Adapter[] }) {
           </div>
 
           {/* Metadata Box */}
-          <div className="bg-oahl-surface border border-oahl-border p-6 rounded-xl space-y-6">
+          <div className="bg-oahl-surface border border-oahl-border p-6 rounded-xl space-y-8">
+            <div>
+              <h3 className="font-mono text-xs text-oahl-textMuted uppercase tracking-wider mb-4">Capabilities</h3>
+              <ul className="space-y-2 mb-3">
+                {adapter.capabilities.slice(0, VISIBLE_CAPS_LIMIT).map(cap => (
+                  <li key={cap} className="font-mono text-xs text-oahl-textMain flex items-center gap-3 bg-[#090808] px-3 py-2 border border-oahl-border rounded-md break-all">
+                    <span className="w-1.5 h-1.5 bg-oahl-tech/50 rounded-full inline-block flex-shrink-0"></span>
+                    {cap}
+                  </li>
+                ))}
+              </ul>
+              {hasMoreCaps && (
+                <button 
+                  onClick={() => setShowAllCaps(true)}
+                  className="w-full text-center font-mono text-xs text-oahl-tech hover:text-oahl-accent transition-colors py-2 border border-dashed border-oahl-tech/30 hover:border-oahl-accent/50 rounded-md bg-oahl-tech/5 hover:bg-oahl-accent/5"
+                >
+                  + {adapter.capabilities.length - VISIBLE_CAPS_LIMIT} more (See all)
+                </button>
+              )}
+            </div>
+
+            <div>
+              <h3 className="font-mono text-xs text-oahl-textMuted uppercase tracking-wider mb-3">Hardware Tags</h3>
+              <div className="flex flex-wrap gap-2">
+                {adapter.hardware_tags.map(tag => (
+                  <span key={tag} className="font-mono text-[10px] text-oahl-textMuted bg-[#090808] border border-oahl-border px-2 py-1 rounded-md">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+
             <div>
               <h3 className="font-mono text-xs text-oahl-textMuted uppercase tracking-wider mb-3">Links</h3>
               <div className="space-y-3">
@@ -133,36 +174,47 @@ export default function AdapterDetail({ adapters }: { adapters: Adapter[] }) {
               </div>
             </div>
 
-            <div>
-              <h3 className="font-mono text-xs text-oahl-textMuted uppercase tracking-wider mb-3">Capabilities</h3>
-              <ul className="space-y-2">
-                {adapter.capabilities.map(cap => (
-                  <li key={cap} className="font-mono text-xs text-oahl-textMain flex items-center gap-2 bg-oahl-bg px-2 py-1.5 border border-oahl-border rounded-md">
-                    <span className="w-1.5 h-1.5 bg-oahl-tech/50 rounded-full inline-block"></span>
-                    {cap}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-mono text-xs text-oahl-textMuted uppercase tracking-wider mb-3">Hardware Tags</h3>
-              <div className="flex flex-wrap gap-2">
-                {adapter.hardware_tags.map(tag => (
-                  <span key={tag} className="font-mono text-[10px] text-oahl-textMuted bg-oahl-bg border border-oahl-border px-2 py-1 rounded-md">
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-
             <div className="pt-4 border-t border-oahl-border flex justify-between items-center text-xs text-oahl-textMuted font-mono">
-              <span>Author: @{adapter.author}</span>
-              <span className="uppercase border border-oahl-border px-1.5">{adapter.license}</span>
+              <span className="truncate mr-2">by @{adapter.author}</span>
+              <span className="uppercase border border-oahl-border px-1.5 flex-shrink-0">{adapter.license}</span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Capabilities Modal */}
+      {showAllCaps && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          <div 
+            className="absolute inset-0 bg-[#0D0C0B]/90 backdrop-blur-sm" 
+            onClick={() => setShowAllCaps(false)}
+          ></div>
+          <div className="relative bg-oahl-surface border border-oahl-border p-6 rounded-xl w-full max-w-md shadow-2xl shadow-black max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-oahl-border">
+              <div>
+                <h3 className="text-xl font-medium tracking-tight">All Capabilities</h3>
+                <p className="font-mono text-xs text-oahl-tech mt-1">{adapter.name}</p>
+              </div>
+              <button 
+                onClick={() => setShowAllCaps(false)}
+                className="text-oahl-textMuted hover:text-oahl-textMain p-1 rounded-md hover:bg-oahl-border transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+              {adapter.capabilities.map(cap => (
+                <div key={cap} className="font-mono text-sm text-oahl-textMain flex items-center gap-3 bg-[#090808] px-3 py-2.5 border border-oahl-border rounded-md break-all">
+                  <span className="w-1.5 h-1.5 bg-oahl-tech/50 rounded-full inline-block flex-shrink-0"></span>
+                  {cap}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

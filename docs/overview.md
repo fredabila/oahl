@@ -35,8 +35,11 @@ The project is split into three main components to make the ecosystem work secur
 OAHL now defines a protocol-first path for ecosystem compatibility:
 
 - Protocol contract: `docs/oahl-protocol-v1.md`
+- OpenAPI contract: `openapi.yaml`
 - Attachment and networking profiles: `docs/transport-attachment-profiles.md`
 - Structured execution result schema: `oahl-execution-result.schema.json`
 - Standardization execution plan: `docs/oahl-standardization-roadmap.md`
+- Security controls and known gaps: `docs/security-guide.md`
+- W3C WoT alignment and divergence rationale: `docs/wot-alignment.md`
 
 This allows heterogeneous hardware (robotics, cameras, radios, sensors, mobile devices) to plug into one consistent agent-facing model.

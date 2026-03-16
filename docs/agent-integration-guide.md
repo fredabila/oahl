@@ -19,7 +19,7 @@ The recommended lifecycle is:
 1. Discover compatible capabilities.
 2. Request a session.
 3. Execute the capability (or a batch of capabilities).
-4. Retrieve results (or listen to SSE events).
+4. Retrieve results synchronously in the execute response.
 5. Close the session.
 
 ### Example Flow
@@ -60,10 +60,11 @@ POST /v1/sessions/{id}/execute-batch
 }
 ```
 
-**Listen for hardware events:**
+**Listen for hardware events (planned — not yet implemented):**
 ```http
 GET /v1/sessions/{id}/events?capability=sensor.motion
 ```
+> ⚠️ SSE event streaming is on the roadmap but has not been implemented. For continuous sensor operations, use repeated `execute` calls or a timed loop. See `docs/oahl-standardization-roadmap.md` for the planned streaming work.
 
 **Stop session:**
 ```http
@@ -125,6 +126,18 @@ You can launch the built-in OAHL MCP server:
 oahl mcp --url https://oahl.onrender.com --key <YOUR_AGENT_API_KEY>
 ```
 The server will automatically fetch all available hardware capabilities from the cloud and present them as callable MCP Tools to the LLM. It automatically manages `session_id` reservation and cleanup.
+
+## 4. Agent Identity Headers
+
+For access-policy enforcement (device visibility, per-agent and per-org allow/deny lists), include optional identity headers with every request:
+
+```http
+x-agent-id: my-agent-id
+x-agent-org-id: my-org-id
+x-agent-roles: hardware-reader,executor
+```
+
+> **Note:** These headers are self-asserted in v1 and not cryptographically verified. Only use them if your deployment controls agent key provisioning. See `docs/security-guide.md` for details.
 
 ## Agent Skill (`SKILL.md`)
 

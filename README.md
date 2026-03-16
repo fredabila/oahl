@@ -98,6 +98,7 @@ See the `docs/` folder for:
 - [Transport & Attachment Profiles](docs/transport-attachment-profiles.md)
 - [Transport Plugin Architecture](docs/transport-plugin-architecture.md)
 - [Standardization Roadmap](docs/oahl-standardization-roadmap.md)
+- [W3C WoT Alignment](docs/wot-alignment.md)
 
 ## Repository layout
 
@@ -146,5 +147,12 @@ Release variants are also available:
 - `npm run publish:all:auto:major`
 - `npm run publish:all:auto:prerelease`
 
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. It covers the development workflow, adapter authoring rules, PR checklist, and the RFC process for protocol-level changes.
+
 ## License
-Apache 2.0 or MIT.
+
+MIT — see [LICENSE](LICENSE) for the full text.
+
+Copyright © 2024–2026 Fred Abila and the OAHL Contributors.

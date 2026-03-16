@@ -21,3 +21,125 @@ body {
   background-color: #0D0C0B;
   color: #EFECE6;
 }
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #171615;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #302E2B;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #D47E5B;
+}
+
+/* High-Quality Markdown Styling (NPM/GitHub inspired) */
+.markdown-content {
+  line-height: 1.6;
+  font-family: 'Space Grotesk', sans-serif;
+  color: #A6A29C;
+}
+
+.markdown-content h1, 
+.markdown-content h2, 
+.markdown-content h3 {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #EFECE6;
+  border-bottom: 1px solid #302E2B;
+  padding-bottom: 0.3em;
+}
+
+.markdown-content h1 { font-size: 2em; }
+.markdown-content h2 { font-size: 1.5em; }
+.markdown-content h3 { font-size: 1.25em; border-bottom: none; }
+
+.markdown-content p {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.markdown-content a {
+  color: #D47E5B;
+  text-decoration: none;
+}
+
+.markdown-content a:hover {
+  text-decoration: underline;
+}
+
+.markdown-content ul, 
+.markdown-content ol {
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding-left: 2em;
+}
+
+.markdown-content li {
+  margin-top: 0.25em;
+}
+
+.markdown-content code {
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-size: 85%;
+  background-color: #171615;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #739580;
+}
+
+.markdown-content pre {
+  padding: 16px;
+  overflow: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  background-color: #090808;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  border: 1px solid #302E2B;
+}
+
+.markdown-content pre code {
+  background-color: transparent;
+  padding: 0;
+  color: #EFECE6;
+}
+
+.markdown-content blockquote {
+  padding: 0 1em;
+  color: #A6A29C;
+  border-left: 0.25em solid #302E2B;
+  margin: 0 0 16px 0;
+}
+
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+}
+
+.markdown-content table th,
+.markdown-content table td {
+  padding: 6px 13px;
+  border: 1px solid #302E2B;
+}
+
+.markdown-content table tr {
+  background-color: #0D0C0B;
+}
+
+.markdown-content table tr:nth-child(2n) {
+  background-color: #171615;
+}
+
+.markdown-content img {
+  max-width: 100%;
+  border-radius: 8px;
+}

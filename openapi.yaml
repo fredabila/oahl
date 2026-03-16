@@ -1,8 +1,25 @@
 openapi: 3.0.0
 info:
   title: Open Agent Hardware Layer (OAHL) API
-  description: A standard REST API enabling AI agents to interact with hardware capabilities via pluggable adapters.
-  version: 0.1.0
+  description: |
+    A standard REST API enabling AI agents to interact with hardware capabilities via pluggable adapters.
+
+    ## Authentication
+    All agent-facing endpoints require `Authorization: Bearer <agent_api_key>`.
+    Provider-facing endpoints (`/v1/provider/*`) require a separate `provider_api_key` bearer token.
+
+    ## Agent Identity Headers (Optional)
+    For device access-policy enforcement, agents may include:
+    - `x-agent-id`: Stable agent or owner identifier
+    - `x-agent-org-id`: Organisation the agent belongs to
+    - `x-agent-roles`: Comma-separated role list
+
+    > **Note:** These headers are self-asserted in v1 and not cryptographically bound to the bearer token.
+
+    ## Relay Modes
+    Execution responses include `x-oahl-relay-mode` (`websocket`, `websocket-late`, `polling`, `polling-timeout`)
+    and `x-oahl-request-id` to identify which transport path was used.
+  version: 1.0.0
   x-oahl-protocol:
     version: "1.0"
     execution_result_schema: "./oahl-execution-result.schema.json"
@@ -11,13 +28,53 @@ servers:
   - url: http://localhost:3000
     description: Local Node Server
   - url: https://oahl.onrender.com
-    description: Cloud Registry Server
+    description: Cloud Registry / Relay Server
+
+# ─────────────────────────────────────────────
+# Security Schemes
+# ─────────────────────────────────────────────
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
+      description: Agent API key or Provider API key depending on the endpoint group.
+
+  parameters:
+    SessionId:
+      in: path
+      name: session_id
+      required: true
+      schema:
+        type: string
+      description: Opaque session identifier returned by `POST /v1/requests`.
+
+    AgentIdHeader:
+      in: header
+      name: x-agent-id
+      required: false
+      schema:
+        type: string
+      description: Self-asserted stable identifier for the calling agent or owner (used for access policy).
+
+    AgentOrgIdHeader:
+      in: header
+      name: x-agent-org-id
+      required: false
+      schema:
+        type: string
+      description: Self-asserted organisation ID (used for org-level access policy).
+
+    AgentRolesHeader:
+      in: header
+      name: x-agent-roles
+      required: false
+      schema:
+        type: string
+      description: Comma-separated list of agent roles (self-asserted).
+
   schemas:
+    # ── Execution Result Envelope (canonical) ──
     ExecutionResult:
       type: object
       required:
@@ -31,9 +88,12 @@ components:
       properties:
         schema_version:
           type: string
+          enum: ["1.0"]
           example: "1.0"
         operation_id:
           type: string
+          description: Unique ID for this execution operation (assigned by the cloud relay).
+          example: "cmd-3a7f92bc-1234"
         status:
           type: string
           enum: [accepted, in_progress, success, error]
@@ -52,12 +112,14 @@ components:
               maximum: 100
         capability:
           type: string
+          example: "camera.capture"
         device_id:
           type: string
         timestamp:
           type: string
           format: date-time
         data:
+          description: Capability-specific structured payload.
           nullable: true
         error:
           type: object
@@ -65,22 +127,226 @@ components:
           properties:
             code:
               type: string
+              example: "EXECUTION_FAILED"
             message:
               type: string
             retryable:
               type: boolean
+            agent_recovery_hints:
+              type: array
+              items:
+                type: string
+              description: Natural-language recovery suggestions for the calling agent.
             details:
               nullable: true
+        meta:
+          type: object
+          description: Optional relay and adapter metadata.
+          properties:
+            adapter_id:
+              type: string
+            relay_latency_ms:
+              type: number
+              description: Time in ms between command dispatch and result receipt at the cloud layer.
+            node_id:
+              type: string
+          additionalProperties: true
 
+    # ── Capability Descriptor ──
+    CapabilityDescriptor:
+      type: object
+      required: [name, description, schema]
+      properties:
+        name:
+          type: string
+          example: "camera.capture"
+        description:
+          type: string
+        schema:
+          type: object
+          description: JSON Schema (draft-07+) describing the `params` this capability accepts.
+        instructions:
+          type: string
+          description: Natural-language instructions for LLM-native agents (MCP style).
+        semantic_type:
+          type: string
+          description: W3C WoT affordance type (e.g. "ActionAffordance").
+          example: "ActionAffordance"
+        helper_url:
+          type: string
+          format: uri
+        template:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        pricing:
+          $ref: '#/components/schemas/PricingDescriptor'
+
+    # ── Device Descriptor ──
+    DeviceDescriptor:
+      type: object
+      required: [id, type, capabilities, node_id, status]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          description: Device category (e.g. camera, sensor, radio, mobile).
+        name:
+          type: string
+        capabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/CapabilityDescriptor'
+        provider:
+          type: string
+        node_id:
+          type: string
+        manufacturer:
+          type: string
+        model:
+          type: string
+        serial_number:
+          type: string
+        semantic_context:
+          type: array
+          items:
+            type: string
+          description: W3C WoT @context alignment strings.
+        pricing:
+          $ref: '#/components/schemas/PricingDescriptor'
+        access_policy:
+          $ref: '#/components/schemas/DeviceAccessPolicy'
+        status:
+          type: string
+          enum: [available, busy, offline]
+
+    # ── Device Access Policy ──
+    DeviceAccessPolicy:
+      type: object
+      properties:
+        visibility:
+          type: string
+          enum: [public, shared, private]
+          description: |
+            `public` — any authenticated agent may access.
+            `shared` — only agents/orgs in the allow-lists may access.
+            `private` — only the device owner may access.
+        allowed_agents:
+          type: array
+          items:
+            type: string
+        allowed_orgs:
+          type: array
+          items:
+            type: string
+        denied_agents:
+          type: array
+          items:
+            type: string
+
+    # ── Pricing Descriptor ──
+    PricingDescriptor:
+      type: object
+      properties:
+        currency:
+          type: string
+          example: "USD"
+        rate_per_minute:
+          type: number
+        rate_per_execution:
+          type: number
+        payment_address:
+          type: string
+
+    # ── Pagination ──
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+        has_next:
+          type: boolean
+        has_prev:
+          type: boolean
+
+    # ── Error Response ──
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+# ─────────────────────────────────────────────
+# Agent-Facing Endpoints
+# ─────────────────────────────────────────────
 paths:
   /v1/capabilities:
     get:
-      summary: Get all available hardware devices and their capabilities
+      operationId: listCapabilities
+      tags: [Agent — Discovery]
+      summary: Discover available hardware devices and their capabilities
+      description: |
+        Returns all devices visible to the calling agent based on bearer-token authentication
+        and the optional agent identity headers. Access policy (visibility, allowed_agents, etc.)
+        is enforced server-side.
       security:
         - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AgentIdHeader'
+        - $ref: '#/components/parameters/AgentOrgIdHeader'
+        - $ref: '#/components/parameters/AgentRolesHeader'
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Free-text search across device ID, type, provider name, and capability names.
+        - in: query
+          name: type
+          schema:
+            type: string
+          description: Filter by device type (e.g. `camera`, `sensor`, `radio`).
+        - in: query
+          name: provider
+          schema:
+            type: string
+          description: Filter by provider name.
+        - in: query
+          name: node_id
+          schema:
+            type: string
+          description: Restrict results to a specific hardware node.
+        - in: query
+          name: capability
+          schema:
+            type: string
+          description: Filter to devices that expose a specific capability (partial match).
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number (1-indexed).
+        - in: query
+          name: page_size
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+          description: Results per page.
       responses:
         '200':
-          description: A list of available hardware devices
+          description: Device list with pagination metadata
           content:
             application/json:
               schema:
@@ -88,57 +354,40 @@ paths:
                 properties:
                   timestamp:
                     type: integer
+                    description: Unix epoch milliseconds at time of response.
                   devices:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        type:
-                          type: string
-                        capabilities:
-                          type: array
-                          items:
-                            type: string
-                        provider:
-                          type: string
-                        node_id:
-                          type: string
-                        status:
-                          type: string
+                      $ref: '#/components/schemas/DeviceDescriptor'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                  filters:
+                    type: object
+                    description: Echo of active filter parameters.
+        '401':
+          description: Missing or invalid agent API key.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /v1/requests:
     post:
-      summary: Request a hardware session for a specific capability
-      security:
-        - BearerAuth: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                capability:
-                  type: string
-                device_id:
-                  type: string
-                node_id:
-                  type: string
-      responses:
-        '200':
-          description: Session assigned
-  /v1/sessions/{session_id}/execute:
-    post:
-      summary: Execute a Capability
+      operationId: requestSession
+      tags: [Agent — Session]
+      summary: Reserve a hardware session for a specific device or capability
+      description: |
+        Allocates an exclusive session on a device. The device must be accessible to the calling
+        agent based on its access policy. Sessions are exclusive — a device can only have one
+        active session at a time.
       security:
         - BearerAuth: []
       parameters:
-        - in: path
-          name: session_id
-          required: true
-          schema:
-            type: string
+        - $ref: '#/components/parameters/AgentIdHeader'
+        - $ref: '#/components/parameters/AgentOrgIdHeader'
+        - $ref: '#/components/parameters/AgentRolesHeader'
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -146,26 +395,350 @@ paths:
               properties:
                 capability:
                   type: string
-                params:
-                  type: object
+                  description: Required if `device_id` is omitted. Cloud will find a device that supports this capability.
+                  example: "camera.capture"
+                device_id:
+                  type: string
+                  description: Target a specific device by ID.
+                node_id:
+                  type: string
+                  description: Restrict to a specific node (requires `device_id`).
       responses:
         '200':
-          description: Execution result
+          description: Session allocated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session_id, status]
+                properties:
+                  session_id:
+                    type: string
+                    example: "sess-3f7a2c1d-..."
+                  status:
+                    type: string
+                    enum: [accepted]
+        '400':
+          description: Missing or invalid request parameters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Agent identity does not have access to this device.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No matching available hardware found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/sessions/{session_id}/execute:
+    post:
+      operationId: executeCapability
+      tags: [Agent — Execution]
+      summary: Execute a single capability within an active session
+      description: |
+        Relays the command to the hardware node. The relay mode (WebSocket fast-path or HTTP
+        long-poll fallback) is transparent to the caller. Response headers report the relay mode.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/AgentIdHeader'
+        - $ref: '#/components/parameters/AgentOrgIdHeader'
+        - $ref: '#/components/parameters/AgentRolesHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [capability]
+              properties:
+                capability:
+                  type: string
+                  example: "camera.capture"
+                params:
+                  type: object
+                  description: Arguments validated against the capability's JSON Schema.
+                timeout_ms:
+                  type: integer
+                  description: Override the default relay timeout (milliseconds).
+                  example: 30000
+      responses:
+        '200':
+          description: Execution result envelope
+          headers:
+            x-oahl-relay-mode:
+              schema:
+                type: string
+                enum: [websocket, websocket-late, polling]
+            x-oahl-request-id:
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExecutionResult'
+        '404':
+          description: Session not found or expired.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '504':
+          description: Hardware node did not respond within the timeout window.
+          headers:
+            x-oahl-relay-mode:
+              schema:
+                type: string
+                enum: [websocket-timeout, polling-timeout]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/sessions/{session_id}/execute-batch:
+    post:
+      operationId: executeCapabilityBatch
+      tags: [Agent — Execution]
+      summary: Execute multiple capabilities sequentially within a single session
+      description: |
+        Sends a batch of commands to the node in one relay call, reducing round-trip overhead.
+        The batch stops on the first error by default. Relay timeout scales with batch size.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/AgentIdHeader'
+        - $ref: '#/components/parameters/AgentOrgIdHeader'
+        - $ref: '#/components/parameters/AgentRolesHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [commands]
+              properties:
+                commands:
+                  type: array
+                  description: Ordered list of capability execution requests.
+                  items:
+                    type: object
+                    required: [capability]
+                    properties:
+                      capability:
+                        type: string
+                      params:
+                        type: object
+                timeout_ms:
+                  type: integer
+                  description: Total timeout for the entire batch in milliseconds.
+      responses:
+        '200':
+          description: Batch execution result envelope
+          headers:
+            x-oahl-relay-mode:
+              schema:
+                type: string
+            x-oahl-request-id:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResult'
+        '400':
+          description: Commands field missing or not an array.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /v1/sessions/{session_id}/stop:
     post:
-      summary: Stop a Session
+      operationId: stopSession
+      tags: [Agent — Session]
+      summary: Release an active session and free the device
+      description: |
+        Agents MUST call this endpoint when finished, on both success and failure paths.
+        After stop, the device becomes available for other agents to reserve.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Session stopped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [stopped]
+
+# ─────────────────────────────────────────────
+# Provider (Node) Endpoints
+# ─────────────────────────────────────────────
+  /v1/provider/nodes/register:
+    post:
+      operationId: registerNode
+      tags: [Provider — Node Management]
+      summary: Register or heartbeat a hardware node with the cloud registry
+      description: |
+        Called by the local OAHL node on startup and periodically (default: every 15 s) to
+        announce available devices and their capabilities. Node records expire after 300 s if
+        not refreshed.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [node_id]
+              properties:
+                node_id:
+                  type: string
+                owner_id:
+                  type: string
+                owner_email:
+                  type: string
+                  format: email
+                provider:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                devices:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/DeviceDescriptor'
+      responses:
+        '200':
+          description: Node registered successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+        '400':
+          description: Missing node_id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/provider/nodes/{id}/poll:
+    get:
+      operationId: pollCommands
+      tags: [Provider — Node Management]
+      summary: Long-poll for pending commands (HTTP fallback when WebSocket is unavailable)
+      description: |
+        Blocks up to 30 seconds waiting for a queued command. Returns 200 with the command
+        payload if one arrives, or 204 (No Content) if the timeout elapses with no command.
+        Nodes should prefer the WebSocket relay (`/ws/provider`) and use polling as a fallback.
       security:
         - BearerAuth: []
       parameters:
         - in: path
-          name: session_id
+          name: id
           required: true
           schema:
             type: string
+          description: The node_id registered by this node.
       responses:
         '200':
-          description: Session stopped
+          description: A pending command payload.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    enum: [command, command-batch]
+                  payload:
+                    type: object
+        '204':
+          description: No commands pending (poll timeout elapsed).
+
+  /v1/provider/nodes/results:
+    post:
+      operationId: submitResult
+      tags: [Provider — Node Management]
+      summary: Deliver an execution result back to the cloud (HTTP polling fallback)
+      description: |
+        Used by nodes when the WebSocket relay is unavailable. If the cloud still has a
+        pending WebSocket promise for this requestId, it resolves it immediately (mode: websocket).
+        Otherwise the result is stored in Redis for the waiting agent to collect.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [requestId, result]
+              properties:
+                requestId:
+                  type: string
+                result:
+                  $ref: '#/components/schemas/ExecutionResult'
+      responses:
+        '200':
+          description: Result delivered.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  mode:
+                    type: string
+                    enum: [websocket, redis]
+
+# ─────────────────────────────────────────────
+# WebSocket Channel (Informational)
+# ─────────────────────────────────────────────
+# The cloud exposes a WebSocket endpoint at /ws/provider for real-time bidirectional
+# relay between nodes and the cloud. This is not expressible in OpenAPI 3.0; see the
+# AsyncAPI spec (docs/asyncapi.yaml — planned) for the full message contract.
+#
+# Connection: wss://<host>/ws/provider?node_id=<id>
+# Headers:    Authorization: Bearer <provider_api_key>
+#             x-node-id: <node_id>
+#
+# Cloud → Node messages:
+#   { "type": "command",       "payload": { requestId, deviceId, capability, params, dispatchedAt } }
+#   { "type": "command-batch", "payload": { requestId, deviceId, commands, dispatchedAt } }
+#
+# Node → Cloud messages:
+#   { "type": "result", "requestId": "cmd-...", "result": <ExecutionResult> }

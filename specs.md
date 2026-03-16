@@ -101,9 +101,13 @@ Execution flow:
 
 - Authenticated access for cloud-facing API operations.
 - Policy checks before hardware execution.
+- Device access policy (visibility, allowed_agents, allowed_orgs, denied_agents) enforced at cloud layer.
+- Agent identity headers (x-agent-id, x-agent-org-id) available for policy enforcement (self-asserted in v1).
 - Adapter health visibility through `healthCheck()`.
 - Safe error behavior for offline/busy/disconnected hardware.
 - Support secure transport posture where applicable (TLS and relay constraints).
+
+See `docs/security-guide.md` for implemented controls and known gaps with compensating controls.
 
 ## 9. Reliability and Operational Requirements
 
@@ -163,6 +167,11 @@ Planned areas to formalize further in future revisions:
 - Cross-node scheduling and deterministic routing guarantees.
 - Capability schema versioning and migration policy.
 - SLO/SLA definitions for cloud relay operations.
+- SSE / WebSocket result streaming for long-running hardware operations.
+- Signed JWT / mTLS agent identity binding.
+- Node attestation profile.
+- Cloud-side JSON Schema validation before command forwarding.
+- W3C WoT Thing Description export (`GET /v1/things/{device_id}`). See `docs/wot-alignment.md`.
 
 ---
 
