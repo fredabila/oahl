@@ -68,7 +68,7 @@ export default function App() {
             </div>
           </div>
           <a 
-            href="https://github.com/fredabila/oahl-adapter-registry" 
+            href="https://github.com/fredabila/oahl/tree/main/registry" 
             target="_blank" 
             rel="noopener noreferrer"
             className="flex items-center gap-2 text-oahl-textMuted hover:text-oahl-textMain transition-colors text-sm font-mono"
