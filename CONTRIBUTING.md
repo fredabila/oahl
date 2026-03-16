@@ -224,6 +224,6 @@ Significant protocol-level changes (new lifecycle steps, new canonical fields, n
 
 ## Licensing
 
-By submitting a contribution to this repository you agree that your contribution is licensed under the **MIT License** (see `LICENSE`). All contributions must be your own original work or appropriately licensed third-party code.
+By submitting a contribution to this repository you agree that your contribution is licensed under the **MIT License** (see `LICENSE`) — Copyright © 2026 Frederick Abila and the OAHL Contributors. All contributions must be your own original work or appropriately licensed third-party code.
 
 If your adapter depends on GPL-licensed native binaries at runtime (e.g., RTL-SDR tools), document that clearly in the adapter's `README.md`. The adapter package code itself should remain MIT.
