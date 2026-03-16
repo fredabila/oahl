@@ -147,6 +147,51 @@ Release variants are also available:
 - `npm run publish:all:auto:major`
 - `npm run publish:all:auto:prerelease`
 
+## Frequently Asked Questions (FAQ)
+
+<details>
+<summary><strong>Why should I use Docker instead of running via npm start?</strong></summary>
+
+Docker is highly recommended because it **avoids host machine pollution**. Many hardware adapters (especially those communicating over serial or BLE) require native C++ bindings to be compiled during installation (e.g., `serialport`). 
+
+If you use `npm start`, you may need to install heavy dependencies like Visual Studio C++ Build Tools or `python`/`make` on your host machine. By using Docker, the node runs in a pre-configured Linux container with all build tools already installed. The adapter safely accesses the hardware via the `--device` flag without touching your host OS.
+</details>
+
+<details>
+<summary><strong>Can I run OAHL completely offline / locally without the Cloud Registry?</strong></summary>
+
+**Yes, absolutely.** The Cloud Registry is strictly optional and used for global discovery. To run a 100% private, local-only node, simply open your `oahl-config.json` file and remove or empty the `cloud_url` property:
+
+```json
+{
+  "node_id": "my-local-lab",
+  "cloud_url": "",
+  "devices": [ ... ]
+}
+```
+
+When you do this, the node will skip the cloud heartbeat and relay. Your local Express server will still start, and local AI agents can interact with your hardware directly on your LAN (usually via `http://localhost:3000`), but your devices will not be broadcast to the internet.
+</details>
+
+<details>
+<summary><strong>Which hardware transport layers are supported?</strong></summary>
+
+OAHL adapters can be written to support almost anything, but we provide first-party reference "transport plugins" to handle the messy connection logic for common protocols:
+- **Serial (UART/USB):** `transport-serial`
+- **Android Debug Bridge:** `transport-adb`
+- **Bluetooth Low Energy (BLE):** `transport-ble` (Planned)
+- **MQTT & TCP/IP:** Available for networked IoT devices
+</details>
+
+<details>
+<summary><strong>Is it secure to let an AI control my hardware?</strong></summary>
+
+OAHL is designed specifically to make this safe:
+1. **Container Sandboxing:** Hardware runs in isolated Docker containers; the agent cannot access the host machine's filesystem.
+2. **Access Policies:** You write a declarative policy for every device outlining exactly which capabilities an agent is allowed to execute (and you can ban specific agents/organizations).
+3. **Session Exclusivity:** An agent must request a "session" to use a device. While an agent holds a session, no other agent can interrupt or send contradictory commands to your hardware.
+</details>
+
 ## Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. It covers the development workflow, adapter authoring rules, PR checklist, and the RFC process for protocol-level changes.
