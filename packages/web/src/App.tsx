@@ -69,10 +69,6 @@ interface RelayInfo {
   requestId: string;
 }
 
-interface AiPlannedStep {
-  capability: string;
-  params?: Record<string, any>;
-}
 
 interface AiStepResult {
   step: number;
