@@ -347,20 +347,26 @@ function HomePage({ onOpenApiLab }: { onOpenApiLab: () => void }) {
                 <span className="ml-3 text-xs text-oahl-textMuted font-mono">agent-session.ts</span>
               </div>
               <div className="terminal-code">
+                <div><span className="hl-keyword">import</span> {'{'} <span className="hl-var">CloudClient</span> {'}'} <span className="hl-keyword">from</span> <span className="hl-string">'@oahl/sdk'</span>;</div>
+                <div>&nbsp;</div>
+                <div><span className="hl-keyword">const</span> <span className="hl-var">cloud</span> <span className="hl-method">= new</span> <span className="hl-var">CloudClient</span>(<span className="hl-string">'https://oahl.onrender.com'</span>, <span className="hl-var">AGENT_KEY</span>);</div>
+                <div>&nbsp;</div>
                 <div><span className="hl-comment">{'// Discover available hardware'}</span></div>
-                <div><span className="hl-keyword">const</span> <span className="hl-var">devices</span> <span className="hl-method">= await</span> <span className="hl-method">oahl</span>.<span className="hl-method">capabilities</span>({'{'} <span className="hl-method">type</span>: <span className="hl-string">'android'</span> {'}'});</div>
+                <div><span className="hl-keyword">const</span> {'{'} <span className="hl-var">devices</span> {'}'} <span className="hl-method">= await</span> <span className="hl-var">cloud</span>.<span className="hl-method">getCapabilities</span>({'{'} <span className="hl-method">type</span>: <span className="hl-string">'android'</span> {'}'});</div>
                 <div>&nbsp;</div>
                 <div><span className="hl-comment">{'// Reserve a hardware session'}</span></div>
-                <div><span className="hl-keyword">const</span> <span className="hl-var">session</span> <span className="hl-method">= await</span> <span className="hl-method">oahl</span>.<span className="hl-method">request</span>({'{'}</div>
-                <div>  <span className="hl-method">capability</span>: <span className="hl-string">'screen.capture'</span>,</div>
-                <div>  <span className="hl-method">device_id</span>:  <span className="hl-string">'pixel-7-lab-01'</span></div>
+                <div><span className="hl-keyword">const</span> {'{'} <span className="hl-var">session_id</span> {'}'} <span className="hl-method">= await</span> <span className="hl-var">cloud</span>.<span className="hl-method">requestSession</span>({'{'}</div>
+                <div>  <span className="hl-method">device_id</span>: <span className="hl-var">devices</span>[<span className="hl-var">0</span>].<span className="hl-method">id</span>,</div>
+                <div>  <span className="hl-method">capability</span>: <span className="hl-string">'screen.capture'</span></div>
                 <div>{'}'});</div>
                 <div>&nbsp;</div>
                 <div><span className="hl-comment">{'// Execute and get structured results'}</span></div>
-                <div><span className="hl-keyword">const</span> <span className="hl-var">result</span> <span className="hl-method">= await</span> <span className="hl-method">session</span>.<span className="hl-method">execute</span>(<span className="hl-string">'screen.capture'</span>);</div>
-                <div><span className="hl-method">console</span>.<span className="hl-method">log</span>(<span className="hl-var">result</span>.<span className="hl-method">data</span>.<span className="hl-method">image_path</span>); <span className="hl-comment">{'// → /captures/pixel7_001.png'}</span></div>
+                <div><span className="hl-keyword">const</span> <span className="hl-var">result</span> <span className="hl-method">= await</span> <span className="hl-var">cloud</span>.<span className="hl-method">execute</span>(<span className="hl-var">session_id</span>, {'{'}</div>
+                <div>  <span className="hl-method">capability</span>: <span className="hl-string">'screen.capture'</span>,</div>
+                <div>  <span className="hl-method">params</span>: {'{'} <span className="hl-method">resolution</span>: <span className="hl-string">'1080p'</span> {'}'}</div>
+                <div>{'}'});</div>
                 <div>&nbsp;</div>
-                <div><span className="hl-keyword">await</span> <span className="hl-method">session</span>.<span className="hl-method">stop</span>(); <span className="hl-comment typing-cursor">{'// Hardware released'}</span></div>
+                <div><span className="hl-keyword">await</span> <span className="hl-var">cloud</span>.<span className="hl-method">stopSession</span>(<span className="hl-var">session_id</span>); <span className="hl-comment typing-cursor">{'// Hardware released'}</span></div>
               </div>
             </div>
           </div>
