@@ -907,6 +907,136 @@ app.get('/v1/capabilities', authAgent, async (req, res) => {
 });
 
 /**
+ * 2b. W3C WoT THING DESCRIPTION
+ * Renders a WoT-compatible Thing Description for a device.
+ * See: docs/wot-alignment.md — Forward Interoperability Path
+ */
+app.get('/v1/things/:device_id', authAgent, async (req, res) => {
+  const deviceId = req.params.device_id;
+  const agent = extractAgentIdentity(req);
+
+  const keys = await redisClient.keys('node:*');
+  let foundDevice: any = null;
+  let foundNode: any = null;
+
+  for (const key of keys) {
+    const nodeStr = await redisClient.get(key);
+    if (!nodeStr) continue;
+    const node = JSON.parse(nodeStr);
+    if (!node.devices) continue;
+    for (const device of node.devices) {
+      if (device.id === deviceId && isDeviceAccessibleToAgent(node, device, agent)) {
+        foundDevice = device;
+        foundNode = node;
+        break;
+      }
+    }
+    if (foundDevice) break;
+  }
+
+  if (!foundDevice) {
+    return res.status(404).json({ error: 'Device not found or not accessible' });
+  }
+
+  const capabilities = Array.isArray(foundDevice.capabilities) ? foundDevice.capabilities : [];
+  const actions: Record<string, any> = {};
+
+  for (const cap of capabilities) {
+    const capName = typeof cap === 'string' ? cap : cap.name;
+    if (!capName) continue;
+
+    const action: any = {
+      title: capName,
+      description: typeof cap === 'object' ? (cap.description || '') : '',
+      safe: false,
+      idempotent: false,
+      forms: [{
+        href: `/v1/sessions/{session_id}/execute`,
+        contentType: 'application/json',
+        op: ['invokeaction'],
+        'oahl:relay': true
+      }]
+    };
+
+    if (typeof cap === 'object' && cap.schema) {
+      action.input = cap.schema;
+    }
+
+    if (typeof cap === 'object' && cap.semantic_type) {
+      action['@type'] = cap.semantic_type;
+    }
+
+    actions[capName] = action;
+  }
+
+  const td: any = {
+    '@context': [
+      'https://www.w3.org/2019/wot/td/v1',
+      { oahl: 'https://oahl.org/ns/v1' }
+    ],
+    '@type': 'Thing',
+    id: `urn:oahl:device:${foundDevice.id}`,
+    title: foundDevice.name || foundDevice.id,
+    description: `OAHL-managed ${foundDevice.type || 'device'} on node ${foundNode.node_id}`,
+    securityDefinitions: {
+      bearer_sc: {
+        scheme: 'bearer',
+        in: 'header',
+        name: 'Authorization'
+      }
+    },
+    security: ['bearer_sc'],
+    properties: {},
+    actions,
+    events: {},
+    links: [
+      { rel: 'alternate', href: `/v1/capabilities?node_id=${foundNode.node_id}`, type: 'application/json' }
+    ],
+    'oahl:node_id': foundNode.node_id,
+    'oahl:device_type': foundDevice.type,
+    'oahl:manufacturer': foundDevice.manufacturer,
+    'oahl:model': foundDevice.model
+  };
+
+  if (Array.isArray(foundDevice.semantic_context) && foundDevice.semantic_context.length > 0) {
+    td['@context'] = [
+      ...td['@context'],
+      ...foundDevice.semantic_context.filter((c: string) => c !== 'https://www.w3.org/2019/wot/td/v1')
+    ];
+  }
+
+  res.setHeader('Content-Type', 'application/td+json');
+  res.json(td);
+});
+
+/**
+ * 2c. PER-NODE QUOTA ENFORCEMENT
+ * Tracks execution counts per node_id within a sliding window
+ * and returns 429 when a node is overloaded.
+ */
+const nodeExecuteCounts = new Map<string, { count: number; windowStart: number }>();
+const NODE_EXECUTE_WINDOW_MS = 60_000;
+const NODE_EXECUTE_MAX = parseInt(process.env.OAHL_NODE_RATE_LIMIT || '200', 10);
+
+function checkNodeQuota(nodeId: string): boolean {
+  const now = Date.now();
+  const entry = nodeExecuteCounts.get(nodeId);
+
+  if (!entry || (now - entry.windowStart) >= NODE_EXECUTE_WINDOW_MS) {
+    nodeExecuteCounts.set(nodeId, { count: 1, windowStart: now });
+    return true;
+  }
+
+  if (entry.count >= NODE_EXECUTE_MAX) {
+    return false;
+  }
+
+  entry.count++;
+  return true;
+}
+
+/**
+
  * 3. AGENT REQUEST (START SESSION)
  */
 app.post('/v1/requests', authAgent, async (req, res) => {
@@ -1004,6 +1134,14 @@ app.post('/v1/sessions/:id/execute', authAgent, executeRateLimiter, async (req, 
   const sessionStr = await redisClient.get(`session:${sessionId}`);
   if (!sessionStr) return res.status(404).json({ error: "Session not found" });
   const session = JSON.parse(sessionStr);
+
+  // Per-node quota enforcement
+  if (!checkNodeQuota(session.node_id)) {
+    return res.status(429).json({
+      error: `Node ${session.node_id} has exceeded its execution quota (${NODE_EXECUTE_MAX}/min). Try again shortly.`,
+      retry_after_ms: NODE_EXECUTE_WINDOW_MS
+    });
+  }
 
   // Cloud-side JSON Schema parameter validation
   if (command.capability) {

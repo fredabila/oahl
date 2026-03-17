@@ -90,7 +90,7 @@ And a device can declare:
 OAHL's current design does not prevent future WoT alignment. The recommended approach:
 
 1. **Keep `semantic_type` and `semantic_context` fields.** These are already in the type system and propagated through the API.
-2. **Add a `GET /v1/things/{device_id}` endpoint (future)** that renders a WoT-compatible Thing Description for a device, translating OAHL capabilities into ActionAffordances with appropriate `forms`.
+2. **`GET /v1/things/{device_id}` endpoint (implemented)** renders a WoT-compatible Thing Description for a device, translating OAHL capabilities into ActionAffordances with appropriate `forms`, bearer security schemes, and the `oahl:` custom namespace. Content-Type is `application/td+json`.
 3. **Register with a W3C Thing Directory (future)** by periodically pushing generated TDs to a public directory endpoint.
 
 This preserves OAHL's simplified agent-native model while offering WoT interoperability as an opt-in surface.
