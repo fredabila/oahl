@@ -22,11 +22,17 @@ const args = process.argv.slice(2).reduce((acc, arg) => {
   return acc;
 }, {});
 
-const CLOUD_URL = args.url || process.env.OAHL_CLOUD_URL || 'http://localhost:8000';
-const API_KEY = args.key || process.env.OAHL_AGENT_API_KEY || 'master-sk-12345';
+const CLOUD_URL = args.url || process.env.OAHL_CLOUD_URL || 'http://localhost:3000';
+const API_KEY = args.key || process.env.OAHL_AGENT_API_KEY || '123456';
 const NODE_ID = args.node;
 const DEVICE_ID = args.device;
-const CAPABILITY = args.capability || 'sensor.read';
+const CAPABILITY = args.capability || 'input.double_tap';
+let PARAMS = {};
+if (args.params) {
+  try { PARAMS = JSON.parse(args.params); } catch(e) {}
+} else if (CAPABILITY.includes('input.')) {
+  PARAMS = { x: 500, y: 800 }; // Default safe screen coordinates
+}
 const TOTAL_REQUESTS = parseInt(args.requests || '100', 10);
 const CONCURRENCY = parseInt(args.concurrency || '10', 10);
 
@@ -89,7 +95,7 @@ async function runBenchmark() {
 
   // 1. Establish Session
   console.log(`--> Establishing session...`);
-  const sessionRes = await makeRequest('POST', '/v1/sessions', {
+  const sessionRes = await makeRequest('POST', '/v1/requests', {
     node_id: NODE_ID,
     device_id: DEVICE_ID
   });
@@ -120,17 +126,20 @@ async function runBenchmark() {
       try {
         const res = await makeRequest('POST', `/v1/sessions/${sessionId}/execute`, {
           capability: CAPABILITY,
-          params: {}
+          params: PARAMS
         });
         
         const reqEnd = process.hrtime.bigint();
         const durationMs = Number(reqEnd - reqStart) / 1_000_000;
         
-        if (res.status === 200 && res.data.status === 'success') {
+        if (res.status === 200 && (res.data.status === 'success' || res.data.result)) {
           successful++;
           latencies.push(durationMs);
         } else {
           failed++;
+          if (failed === 1) {
+             console.log(`\n⚠️ First execution failure (HTTP ${res.status}):`, JSON.stringify(res.data, null, 2));
+          }
         }
       } catch (err) {
         failed++;
