@@ -280,194 +280,401 @@ function AboutPage() {
 function HomePage({ onOpenApiLab }: { onOpenApiLab: () => void }) {
   return (
     <>
-      <section className="aesthetic-hero panel relative overflow-hidden p-8 md:p-12 lg:p-14">
-        <div className="relative z-10 grid items-end gap-10 lg:grid-cols-[1.3fr_1fr]">
-          <div>
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-oahl-border bg-oahl-surface px-3 py-1 text-xs font-mono text-oahl-accent">
-              <Sparkles className="h-3.5 w-3.5" />
-              Agent-native Hardware Platform
-            </div>
+      {/* ═══════════════════ HERO ═══════════════════ */}
+      <section className="relative overflow-hidden rounded-3xl">
+        {/* Floating orbs */}
+        <div className="orb orb-accent w-[400px] h-[400px] -top-40 -left-40" />
+        <div className="orb orb-tech w-[300px] h-[300px] -bottom-20 -right-20" style={{ animationDelay: '-4s' }} />
+        <div className="orb orb-accent w-[200px] h-[200px] top-1/2 right-1/4" style={{ animationDelay: '-8s' }} />
+        <div className="grid-overlay" />
 
-            <h1 className="max-w-4xl text-4xl font-semibold leading-[1.02] tracking-tight md:text-6xl text-oahl-textMain">
-              A standard protocol for
-              <span className="block text-oahl-accent mt-1">real-world agent execution.</span>
+        <div className="relative z-10 py-16 md:py-24 px-8 md:px-14">
+          {/* Announcement pill */}
+          <div className="flex justify-center mb-8">
+            <div className="gradient-border">
+              <div className="inline-flex items-center gap-2.5 rounded-[19px] bg-oahl-bg/90 backdrop-blur-md px-4 py-2 text-xs font-mono">
+                <span className="inline-flex items-center gap-1.5 text-oahl-accent font-semibold">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  New
+                </span>
+                <span className="h-3 w-px bg-oahl-border" />
+                <span className="text-oahl-textMuted">Open-source hardware protocol for AI agents</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Headline */}
+          <div className="text-center max-w-4xl mx-auto stagger-children">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[0.95]">
+              <span className="text-oahl-textMain">Give your agents</span>
+              <br />
+              <span className="shimmer-text">real-world hands.</span>
             </h1>
 
-            <p className="mt-6 max-w-3xl text-base leading-relaxed text-oahl-textMuted md:text-lg">
-              OAHL gives your agents one elegant interface to orchestrate cameras, radios, phones, and lab gear with
-              isolation, policy, and deterministic routing built into the core lifecycle.
+            <p className="mt-8 text-lg md:text-xl text-oahl-textMuted max-w-2xl mx-auto leading-relaxed">
+              One protocol to discover, reserve, execute, and release physical hardware — 
+              cameras, phones, radios, lab gear — with policy and isolation built in.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
-              <button onClick={onOpenApiLab} className="rounded-2xl bg-oahl-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-oahl-accentHover">
+            {/* CTA buttons */}
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+              <button
+                onClick={onOpenApiLab}
+                className="group relative rounded-2xl bg-oahl-accent px-7 py-3.5 text-sm font-semibold text-white transition-all hover:bg-oahl-accentHover hover:shadow-[0_0_30px_rgba(212,126,91,0.3)] hover:scale-[1.02] active:scale-[0.98]"
+              >
                 Launch API Lab
+                <span className="absolute inset-0 rounded-2xl bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
-              <a href="https://github.com/fredabila/oahl" target="_blank" rel="noreferrer" className="rounded-2xl border border-oahl-border bg-black/30 px-5 py-2.5 text-sm font-semibold text-oahl-textMain transition-colors hover:border-oahl-accent">
-                Explore Repository
+              <a
+                href="https://github.com/fredabila/oahl"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-2xl border border-oahl-border bg-oahl-surface/50 backdrop-blur-sm px-7 py-3.5 text-sm font-semibold text-oahl-textMain transition-all hover:border-oahl-accent hover:bg-oahl-surface"
+              >
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                Star on GitHub
               </a>
             </div>
           </div>
 
-          <div className="hero-panel p-6 flex flex-col relative overflow-hidden">
-            <div className="absolute top-[-50px] right-[-50px] h-[200px] w-[200px] bg-oahl-tech/5 blur-[80px] rounded-full pointer-events-none" />
-            
-            <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-oahl-tech relative z-10">
-              <Waypoints className="h-4 w-4" />
-              Live topology
-            </h3>
-            
-            <div className="mt-8 flex flex-col relative z-10">
-              <div className="absolute left-[15px] top-4 bottom-4 w-px bg-gradient-to-b from-oahl-tech/50 via-oahl-accent/50 to-oahl-tech/50" />
-              
-              <div className="flex items-center gap-4 relative py-3 group">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-oahl-tech/30 bg-[#171615] z-10 transition-colors group-hover:border-oahl-tech shadow-[0_0_15px_rgba(115,149,128,0.1)] group-hover:shadow-[0_0_15px_rgba(115,149,128,0.3)]">
-                  <Terminal className="h-4 w-4 text-oahl-tech" />
-                </div>
-                <div>
-                  <div className="font-mono text-sm text-oahl-textMain">Agent SDK</div>
-                  <div className="text-xs text-oahl-textMuted">Local Execution Context</div>
-                </div>
+          {/* Terminal mockup */}
+          <div className="mt-16 max-w-3xl mx-auto">
+            <div className="terminal-mockup">
+              <div className="terminal-titlebar">
+                <div className="terminal-dot red" />
+                <div className="terminal-dot yellow" />
+                <div className="terminal-dot green" />
+                <span className="ml-3 text-xs text-oahl-textMuted font-mono">agent-session.ts</span>
               </div>
-              
-              <div className="flex items-center gap-4 relative py-3 group">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-oahl-accent/30 bg-[#171615] z-10 transition-colors group-hover:border-oahl-accent shadow-[0_0_15px_rgba(212,126,91,0.1)] group-hover:shadow-[0_0_15px_rgba(212,126,91,0.3)]">
-                  <Cloud className="h-4 w-4 text-oahl-accent" />
-                </div>
-                <div>
-                  <div className="font-mono text-sm text-oahl-textMain">Cloud Registry</div>
-                  <div className="text-xs text-oahl-textMuted">Global Namespace Map</div>
-                </div>
+              <div className="terminal-code">
+                <div><span className="hl-comment">{'// Discover available hardware'}</span></div>
+                <div><span className="hl-keyword">const</span> <span className="hl-var">devices</span> <span className="hl-method">= await</span> <span className="hl-method">oahl</span>.<span className="hl-method">capabilities</span>({'{'} <span className="hl-method">type</span>: <span className="hl-string">'android'</span> {'}'});</div>
+                <div>&nbsp;</div>
+                <div><span className="hl-comment">{'// Reserve a hardware session'}</span></div>
+                <div><span className="hl-keyword">const</span> <span className="hl-var">session</span> <span className="hl-method">= await</span> <span className="hl-method">oahl</span>.<span className="hl-method">request</span>({'{'}</div>
+                <div>  <span className="hl-method">capability</span>: <span className="hl-string">'screen.capture'</span>,</div>
+                <div>  <span className="hl-method">device_id</span>:  <span className="hl-string">'pixel-7-lab-01'</span></div>
+                <div>{'}'});</div>
+                <div>&nbsp;</div>
+                <div><span className="hl-comment">{'// Execute and get structured results'}</span></div>
+                <div><span className="hl-keyword">const</span> <span className="hl-var">result</span> <span className="hl-method">= await</span> <span className="hl-method">session</span>.<span className="hl-method">execute</span>(<span className="hl-string">'screen.capture'</span>);</div>
+                <div><span className="hl-method">console</span>.<span className="hl-method">log</span>(<span className="hl-var">result</span>.<span className="hl-method">data</span>.<span className="hl-method">image_path</span>); <span className="hl-comment">{'// → /captures/pixel7_001.png'}</span></div>
+                <div>&nbsp;</div>
+                <div><span className="hl-keyword">await</span> <span className="hl-method">session</span>.<span className="hl-method">stop</span>(); <span className="hl-comment typing-cursor">{'// Hardware released'}</span></div>
               </div>
+            </div>
+          </div>
 
-              <div className="flex items-center gap-4 relative py-3 group">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-oahl-tech/30 bg-[#171615] z-10 transition-colors group-hover:border-oahl-tech shadow-[0_0_15px_rgba(115,149,128,0.1)] group-hover:shadow-[0_0_15px_rgba(115,149,128,0.3)]">
-                  <Server className="h-4 w-4 text-oahl-tech" />
+          {/* Trust indicators */}
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-oahl-textMuted font-mono">
+            <span className="inline-flex items-center gap-2"><div className="glow-dot" />Open Source</span>
+            <span className="inline-flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-oahl-tech" />Bearer-Secured</span>
+            <span className="inline-flex items-center gap-2"><Waypoints className="h-3.5 w-3.5 text-oahl-accent" />WebSocket + Polling Relay</span>
+            <span className="inline-flex items-center gap-2"><Layers className="h-3.5 w-3.5 text-oahl-tech" />Transport Agnostic</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════ HOW IT WORKS ═══════════════════ */}
+      <section className="mt-20 relative">
+        <div className="text-center mb-12">
+          <p className="text-xs font-mono uppercase tracking-wider text-oahl-accent">How it works</p>
+          <h2 className="mt-3 text-3xl md:text-5xl font-bold tracking-tight">From hardware chaos<br /><span className="text-oahl-textMuted">to one operating model.</span></h2>
+          <p className="mt-4 text-sm text-oahl-textMuted max-w-lg mx-auto">
+            Four lifecycle phases. One execution contract. Infinite hardware scale.
+          </p>
+        </div>
+
+        {/* Horizontal connected pipeline */}
+        <div className="relative max-w-5xl mx-auto">
+          {/* Connecting line behind cards */}
+          <div className="hidden lg:block absolute top-[52px] left-[12%] right-[12%] h-px">
+            <div className="h-full bg-gradient-to-r from-oahl-accent via-oahl-tech to-oahl-accent opacity-30" />
+            <div className="absolute inset-0 h-full bg-gradient-to-r from-oahl-accent via-oahl-tech to-oahl-accent opacity-60 blur-sm" />
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {FLOW_STEPS.map((step, index) => (
+              <div key={step.title} className="glass-card p-6 text-center group relative">
+                {/* Step number with glow */}
+                <div className="relative inline-flex mx-auto">
+                  <div className="w-[44px] h-[44px] rounded-2xl bg-gradient-to-br from-oahl-accent to-oahl-accentHover flex items-center justify-center text-white font-mono font-bold text-lg shadow-lg shadow-oahl-accent/20 group-hover:shadow-oahl-accent/40 transition-shadow">
+                    {index + 1}
+                  </div>
                 </div>
-                <div>
-                  <div className="font-mono text-sm text-oahl-textMain">Provider Node</div>
-                  <div className="text-xs text-oahl-textMuted">Relay & Policy Engine</div>
+                <h3 className="mt-4 text-base font-bold text-oahl-textMain">{step.title}</h3>
+                <p className="mt-2 text-xs leading-relaxed text-oahl-textMuted">{step.detail}</p>
+                {/* Endpoint badge */}
+                <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-oahl-accent/5 border border-oahl-accent/10 px-2.5 py-1 text-[10px] font-mono text-oahl-accent">
+                  {index === 0 && 'GET /v1/capabilities'}
+                  {index === 1 && 'POST /v1/requests'}
+                  {index === 2 && 'POST /sessions/:id/execute'}
+                  {index === 3 && 'POST /sessions/:id/stop'}
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-              <div className="flex items-center gap-4 relative py-3 group">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-oahl-accent/30 bg-[#171615] z-10 transition-colors group-hover:border-oahl-accent shadow-[0_0_15px_rgba(212,126,91,0.1)] group-hover:shadow-[0_0_15px_rgba(212,126,91,0.3)]">
-                  <Layers className="h-4 w-4 text-oahl-accent" />
+      {/* ═══════════════════ ARCHITECTURE ═══════════════════ */}
+      <section className="mt-20 panel relative overflow-hidden p-8 md:p-12 rounded-3xl">
+        <div className="orb orb-accent w-[300px] h-[300px] -top-32 -right-32 opacity-40" />
+        <div className="orb orb-tech w-[200px] h-[200px] -bottom-20 -left-20 opacity-30" style={{ animationDelay: '-5s' }} />
+        <div className="grid-overlay" />
+
+        <div className="relative z-10">
+          <div className="text-center mb-10">
+            <p className="text-xs font-mono uppercase tracking-wider text-oahl-tech">System Architecture</p>
+            <h2 className="mt-3 text-3xl md:text-4xl font-bold tracking-tight">The full stack, <span className="shimmer-text">visualized.</span></h2>
+          </div>
+
+          {/* Layered architecture diagram */}
+          <div className="max-w-4xl mx-auto space-y-3">
+            {/* Layer 1: Agent */}
+            <div className="glass-card p-5 group">
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                <div className="flex items-center gap-3 min-w-[200px]">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-oahl-tech/10 border border-oahl-tech/20 group-hover:bg-oahl-tech/20 transition-colors">
+                    <Terminal className="h-5 w-5 text-oahl-tech" />
+                  </div>
+                  <div>
+                    <div className="font-mono text-sm font-semibold text-oahl-textMain">Agent SDK</div>
+                    <div className="text-[11px] text-oahl-textMuted">Your AI agent</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-mono text-sm text-oahl-textMain">Adapter Base</div>
-                  <div className="text-xs text-oahl-textMuted">Hardware Protocol</div>
+                <div className="hidden md:flex items-center flex-1 justify-center">
+                  <div className="flex items-center gap-2 text-[10px] font-mono text-oahl-textMuted">
+                    <span className="px-2 py-0.5 rounded bg-oahl-tech/10 text-oahl-tech">capabilities()</span>
+                    <span className="text-oahl-tech">→</span>
+                    <span className="px-2 py-0.5 rounded bg-oahl-tech/10 text-oahl-tech">request()</span>
+                    <span className="text-oahl-tech">→</span>
+                    <span className="px-2 py-0.5 rounded bg-oahl-tech/10 text-oahl-tech">execute()</span>
+                    <span className="text-oahl-tech">→</span>
+                    <span className="px-2 py-0.5 rounded bg-oahl-tech/10 text-oahl-tech">stop()</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Animated connector */}
+            <div className="flex justify-center">
+              <div className="w-px h-6 bg-gradient-to-b from-oahl-tech/40 to-oahl-accent/40 relative">
+                <div className="absolute -left-[3px] bottom-0 w-[7px] h-[7px] rounded-full bg-oahl-accent/60 animate-ping-slow" />
+              </div>
+            </div>
+
+            {/* Layer 2: Cloud */}
+            <div className="glass-card p-5 group border-oahl-accent/20">
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                <div className="flex items-center gap-3 min-w-[200px]">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-oahl-accent/10 border border-oahl-accent/20 group-hover:bg-oahl-accent/20 transition-colors">
+                    <Cloud className="h-5 w-5 text-oahl-accent" />
+                  </div>
+                  <div>
+                    <div className="font-mono text-sm font-semibold text-oahl-textMain">Cloud Registry</div>
+                    <div className="text-[11px] text-oahl-textMuted">Global namespace & relay</div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 flex-1 justify-center">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-oahl-border/50 text-[10px] font-mono text-oahl-textMuted">
+                    <ShieldCheck className="h-3 w-3 text-oahl-tech" /> Bearer auth
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-oahl-border/50 text-[10px] font-mono text-oahl-textMuted">
+                    <Activity className="h-3 w-3 text-oahl-accent" /> WS relay
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-oahl-border/50 text-[10px] font-mono text-oahl-textMuted">
+                    <Database className="h-3 w-3 text-oahl-tech" /> Session store
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Animated connector */}
+            <div className="flex justify-center">
+              <div className="w-px h-6 bg-gradient-to-b from-oahl-accent/40 to-oahl-tech/40 relative">
+                <div className="absolute -left-[3px] bottom-0 w-[7px] h-[7px] rounded-full bg-oahl-tech/60 animate-ping-slow" style={{ animationDelay: '-1s' }} />
+              </div>
+            </div>
+
+            {/* Layer 3: Node */}
+            <div className="glass-card p-5 group">
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                <div className="flex items-center gap-3 min-w-[200px]">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-oahl-tech/10 border border-oahl-tech/20 group-hover:bg-oahl-tech/20 transition-colors">
+                    <Server className="h-5 w-5 text-oahl-tech" />
+                  </div>
+                  <div>
+                    <div className="font-mono text-sm font-semibold text-oahl-textMain">Provider Node</div>
+                    <div className="text-[11px] text-oahl-textMuted">Edge relay & policy engine</div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 flex-1 justify-center">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-oahl-border/50 text-[10px] font-mono text-oahl-textMuted">
+                    <Network className="h-3 w-3 text-oahl-accent" /> NAT traversal
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-oahl-border/50 text-[10px] font-mono text-oahl-textMuted">
+                    <Waypoints className="h-3 w-3 text-oahl-tech" /> Outbound-only
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Animated connector */}
+            <div className="flex justify-center">
+              <div className="w-px h-6 bg-gradient-to-b from-oahl-tech/40 to-oahl-accent/40 relative">
+                <div className="absolute -left-[3px] bottom-0 w-[7px] h-[7px] rounded-full bg-oahl-accent/60 animate-ping-slow" style={{ animationDelay: '-2s' }} />
+              </div>
+            </div>
+
+            {/* Layer 4: Adapters */}
+            <div className="glass-card p-5 group">
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                <div className="flex items-center gap-3 min-w-[200px]">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-oahl-accent/10 border border-oahl-accent/20 group-hover:bg-oahl-accent/20 transition-colors">
+                    <Layers className="h-5 w-5 text-oahl-accent" />
+                  </div>
+                  <div>
+                    <div className="font-mono text-sm font-semibold text-oahl-textMain">Adapter Layer</div>
+                    <div className="text-[11px] text-oahl-textMuted">Hardware protocol bridge</div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 flex-1 justify-center">
+                  {['USB Camera', 'Android/ADB', 'RTL-SDR', 'Arduino', 'Custom'].map((adapter) => (
+                    <span key={adapter} className="px-2 py-1 rounded-lg bg-oahl-accent/5 border border-oahl-accent/10 text-[10px] font-mono text-oahl-accent">
+                      {adapter}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-        <div className="relative z-10 mt-8 grid gap-3 md:grid-cols-3">
-          <StatCard label="Device Families" value="Cameras · SDR · Android · Custom" />
-          <StatCard label="Control Model" value="Discover · Reserve · Execute · Release" />
-          <StatCard label="Relay Strategy" value="WebSocket Fast Path + Polling Fallback" />
-        </div>
       </section>
 
-      <section className="mt-10 grid gap-6 lg:grid-cols-[1.25fr_1fr]">
-        <div className="panel p-7">
-          <h2 className="text-2xl font-semibold md:text-3xl">From hardware chaos to one operating model</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-oahl-textMuted md:text-base">
-            OAHL replaces ad-hoc device scripts with a standards-first execution contract, so teams can scale from single benches to
-            distributed hardware farms without rewriting agent orchestration each time a transport or vendor changes.
+      {/* ═══════════════════ USE CASES BENTO ═══════════════════ */}
+      <section className="mt-16">
+        <div className="text-center mb-10">
+          <p className="text-xs font-mono uppercase tracking-wider text-oahl-accent">Use Cases</p>
+          <h2 className="mt-3 text-3xl md:text-4xl font-bold tracking-tight">Built for <span className="shimmer-text">physical AI workloads</span></h2>
+          <p className="mt-3 text-sm text-oahl-textMuted max-w-lg mx-auto">
+            Run field diagnostics, automate mobile testing, control lab equipment, and operate distributed radio pipelines.
           </p>
-
-          <div className="flow-rail mt-6">
-            {FLOW_STEPS.map((step, index) => (
-              <div key={step.title} className="flow-rail-node">
-                <div className="flow-rail-index">{index + 1}</div>
-                <p className="mt-3 text-sm font-semibold text-oahl-textMain">{step.title}</p>
-                <p className="mt-1 text-xs leading-relaxed text-oahl-textMuted">{step.detail}</p>
-              </div>
-            ))}
-          </div>
         </div>
 
-        <div className="panel p-7">
-          <h3 className="text-lg font-semibold">Designed for serious operations</h3>
-          <div className="mt-4 space-y-3 text-sm text-oahl-textMuted">
-            <LandingFeatureCard icon={<ShieldCheck className="h-4 w-4 text-oahl-tech" />} title="Policy-aware access" detail="Owner visibility and allow/deny rules at device level." />
-            <LandingFeatureCard icon={<Activity className="h-4 w-4 text-oahl-accent" />} title="Low-latency execution" detail="WS relay first, queue fallback if transport quality drops." />
-            <LandingFeatureCard icon={<Database className="h-4 w-4 text-oahl-tech" />} title="Structured responses" detail="Execution Result envelope for predictable agent parsing." />
-            <LandingFeatureCard icon={<Network className="h-4 w-4 text-oahl-accent" />} title="Scale-ready topology" detail="Register many nodes and route deterministically." />
-          </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 stagger-children">
+          {[
+            { icon: <Bot className="h-5 w-5" />, title: 'Vision Workflows', detail: 'Capture, inspect, and route imagery from any connected camera in your lab.' },
+            { icon: <Activity className="h-5 w-5" />, title: 'SDR Operations', detail: 'Scan, measure, and diagnose RF environments through software-defined radios.' },
+            { icon: <Sparkles className="h-5 w-5" />, title: 'Mobile Automation', detail: 'Android and iOS device control for scripted QA validation flows.' },
+            { icon: <Network className="h-5 w-5" />, title: 'Lab Orchestration', detail: 'Multi-node deterministic scheduling for complex hardware pipelines.' },
+          ].map((useCase) => (
+            <div key={useCase.title} className="glass-card p-6 group cursor-default">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-oahl-accent/10 text-oahl-accent border border-oahl-accent/20 group-hover:bg-oahl-accent/20 transition-colors">
+                {useCase.icon}
+              </div>
+              <h3 className="mt-4 text-sm font-semibold text-oahl-textMain">{useCase.title}</h3>
+              <p className="mt-2 text-xs leading-relaxed text-oahl-textMuted">{useCase.detail}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      <section className="mt-10 bento-grid">
-        <div className="panel bento-main p-7">
-          <p className="text-xs font-mono uppercase tracking-wider text-oahl-textMuted">Use Cases</p>
-          <h3 className="mt-2 text-2xl font-semibold">Built for physical AI workloads</h3>
-          <p className="mt-3 text-sm leading-relaxed text-oahl-textMuted">
-            Run field diagnostics, automate inspections, control mobile test fleets, and operate distributed radio pipelines through a single cloud-native hardware interface.
-          </p>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <MiniInfo label="Vision Workflows" value="Capture, inspect, and route imagery" />
-            <MiniInfo label="SDR Operations" value="Scan and diagnose RF environments" />
-            <MiniInfo label="Mobile Automation" value="Android control for scripted validation" />
-            <MiniInfo label="Lab Orchestration" value="Multi-node deterministic scheduling" />
-          </div>
-        </div>
-
-        <div className="panel p-6">
-          <p className="text-xs font-mono uppercase tracking-wider text-oahl-textMuted">Agent APIs</p>
-          <div className="mt-4 space-y-2">
-            {AGENT_ENDPOINTS.map((endpoint) => (
-              <div key={`${endpoint.method}-${endpoint.path}`} className="api-line">
-                <span className="text-xs font-mono text-oahl-textMuted">{endpoint.method}</span>
-                <span className="text-xs font-mono text-oahl-textMain">{endpoint.path}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="panel p-6">
-          <p className="text-xs font-mono uppercase tracking-wider text-oahl-textMuted">Provider APIs</p>
-          <div className="mt-4 space-y-2">
-            {PROVIDER_ENDPOINTS.map((endpoint) => (
-              <div key={`${endpoint.method}-${endpoint.path}`} className="api-line">
-                <span className="text-xs font-mono text-oahl-textMuted">{endpoint.method}</span>
-                <span className="text-xs font-mono text-oahl-textMain">{endpoint.path}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="panel p-6">
-          <p className="text-xs font-mono uppercase tracking-wider text-oahl-textMuted">Node APIs</p>
-          <div className="mt-4 space-y-2">
-            {LOCAL_ENDPOINTS.map((endpoint) => (
-              <div key={`${endpoint.method}-${endpoint.path}`} className="api-line">
-                <span className="text-xs font-mono text-oahl-textMuted">{endpoint.method}</span>
-                <span className="text-xs font-mono text-oahl-textMain">{endpoint.path}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-10 cta-band panel overflow-hidden p-8 md:p-10">
-        <div className="relative z-10 flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-center">
-          <div>
-            <p className="text-xs font-mono uppercase tracking-wider text-oahl-textMuted">Start Building</p>
-            <h2 className="mt-2 max-w-2xl text-3xl font-semibold leading-tight">
-              Upgrade from fragile hardware scripts to a clean agent platform.
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm text-oahl-textMuted">
-              Keep your adapter ecosystem, enforce policy centrally, and evolve transport layers without changing agent business logic.
+      {/* ═══════════════════ API REFERENCE BENTO ═══════════════════ */}
+      <section className="mt-16 bento-grid">
+        <div className="panel bento-main p-8 relative overflow-hidden">
+          <div className="orb orb-tech w-[200px] h-[200px] -bottom-10 -right-10 opacity-40" />
+          <div className="relative z-10">
+            <p className="text-xs font-mono uppercase tracking-wider text-oahl-tech">API Surface</p>
+            <h3 className="mt-2 text-2xl font-bold">Three clean interfaces</h3>
+            <p className="mt-3 text-sm leading-relaxed text-oahl-textMuted max-w-lg">
+              Agents discover and execute. Providers register and relay. Nodes expose local hardware. 
+              Every endpoint returns structured JSON — no guesswork.
             </p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              <div className="stat-card">
+                <p className="stat-title">Agent endpoints</p>
+                <p className="stat-value text-2xl">{AGENT_ENDPOINTS.length}</p>
+              </div>
+              <div className="stat-card">
+                <p className="stat-title">Provider endpoints</p>
+                <p className="stat-value text-2xl">{PROVIDER_ENDPOINTS.length}</p>
+              </div>
+              <div className="stat-card">
+                <p className="stat-title">Node endpoints</p>
+                <p className="stat-value text-2xl">{LOCAL_ENDPOINTS.length}</p>
+              </div>
+            </div>
           </div>
+        </div>
 
-          <div className="flex w-full flex-wrap gap-3 lg:w-auto">
-            <button onClick={onOpenApiLab} className="rounded-2xl bg-oahl-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-oahl-accentHover">
+        <div className="panel p-6">
+          <p className="text-xs font-mono uppercase tracking-wider text-oahl-textMuted mb-4">Agent APIs</p>
+          <div className="space-y-2">
+            {AGENT_ENDPOINTS.map((endpoint) => (
+              <div key={`${endpoint.method}-${endpoint.path}`} className="api-line group">
+                <span className="text-[10px] font-mono font-bold text-oahl-accent px-1.5 py-0.5 rounded bg-oahl-accent/10">{endpoint.method}</span>
+                <span className="text-xs font-mono text-oahl-textMain group-hover:text-white transition-colors">{endpoint.path}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel p-6">
+          <p className="text-xs font-mono uppercase tracking-wider text-oahl-textMuted mb-4">Provider APIs</p>
+          <div className="space-y-2">
+            {PROVIDER_ENDPOINTS.map((endpoint) => (
+              <div key={`${endpoint.method}-${endpoint.path}`} className="api-line group">
+                <span className="text-[10px] font-mono font-bold text-oahl-tech px-1.5 py-0.5 rounded bg-oahl-tech/10">{endpoint.method}</span>
+                <span className="text-xs font-mono text-oahl-textMain group-hover:text-white transition-colors">{endpoint.path}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel p-6">
+          <p className="text-xs font-mono uppercase tracking-wider text-oahl-textMuted mb-4">Node APIs</p>
+          <div className="space-y-2">
+            {LOCAL_ENDPOINTS.map((endpoint) => (
+              <div key={`${endpoint.method}-${endpoint.path}`} className="api-line group">
+                <span className="text-[10px] font-mono font-bold text-oahl-textMuted px-1.5 py-0.5 rounded bg-white/5">{endpoint.method}</span>
+                <span className="text-xs font-mono text-oahl-textMain group-hover:text-white transition-colors">{endpoint.path}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════ CTA ═══════════════════ */}
+      <section className="mt-16 cta-band panel relative overflow-hidden rounded-3xl p-10 md:p-14">
+        <div className="orb orb-accent w-[300px] h-[300px] -top-20 -left-20 opacity-60" />
+        <div className="orb orb-tech w-[250px] h-[250px] -bottom-20 -right-20 opacity-40" style={{ animationDelay: '-6s' }} />
+        <div className="grid-overlay" />
+
+        <div className="relative z-10 text-center max-w-2xl mx-auto">
+          <p className="text-xs font-mono uppercase tracking-wider text-oahl-accent mb-4">Start Building</p>
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+            Upgrade from fragile scripts<br />
+            <span className="text-oahl-textMuted">to a clean agent platform.</span>
+          </h2>
+          <p className="mt-4 text-sm text-oahl-textMuted max-w-lg mx-auto">
+            Keep your adapter ecosystem, enforce policy centrally, and evolve transport layers 
+            without ever touching agent business logic.
+          </p>
+
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <button
+              onClick={onOpenApiLab}
+              className="group relative rounded-2xl bg-oahl-accent px-7 py-3.5 text-sm font-semibold text-white transition-all hover:bg-oahl-accentHover hover:shadow-[0_0_30px_rgba(212,126,91,0.3)] hover:scale-[1.02] active:scale-[0.98]"
+            >
               Open API Lab
             </button>
-            <a href="https://github.com/fredabila/oahl" target="_blank" rel="noreferrer" className="rounded-2xl border border-oahl-border px-5 py-2.5 text-sm font-semibold text-oahl-textMain transition-colors hover:border-oahl-accent">
+            <a
+              href="https://github.com/fredabila/oahl"
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-2xl border border-oahl-border bg-oahl-surface/50 backdrop-blur-sm px-7 py-3.5 text-sm font-semibold text-oahl-textMain transition-all hover:border-oahl-accent"
+            >
               Read Documentation
             </a>
           </div>

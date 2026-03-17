@@ -9,6 +9,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Base ─── */
 html, body {
   margin: 0;
   background-color: #0D0C0B;
@@ -18,30 +19,156 @@ html, body {
   overflow-x: hidden;
 }
 
-/* Subtle architectural grain and warmth */
+/* ─── Atmospheric background glow ─── */
 body::before {
   content: "";
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: -1;
-  background: 
-    radial-gradient(circle at 15% 0%, rgba(212, 126, 91, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 85% 100%, rgba(115, 149, 128, 0.08) 0%, transparent 40%);
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(212, 126, 91, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(115, 149, 128, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 30% at 10% 60%, rgba(212, 126, 91, 0.05) 0%, transparent 40%);
   pointer-events: none;
 }
 
+/* ─── Panels ─── */
 .panel {
-  background: linear-gradient(180deg, #1A1817 0%, #171615 100%);
+  background: linear-gradient(180deg, rgba(26, 24, 23, 0.8) 0%, rgba(23, 22, 21, 0.6) 100%);
   border: 1px solid #302E2B;
-  border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(0,0,0,0.4);
-  transition: transform 0.3s ease, border-color 0.3s ease;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03);
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  backdrop-filter: blur(12px);
 }
-
 .panel:hover {
   border-color: #4A4641;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
+/* ─── Glassmorphic cards ─── */
+.glass-card {
+  background: rgba(26, 24, 23, 0.5);
+  border: 1px solid rgba(48, 46, 43, 0.6);
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.02);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.glass-card:hover {
+  border-color: rgba(212, 126, 91, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 20px rgba(212, 126, 91, 0.06);
+}
+
+/* ─── Animated gradient border ─── */
+.gradient-border {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+}
+.gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 1px;
+  background: linear-gradient(135deg, #D47E5B, #739580, #D47E5B, #739580);
+  background-size: 300% 300%;
+  animation: gradient-rotate 6s ease infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+@keyframes gradient-rotate {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ─── Floating orbs ─── */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  animation: orb-float 12s ease-in-out infinite;
+}
+.orb-accent {
+  background: rgba(212, 126, 91, 0.15);
+}
+.orb-tech {
+  background: rgba(115, 149, 128, 0.12);
+}
+@keyframes orb-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.1); }
+  66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+
+/* ─── Pulsing glow dot ─── */
+.glow-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #739580;
+  box-shadow: 0 0 12px rgba(115, 149, 128, 0.6);
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(115, 149, 128, 0.4); }
+  50% { box-shadow: 0 0 20px rgba(115, 149, 128, 0.8); }
+}
+
+/* ─── Code terminal mockup ─── */
+.terminal-mockup {
+  background: linear-gradient(180deg, #141312 0%, #0D0C0B 100%);
+  border: 1px solid #302E2B;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(212, 126, 91, 0.04);
+}
+.terminal-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #302E2B;
+  background: rgba(26, 24, 23, 0.8);
+}
+.terminal-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.terminal-dot.red { background: #FF5F5A; }
+.terminal-dot.yellow { background: #FFBE2E; }
+.terminal-dot.green { background: #2ACA4E; }
+.terminal-code {
+  padding: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.75;
+  color: #A6A29C;
+  overflow-x: auto;
+}
+.terminal-code .hl-keyword { color: #D47E5B; }
+.terminal-code .hl-string { color: #739580; }
+.terminal-code .hl-comment { color: #555; font-style: italic; }
+.terminal-code .hl-method { color: #EFECE6; }
+.terminal-code .hl-var { color: #E8C87A; }
+
+/* ─── Typing cursor ─── */
+.typing-cursor::after {
+  content: "▎";
+  animation: blink 1s step-end infinite;
+  color: #D47E5B;
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* ─── Input fields ─── */
 .input-field {
   background-color: #0F0E0D;
   border: 1px solid #302E2B;
@@ -50,10 +177,11 @@ body::before {
 }
 .input-field:focus {
   border-color: #D47E5B;
-  box-shadow: 0 0 0 1px #D47E5B;
+  box-shadow: 0 0 0 1px #D47E5B, 0 0 20px rgba(212, 126, 91, 0.1);
   outline: none;
 }
 
+/* ─── Custom scrollbars ─── */
 .code-scroll::-webkit-scrollbar {
   height: 6px;
   width: 6px;
@@ -70,13 +198,13 @@ body::before {
   background: #4A4641;
 }
 
+/* ─── Stat cards ─── */
 .stat-card {
   background-color: rgba(28, 27, 25, 0.6);
   border: 1px solid #302E2B;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 14px;
 }
-
 .stat-title {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
@@ -84,20 +212,21 @@ body::before {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
-
 .stat-value {
   margin-top: 6px;
   color: #EFECE6;
   font-weight: 600;
 }
 
+/* ─── API cards ─── */
 .api-card {
   background-color: rgba(26, 24, 23, 0.5);
   border: 1px solid #302E2B;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 12px;
 }
 
+/* ─── Flow steps ─── */
 .flow-step {
   display: flex;
   align-items: center;
@@ -108,13 +237,13 @@ body::before {
   padding: 10px 12px;
   font-family: 'JetBrains Mono', monospace;
 }
-
 .flow-link {
   display: flex;
   justify-content: center;
   color: #555;
 }
 
+/* ─── Badges ─── */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -130,84 +259,137 @@ body::before {
   letter-spacing: 0.05em;
 }
 
+/* ─── Feature cards ─── */
 .landing-feature {
   border: 1px solid #302E2B;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #171615;
   padding: 12px;
-  transition: border-color .2s ease;
+  transition: all .3s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
 .landing-feature:hover {
   border-color: #D47E5B;
+  transform: translateY(-1px);
 }
 
+/* ─── Hero section ─── */
 .aesthetic-hero {
-  border: 1px solid #302E2B;
-  background: linear-gradient(180deg, #141312 0%, #0D0C0B 100%);
+  border: 1px solid rgba(48, 46, 43, 0.6);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(20, 19, 18, 0.9) 0%, rgba(13, 12, 11, 0.8) 100%);
+  position: relative;
+  overflow: hidden;
+}
+.aesthetic-hero::before {
+  content: "";
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 400px;
+  background: radial-gradient(ellipse, rgba(212, 126, 91, 0.1) 0%, transparent 70%);
+  pointer-events: none;
 }
 
+/* ─── Hero panel sidebar ─── */
 .hero-panel {
   border: 1px solid #302E2B;
-  border-radius: 12px;
+  border-radius: 16px;
   background: rgba(23, 22, 21, 0.7);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
 }
 
+/* ─── Flow rail ─── */
 .flow-rail {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
-
 .flow-rail-node {
   border: 1px solid #302E2B;
-  border-radius: 8px;
+  border-radius: 12px;
   background: rgba(26, 24, 23, 0.5);
-  padding: 12px;
+  padding: 16px;
+  transition: all 0.3s ease;
 }
-
+.flow-rail-node:hover {
+  border-color: #D47E5B;
+  background: rgba(212, 126, 91, 0.05);
+}
 .flow-rail-index {
   display: inline-flex;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  background: #302E2B;
-  color: #EFECE6;
+  background: linear-gradient(135deg, #D47E5B, #C4704E);
+  color: white;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(212, 126, 91, 0.3);
 }
 
+/* ─── Bento grid ─── */
 .bento-grid {
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(12, minmax(0, 1fr));
 }
-
 .bento-grid > :nth-child(1) { grid-column: span 7 / span 7; }
 .bento-grid > :nth-child(2),
 .bento-grid > :nth-child(3),
 .bento-grid > :nth-child(4) { grid-column: span 5 / span 5; }
 
+/* ─── API lines ─── */
 .api-line {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
   border: 1px solid #302E2B;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #11100F;
   padding: 8px 10px;
+  transition: border-color 0.2s ease;
+}
+.api-line:hover {
+  border-color: #4A4641;
 }
 
+/* ─── CTA band ─── */
 .cta-band {
-  background: linear-gradient(180deg, #171615 0%, #0D0C0B 100%);
+  background: linear-gradient(135deg, rgba(23, 22, 21, 0.9) 0%, rgba(13, 12, 11, 0.9) 100%);
   border: 1px solid #302E2B;
+  position: relative;
+  overflow: hidden;
+}
+.cta-band::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse at 0% 50%, rgba(212, 126, 91, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 50%, rgba(115, 149, 128, 0.06) 0%, transparent 50%);
+  pointer-events: none;
 }
 
-/* Customizing the Typography typography plugin colors for our theme */
+/* ─── Shimmer text ─── */
+.shimmer-text {
+  background: linear-gradient(90deg, #D47E5B, #E8A880, #739580, #D47E5B);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
+}
+@keyframes shimmer {
+  to { background-position: 200% center; }
+}
+
+/* ─── Prose typography ─── */
 .prose-oahl {
   --tw-prose-body: #A6A29C;
   --tw-prose-headings: #EFECE6;
@@ -221,14 +403,42 @@ body::before {
   --tw-prose-pre-bg: #171615;
   --tw-prose-hr: #302E2B;
   --tw-prose-bullets: #D47E5B;
-  font-family: 'Georgia', ui-serif, serif; /* Bring elegant typography to the post body */
+  font-family: 'Georgia', ui-serif, serif;
 }
-
 .prose-oahl h1, .prose-oahl h2, .prose-oahl h3 {
   font-family: 'Space Grotesk', ui-sans-serif, sans-serif;
   letter-spacing: -0.02em;
 }
 
+/* ─── Grid noise overlay ─── */
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(212, 126, 91, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212, 126, 91, 0.02) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+}
+
+/* ─── Stagger animations for children ─── */
+.stagger-children > * {
+  opacity: 0;
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0.1s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.2s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.3s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.4s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.5s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.6s; }
+
+@keyframes slideUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Responsive overrides ─── */
 @media (max-width: 1024px) {
   .flow-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bento-grid > :nth-child(1),
