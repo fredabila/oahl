@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary Meta -->
+    <title>OAHL — Open Agent Hardware Layer</title>
+    <meta name="description" content="An open-source protocol for connecting AI agents to physical hardware. Cameras, phones, radios, lab gear — one standard interface." />
+    <meta name="author" content="OAHL Project" />
+    <meta name="theme-color" content="#D47E5B" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="OAHL — Open Agent Hardware Layer" />
+    <meta property="og:description" content="An open-source protocol for connecting AI agents to physical hardware. One standard interface for cameras, phones, radios, and lab gear." />
+    <meta property="og:url" content="https://oahl.org" />
+    <meta property="og:image" content="https://oahl.org/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="OAHL" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="OAHL — Open Agent Hardware Layer" />
+    <meta name="twitter:description" content="Open-source protocol for connecting AI agents to physical hardware." />
+    <meta name="twitter:image" content="https://oahl.org/og-image.png" />
+
+    <!-- SEO -->
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://oahl.org" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+
+    <!-- ─── Nav ─── -->
+    <nav>
+      <div class="nav-inner">
+        <a href="/" class="logo">
+          <span class="logo-mark">OA</span>
+          <span class="logo-text">Open Agent Hardware Layer</span>
+        </a>
+        <div class="nav-links">
+          <a href="https://github.com/fredabila/oahl" target="_blank" rel="noreferrer">GitHub</a>
+          <a href="https://oahl.dev" target="_blank" rel="noreferrer">Platform</a>
+          <a href="https://github.com/fredabila/oahl/blob/main/docs/overview.md" target="_blank" rel="noreferrer">Docs</a>
+        </div>
+      </div>
+    </nav>
+
+    <main>
+
+      <!-- ─── Hero ─── -->
+      <section class="hero">
+        <p class="badge">Open Source · MIT License</p>
+        <h1>Hardware access<br />for AI agents.</h1>
+        <p class="hero-sub">
+          OAHL is an open-source protocol that gives AI agents a standard way to discover, reserve, control, 
+          and release physical hardware — cameras, phones, radios, sensors, lab equipment — through a single, 
+          consistent interface.
+        </p>
+        <div class="hero-actions">
+          <a href="https://github.com/fredabila/oahl" class="btn btn-primary" target="_blank" rel="noreferrer">View on GitHub</a>
+          <a href="#contribute" class="btn btn-secondary">How to contribute</a>
+        </div>
+      </section>
+
+      <!-- ─── What ─── -->
+      <section class="section">
+        <h2>What is OAHL?</h2>
+        <p>
+          AI agents today can call APIs, browse the web, and write code — but they cannot touch the physical world without 
+          custom, fragile integration work for every device. OAHL fixes this by defining a <strong>standard protocol</strong> 
+          for hardware interaction.
+        </p>
+        <p>
+          A hardware owner installs a small node server next to their devices. Each device exposes <strong>capabilities</strong> — 
+          standardized actions like <code>camera.capture</code>, <code>radio.scan</code>, or <code>input.tap</code>. 
+          Agents discover these capabilities through a cloud registry and execute them through a managed session with 
+          built-in isolation and policy enforcement.
+        </p>
+
+        <div class="concept-grid">
+          <div class="concept">
+            <h3>Node</h3>
+            <p>A lightweight server running on a machine connected to hardware. It loads adapters and exposes capabilities over HTTP.</p>
+          </div>
+          <div class="concept">
+            <h3>Adapter</h3>
+            <p>A plugin that translates device-specific commands into OAHL's standard capability interface. One adapter per device class.</p>
+          </div>
+          <div class="concept">
+            <h3>Capability</h3>
+            <p>A named, schema-validated action: <code>camera.capture</code>, <code>sensor.read</code>, <code>screen.tap</code>. Agents discover and invoke them uniformly.</p>
+          </div>
+          <div class="concept">
+            <h3>Session</h3>
+            <p>A time-bound, exclusive reservation of a device. While one agent holds a session, no other agent can interfere.</p>
+          </div>
+          <div class="concept">
+            <h3>Policy</h3>
+            <p>Declarative rules controlling what agents can do: allowed capabilities, duration limits, and deny lists — all configured by the hardware owner.</p>
+          </div>
+          <div class="concept">
+            <h3>Cloud Registry</h3>
+            <p>The optional central hub where nodes register so remote agents can discover capabilities globally. Fully optional — OAHL works locally too.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── Why ─── -->
+      <section class="section">
+        <h2>What we're trying to achieve</h2>
+        <p>
+          We believe AI agents should be able to interact with the physical world as easily as they call a REST API today. 
+          But hardware is messy — different protocols, drivers, connection methods, and safety concerns across every device family.
+        </p>
+        <p>Our goals:</p>
+        <ul>
+          <li><strong>Define a standard.</strong> A single protocol spec that any hardware can implement, so agent developers write integration code once — not per-device.</li>
+          <li><strong>Make it safe.</strong> Session isolation, policy enforcement, capability allowlists. The hardware owner always stays in control.</li>
+          <li><strong>Keep it open.</strong> MIT licensed, community-driven, no vendor lock-in. Anyone can build adapters, run nodes, or extend the protocol.</li>
+          <li><strong>Build an ecosystem.</strong> An adapter marketplace where the community publishes and discovers hardware integrations.</li>
+          <li><strong>Align with standards.</strong> Compatibility with W3C Web of Things, JSON Schema for capability contracts, OpenAPI for the cloud interface.</li>
+        </ul>
+      </section>
+
+      <!-- ─── Architecture ─── -->
+      <section class="section">
+        <h2>How it works</h2>
+        <div class="flow">
+          <div class="flow-step">
+            <span class="flow-num">1</span>
+            <div>
+              <strong>Discover</strong>
+              <p>Agent queries the cloud registry for available capabilities and devices.</p>
+            </div>
+          </div>
+          <div class="flow-step">
+            <span class="flow-num">2</span>
+            <div>
+              <strong>Reserve</strong>
+              <p>Agent requests a session on a specific device. The system enforces exclusivity and policy.</p>
+            </div>
+          </div>
+          <div class="flow-step">
+            <span class="flow-num">3</span>
+            <div>
+              <strong>Execute</strong>
+              <p>Agent sends capability commands through the relay. Results are returned as structured JSON.</p>
+            </div>
+          </div>
+          <div class="flow-step">
+            <span class="flow-num">4</span>
+            <div>
+              <strong>Release</strong>
+              <p>Agent stops the session. The hardware is freed for the next consumer.</p>
+            </div>
+          </div>
+        </div>
+
+        <pre class="code-block"><code><span class="c">// Typical agent integration (TypeScript SDK)</span>
+<span class="k">import</span> { CloudClient } <span class="k">from</span> <span class="s">'@oahl/sdk'</span>;
+
+<span class="k">const</span> cloud = <span class="k">new</span> CloudClient(<span class="s">'https://oahl.onrender.com'</span>, AGENT_KEY);
+<span class="k">const</span> { devices } = <span class="k">await</span> cloud.getCapabilities({ type: <span class="s">'android'</span> });
+<span class="k">const</span> { session_id } = <span class="k">await</span> cloud.requestSession({ device_id: devices[0].id });
+<span class="k">const</span> result = <span class="k">await</span> cloud.execute(session_id, { capability: <span class="s">'screen.capture'</span> });
+<span class="k">await</span> cloud.stopSession(session_id);</code></pre>
+      </section>
+
+      <!-- ─── Contribute ─── -->
+      <section class="section" id="contribute">
+        <h2>How you can help</h2>
+        <p>
+          OAHL is a community project. We're a small team building something ambitious, and we need people who care about 
+          giving AI agents real-world capabilities.
+        </p>
+
+        <div class="contribute-grid">
+          <div class="contribute-card">
+            <h3>🔌 Build adapters</h3>
+            <p>
+              Write an <code>@oahl/adapter-*</code> package for a device you know well. Arduino, Raspberry Pi GPIO, 
+              industrial PLCs, scientific instruments — any hardware that could benefit from agent access.
+            </p>
+            <p class="contribute-start">→ Run <code>oahl create-adapter my-device</code> to scaffold</p>
+          </div>
+
+          <div class="contribute-card">
+            <h3>🧩 Improve the core</h3>
+            <p>
+              Bug fixes, performance improvements, and test coverage for <code>packages/core</code>, <code>packages/server</code>, 
+              and <code>packages/cloud</code>. TypeScript, clean commits, and tests required.
+            </p>
+            <p class="contribute-start">→ Look for issues labeled <code>good first issue</code></p>
+          </div>
+
+          <div class="contribute-card">
+            <h3>📖 Write documentation</h3>
+            <p>
+              Improve guides, fix inaccuracies, add examples. The <code>docs/</code> folder is always in need of better 
+              onboarding content and real-world usage examples.
+            </p>
+            <p class="contribute-start">→ Check <code>docs/</code> for gaps and outdated info</p>
+          </div>
+
+          <div class="contribute-card">
+            <h3>🌐 Build SDK clients</h3>
+            <p>
+              We have JavaScript and Python SDKs. We'd love Go, Rust, Java, or C# clients so agents on any platform 
+              can access OAHL hardware.
+            </p>
+            <p class="contribute-start">→ See <code>docs/sdk-strategy.md</code> for design guidance</p>
+          </div>
+
+          <div class="contribute-card">
+            <h3>🧪 Conformance testing</h3>
+            <p>
+              Expand the protocol conformance test suite. Help ensure adapters behave correctly and execution results 
+              match the spec.
+            </p>
+            <p class="contribute-start">→ See <code>packages/cli/src/conformance.ts</code></p>
+          </div>
+
+          <div class="contribute-card">
+            <h3>📐 Protocol design</h3>
+            <p>
+              Propose RFCs for protocol-level changes: new lifecycle steps, security controls, transport profiles. 
+              We follow a lightweight RFC process in GitHub Discussions.
+            </p>
+            <p class="contribute-start">→ Read <code>docs/rfcs/000-rfc-process.md</code></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── Getting started ─── -->
+      <section class="section">
+        <h2>Getting started as a contributor</h2>
+        <pre class="code-block"><code><span class="c"># Clone and set up</span>
+git clone https://github.com/fredabila/oahl.git
+cd oahl
+npm install
+npm run build
+
+<span class="c"># Run the test suite</span>
+npm test
+
+<span class="c"># Start a local development node</span>
+cp oahl-config.example.json oahl-config.json
+npm start</code></pre>
+
+        <p>
+          <strong>Prerequisites:</strong> Node.js ≥ 18, npm ≥ 9, TypeScript ≥ 5, Git. 
+          For adapter work, you'll also need the driver toolchain for your target hardware 
+          (e.g., ADB for Android, <code>serialport</code> bindings for serial devices).
+        </p>
+        <p>
+          Please read <a href="https://github.com/fredabila/oahl/blob/main/CONTRIBUTING.md" target="_blank" rel="noreferrer">CONTRIBUTING.md</a> 
+          before opening a PR. It covers branching conventions, commit style, the PR checklist, and the adapter authoring rules.
+        </p>
+      </section>
+
+      <!-- ─── Links ─── -->
+      <section class="section section-links">
+        <h2>Project links</h2>
+        <div class="links-grid">
+          <a href="https://github.com/fredabila/oahl" target="_blank" rel="noreferrer">
+            <strong>GitHub Repository</strong>
+            <span>Source code, issues, and discussions</span>
+          </a>
+          <a href="https://oahl.dev" target="_blank" rel="noreferrer">
+            <strong>OAHL Platform</strong>
+            <span>Interactive API lab and documentation</span>
+          </a>
+          <a href="https://www.npmjs.com/package/@oahl/sdk" target="_blank" rel="noreferrer">
+            <strong>npm: @oahl/sdk</strong>
+            <span>JavaScript/TypeScript SDK package</span>
+          </a>
+          <a href="https://pypi.org/project/oahl/" target="_blank" rel="noreferrer">
+            <strong>PyPI: oahl</strong>
+            <span>Python SDK package</span>
+          </a>
+          <a href="https://github.com/fredabila/oahl/blob/main/docs/oahl-protocol-v1.md" target="_blank" rel="noreferrer">
+            <strong>Protocol Spec v1</strong>
+            <span>The authoritative protocol document</span>
+          </a>
+          <a href="https://github.com/fredabila/oahl/blob/main/CONTRIBUTING.md" target="_blank" rel="noreferrer">
+            <strong>Contributing Guide</strong>
+            <span>How to contribute effectively</span>
+          </a>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ─── Footer ─── -->
+    <footer>
+      <p>
+        OAHL is open-source software under the <a href="https://github.com/fredabila/oahl/blob/main/LICENSE" target="_blank" rel="noreferrer">MIT License</a>. 
+        Copyright © 2024–2026 Fred Abila and the OAHL Contributors.
+      </p>
+    </footer>
+
+  </body>
+</html>
