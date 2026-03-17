@@ -701,15 +701,14 @@ function ApiLabPage() {
     setAiStepResults([]);
     setAiRunning(true);
 
-    let allocatedSessionId = '';
+    let currentSessionId = '';
+    let currentDeviceId = '';
 
     try {
       let inventory = devices;
       if (inventory.length === 0) {
         const capsResponse = await fetch(buildCapabilitiesUrl(), { method: 'GET', headers: bearerHeaders(false) });
-        if (!capsResponse.ok) {
-          throw new Error((await capsResponse.text()) || 'Failed to fetch capabilities for AI execution');
-        }
+        if (!capsResponse.ok) throw new Error((await capsResponse.text()) || 'Failed to fetch capabilities for AI execution');
         const capsData = (await capsResponse.json()) as CapabilitiesResponse;
         inventory = Array.isArray(capsData.devices) ? capsData.devices : [];
         setDevices(inventory);
@@ -730,174 +729,145 @@ function ApiLabPage() {
         }))
       }));
 
-      const llmResponse = await fetch(`${llmUrl.replace(/\/$/, '')}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${llmApiKey.trim()}`
+      const messages: any[] = [
+        {
+          role: 'system',
+          content: 'You are an autonomous hardware orchestration agent. You have access to the following devices and capabilities:\n' + JSON.stringify(capabilityCatalog) + '\n\nAt each step, decide to either execute a capability or complete the task. Return STRICTLY JSON (no markdown) with keys:\n- "action" (string: "execute" or "done")\n- "rationale" (string: your reasoning)\n- "device_id" (string: if executing)\n- "capability" (string: if executing)\n- "params" (object: if executing)\n- "final_summary" (string: if done).'
         },
-        body: JSON.stringify({
-          model: llmModel.trim(),
-          temperature: 0.1,
-          messages: [
-            {
-              role: 'system',
-              content:
-                'You are an OAHL hardware execution planner. Follow strict behavior: choose one concrete device and produce a full task sequence. Output ONLY JSON (no markdown) with keys: device_id (string), rationale (string), steps (array). Each step object must include capability (string) and params (object). If task is single-action, still return one-step array.'
-            },
-            {
-              role: 'user',
-              content: JSON.stringify({
-                user_prompt: aiPrompt.trim(),
-                available_devices: capabilityCatalog
-              })
-            }
-          ]
-        })
-      });
-
-      if (!llmResponse.ok) {
-        throw new Error((await llmResponse.text()) || 'LLM planning failed');
-      }
-
-      const llmData = await llmResponse.json();
-      const rawMessage = llmData?.choices?.[0]?.message?.content;
-      if (typeof rawMessage !== 'string') {
-        throw new Error('LLM did not return a usable plan');
-      }
-
-      const plan = parseJsonFromText(rawMessage);
-      const plannedDeviceId = String(plan?.device_id || '').trim();
-      const plannedSteps = Array.isArray(plan?.steps)
-        ? plan.steps
-            .map((step: any) => ({
-              capability: String(step?.capability || '').trim(),
-              params: step?.params && typeof step.params === 'object' ? step.params : {}
-            }))
-            .filter((step: AiPlannedStep) => step.capability.length > 0)
-        : [];
-
-      const legacyCapability = String(plan?.capability || '').trim();
-      const legacyParams = plan?.params && typeof plan.params === 'object' ? plan.params : {};
-      const steps: AiPlannedStep[] = plannedSteps.length > 0
-        ? plannedSteps
-        : (legacyCapability ? [{ capability: legacyCapability, params: legacyParams }] : []);
-
-      const firstStep = steps[0];
-      const plannedCapability = firstStep?.capability || '';
-      const plannedParams = firstStep?.params || {};
-
-      setAiPlanJson(JSON.stringify({
-        device_id: plannedDeviceId,
-        steps,
-        rationale: String(plan?.rationale || '')
-      }, null, 2));
-
-      if (steps.length === 0) {
-        throw new Error('LLM plan is missing executable steps');
-      }
-
-      const matchedDevice = plannedDeviceId ? inventory.find((d) => d.id === plannedDeviceId) : undefined;
-      const fallbackDevice = matchedDevice || inventory.find((d) => (d.capabilities || []).some((c) => capabilityName(c) === plannedCapability));
-
-      if (!fallbackDevice) {
-        throw new Error(`No online device currently supports capability ${plannedCapability}`);
-      }
-
-      const unsupportedStep = steps.find((step) => !(fallbackDevice.capabilities || []).some((c) => capabilityName(c) === step.capability));
-      if (unsupportedStep) {
-        throw new Error(`Device ${fallbackDevice.id} does not expose capability ${unsupportedStep.capability} required by plan sequence.`);
-      }
-
-      setSelectedDeviceId(fallbackDevice.id);
-      setSelectedCapability(plannedCapability);
-      setExecuteParams(JSON.stringify(plannedParams, null, 2));
-
-      if (aiPlanOnlyMode) {
-        setAiExecutionSummary(String(plan?.rationale || `Plan generated with ${steps.length} step(s). Review before execution.`));
-        return;
-      }
-
-      const requestPayload: Record<string, string> = {
-        capability: plannedCapability,
-        device_id: fallbackDevice.id
-      };
-      if (fallbackDevice.node_id) {
-        requestPayload.node_id = fallbackDevice.node_id;
-      }
-
-      const requestRes = await fetch(`${cloudUrl}/v1/requests`, {
-        method: 'POST',
-        headers: bearerHeaders(true),
-        body: JSON.stringify(requestPayload)
-      });
-      if (!requestRes.ok) {
-        throw new Error((await requestRes.text()) || 'Unable to request session from AI plan');
-      }
-
-      const requestData = (await requestRes.json()) as SessionResponse;
-      allocatedSessionId = requestData.session_id || '';
-      if (!allocatedSessionId) {
-        throw new Error('Session allocation returned no session_id');
-      }
-
-      setSessionId(allocatedSessionId);
+        {
+          role: 'user',
+          content: aiPrompt.trim()
+        }
+      ];
 
       const sequenceResults: AiStepResult[] = [];
+      let stepCount = 0;
+      const MAX_STEPS = 8;
+      let finalSummary = '';
 
-      for (let index = 0; index < steps.length; index += 1) {
-        const step = steps[index];
-        const execRes = await fetch(`${cloudUrl}/v1/sessions/${allocatedSessionId}/execute`, {
+      while (stepCount < MAX_STEPS) {
+        stepCount++;
+        
+        const llmResponse = await fetch(`${llmUrl.replace(/\/$/, '')}/chat/completions`, {
           method: 'POST',
-          headers: bearerHeaders(true),
-          body: JSON.stringify({ capability: step.capability, params: step.params || {} })
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${llmApiKey.trim()}`
+          },
+          body: JSON.stringify({
+            model: llmModel.trim(),
+            temperature: 0.1,
+            messages
+          })
         });
 
-        const relayMode = execRes.headers.get('x-oahl-relay-mode') || 'unknown';
-        const requestId = execRes.headers.get('x-oahl-request-id') || '';
+        if (!llmResponse.ok) throw new Error((await llmResponse.text()) || 'LLM planning failed');
+        const llmData = await llmResponse.json();
+        const rawMessage = llmData?.choices?.[0]?.message?.content;
+        
+        if (!rawMessage) throw new Error('LLM did not return a usable response');
+        
+        messages.push({ role: 'assistant', content: rawMessage });
+        
+        const actionPayload = parseJsonFromText(rawMessage);
+        
+        // UI Debug: Update the live plan JSON state to show the latest LLM thought process
+        setAiPlanJson(JSON.stringify(actionPayload, null, 2));
 
-        if (!execRes.ok) {
-          const errorText = (await execRes.text()) || 'Execute failed';
-          sequenceResults.push({
-            step: index + 1,
-            capability: step.capability,
-            relayMode,
-            requestId,
-            status: 'error',
-            error: errorText
-          });
-          setAiStepResults(sequenceResults);
-          throw new Error(`Step ${index + 1} (${step.capability}) failed: ${errorText}`);
+        const actionType = actionPayload?.action || 'done';
+        
+        if (actionType === 'done') {
+          finalSummary = actionPayload.final_summary || actionPayload.rationale || 'Task completed via AI orchestration.';
+          break;
         }
 
-        const execData = (await execRes.json()) as ExecutionResult;
-        sequenceResults.push({
-          step: index + 1,
-          capability: step.capability,
-          relayMode,
-          requestId,
-          status: 'success',
-          result: execData
-        });
+        if (actionType === 'execute') {
+          const targetDeviceId = String(actionPayload.device_id || '').trim();
+          const targetCapability = String(actionPayload.capability || '').trim();
+          const targetParams = actionPayload.params || {};
+          
+          if (!targetDeviceId || !targetCapability) {
+             throw new Error('LLM attempted to execute without device_id or capability');
+          }
 
-        setExecutionResult(execData);
-        setRelayInfo({ mode: relayMode, requestId });
-        setAiStepResults([...sequenceResults]);
-      }
+          // Request new hardware session if device changed or if none active
+          if (targetDeviceId !== currentDeviceId || !currentSessionId) {
+             if (currentSessionId) {
+               try { await fetch(`${cloudUrl}/v1/sessions/${currentSessionId}/stop`, { method: 'POST', headers: bearerHeaders(false) }); } catch (e) {}
+             }
+             
+             const targetDeviceObj = inventory.find((d) => d.id === targetDeviceId);
+             const requestPayload: Record<string, string> = { capability: targetCapability, device_id: targetDeviceId };
+             if (targetDeviceObj?.node_id) requestPayload.node_id = targetDeviceObj.node_id;
 
-      setAiExecutionSummary(String(plan?.rationale || `AI executed ${steps.length} step(s) successfully in sequence.`));
-    } catch (err: any) {
-      setActionError(err?.message || 'AI execution failed');
-    } finally {
-      if (allocatedSessionId) {
-        try {
-          await fetch(`${cloudUrl}/v1/sessions/${allocatedSessionId}/stop`, {
+             const requestRes = await fetch(`${cloudUrl}/v1/requests`, {
+               method: 'POST',
+               headers: bearerHeaders(true),
+               body: JSON.stringify(requestPayload)
+             });
+             
+             if (!requestRes.ok) throw new Error(`Unable to request session for ${targetDeviceId}: ` + await requestRes.text());
+             const requestData = (await requestRes.json()) as SessionResponse;
+             currentSessionId = requestData.session_id || '';
+             currentDeviceId = targetDeviceId;
+             
+             setSessionId(currentSessionId);
+             setSelectedDeviceId(currentDeviceId);
+          }
+
+          setSelectedCapability(targetCapability);
+          setExecuteParams(JSON.stringify(targetParams, null, 2));
+
+          if (aiPlanOnlyMode) {
+             setAiExecutionSummary(`Plan mode active: First suggested action is ${targetCapability} on ${targetDeviceId}. Run without plan mode to orchestrate fully.`);
+             break;
+          }
+
+          // Fire the physical capability
+          const execRes = await fetch(`${cloudUrl}/v1/sessions/${currentSessionId}/execute`, {
             method: 'POST',
-            headers: bearerHeaders(false)
+            headers: bearerHeaders(true),
+            body: JSON.stringify({ capability: targetCapability, params: targetParams })
           });
-        } catch {
-          // keep UI responsive even if cleanup fails
+
+          const relayMode = execRes.headers.get('x-oahl-relay-mode') || 'unknown';
+          const requestId = execRes.headers.get('x-oahl-request-id') || '';
+
+          // Allow the LLM to recover from execution errors!
+          if (!execRes.ok) {
+            const errorText = (await execRes.text()) || 'Execute failed';
+            sequenceResults.push({ step: stepCount, capability: targetCapability, relayMode, requestId, status: 'error', error: errorText });
+            setAiStepResults([...sequenceResults]);
+            
+            messages.push({ role: 'user', content: `Execution failed with HTTP ${execRes.status}: ${errorText}\nAdjust your strategy and try again, or finish if recovery is impossible.` });
+            continue;
+          }
+
+          const execData = (await execRes.json()) as ExecutionResult;
+          sequenceResults.push({ step: stepCount, capability: targetCapability, relayMode, requestId, status: 'success', result: execData });
+          
+          setExecutionResult(execData);
+          setRelayInfo({ mode: relayMode, requestId });
+          setAiStepResults([...sequenceResults]);
+
+          // Feed result back into the Agent Orchestration Loop!
+          messages.push({ role: 'user', content: `Execution Result from device:\n${JSON.stringify(execData)}\nWhat is the next action?` });
         }
+      }
+      
+      if (stepCount >= MAX_STEPS) {
+         setAiExecutionSummary('Agent loop reached maximum step limit (' + MAX_STEPS + '). ' + finalSummary);
+      } else {
+         setAiExecutionSummary(finalSummary || 'Agent orchestration completed successfully.');
+      }
+      
+    } catch (err: any) {
+      setActionError(err?.message || 'AI execution orchestration failed');
+    } finally {
+      if (currentSessionId) {
+        try {
+          await fetch(`${cloudUrl}/v1/sessions/${currentSessionId}/stop`, { method: 'POST', headers: bearerHeaders(false) });
+        } catch {}
         setSessionId('');
       }
       setAiRunning(false);
