@@ -1,17 +1,23 @@
 version: '3.8'
 
 services:
-  oahl-server:
+  oahl-node:
     build:
       context: .
       dockerfile: Dockerfile
+    image: fredabila/oahl-node:latest
+    container_name: oahl-node
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       - PORT=3000
     volumes:
-      # Mount configuration if needed
-      - ./oahl-config.example.json:/app/oahl-config.json
+      # Mount the local config file into the container
+      - ./oahl-config.json:/app/packages/server/oahl-config.json
+    privileged: true
     # devices:
-      # Example of passing USB devices for hardware adapters
+      # Uncomment and map hardware directly to the container
       # - /dev/bus/usb:/dev/bus/usb
+      # - /dev/ttyACM0:/dev/ttyACM0  # For Arduino
+      # - /dev/video0:/dev/video0    # For Webcams

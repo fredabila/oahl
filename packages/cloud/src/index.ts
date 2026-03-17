@@ -5,6 +5,23 @@ import dotenv from 'dotenv';
 import { randomUUID } from 'crypto';
 import type { Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
+import rateLimit from 'express-rate-limit';
+import Ajv from 'ajv';
+
+const ajv = new Ajv();
+
+// 120 execute requests per minute by default
+const executeRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: parseInt(process.env.OAHL_EXECUTE_RATE_LIMIT || '120', 10),
+  message: { error: 'Too many execute requests, policy rate limit exceeded.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const agentId = req.headers['x-agent-id'];
+    return (typeof agentId === 'string' && agentId.trim().length > 0) ? agentId.trim() : (req.ip || 'unknown');
+  }
+});
 
 dotenv.config();
 
@@ -961,13 +978,42 @@ app.post('/v1/requests', authAgent, async (req, res) => {
 /**
  * 4. AGENT EXECUTE (COMMAND RELAY)
  */
-app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
+app.post('/v1/sessions/:id/execute', authAgent, executeRateLimiter, async (req, res) => {
   const sessionId = req.params.id;
   const command = req.body;
 
   const sessionStr = await redisClient.get(`session:${sessionId}`);
   if (!sessionStr) return res.status(404).json({ error: "Session not found" });
   const session = JSON.parse(sessionStr);
+
+  // Cloud-side JSON Schema parameter validation
+  if (command.capability) {
+    const nodeStr = await redisClient.get(`node:${session.node_id}`);
+    if (nodeStr) {
+      const node = JSON.parse(nodeStr);
+      const devices = Array.isArray(node.devices) ? node.devices : [];
+      const device = devices.find((d: any) => d.id === session.device_id);
+      if (device && Array.isArray(device.capabilities)) {
+        const capabilityDef = device.capabilities.find((c: any) => 
+          c === command.capability || (c && c.name === command.capability)
+        );
+        if (capabilityDef && typeof capabilityDef === 'object' && capabilityDef.schema) {
+          try {
+            const validate = ajv.compile(capabilityDef.schema);
+            const valid = validate(command.params || {});
+            if (!valid) {
+              return res.status(400).json({
+                error: "Parameter validation failed",
+                details: validate.errors
+              });
+            }
+          } catch (schemaErr: any) {
+            console.warn(`[Cloud] ⚠️ Failed to compile JSON Schema for ${command.capability}`);
+          }
+        }
+      }
+    }
+  }
 
   const requestId = `cmd-${randomUUID()}`;
   const requestedTimeoutMs = typeof command.timeout_ms === 'number' ? command.timeout_ms : undefined;
@@ -1053,7 +1099,7 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
 /**
  * 4b. AGENT EXECUTE BATCH (COMMAND RELAY)
  */
-app.post('/v1/sessions/:id/execute-batch', authAgent, async (req, res) => {
+app.post('/v1/sessions/:id/execute-batch', authAgent, executeRateLimiter, async (req, res) => {
   const sessionId = req.params.id;
   const { commands, timeout_ms } = req.body;
 
