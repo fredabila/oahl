@@ -168,9 +168,9 @@ function App() {
       </div>
 
       <header className="sticky top-0 z-40 border-b border-oahl-border/80 bg-oahl-bg/85 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <button onClick={() => goToPage('home')} className="flex items-center gap-3 text-left">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-oahl-accent to-oahl-accentHover text-white font-mono font-bold shadow-lg shadow-oahl-accent/20">
+        <div className="mx-auto flex flex-col md:flex-row h-auto md:h-16 items-center justify-between gap-4 py-4 md:py-0 px-6">
+          <button onClick={() => goToPage('home')} className="flex items-center gap-3 text-left w-full justify-center md:w-auto md:justify-start">
+            <div className="flex shrink-0 h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-oahl-accent to-oahl-accentHover text-white font-mono font-bold shadow-lg shadow-oahl-accent/20">
               OA
             </div>
             <div>
@@ -179,7 +179,7 @@ function App() {
             </div>
           </button>
 
-          <nav className="flex items-center gap-2 text-sm">
+          <nav className="flex flex-wrap items-center justify-center gap-2 text-sm">
             <NavButton active={page === 'home'} onClick={() => goToPage('home')} label="Home" />
             <NavButton active={page === 'about'} onClick={() => goToPage('about')} label="About" />
             <NavButton active={page === 'api-lab'} onClick={() => goToPage('api-lab')} label="API Lab" />
@@ -623,7 +623,7 @@ function ApiLabPage() {
       const res = await fetch(`${cloudUrl}/v1/sessions/${sessionId.trim()}/execute`, {
         method: 'POST',
         headers: bearerHeaders(true),
-        body: JSON.stringify({ capability: selectedCapability.trim(), params: parsedParams })
+        body: JSON.stringify({ capability: selectedCapability.trim(), params: parsedParams, timeout_ms: 300000 })
       });
 
       if (!res.ok) {
@@ -778,9 +778,10 @@ function ApiLabPage() {
         }
 
         if (actionType === 'execute') {
-          const targetDeviceId = String(actionPayload.device_id || '').trim();
-          const targetCapability = String(actionPayload.capability || '').trim();
-          const targetParams = actionPayload.params || {};
+          try {
+            const targetDeviceId = String(actionPayload.device_id || '').trim();
+            const targetCapability = String(actionPayload.capability || '').trim();
+            const targetParams = actionPayload.params || {};
           
           if (!targetDeviceId || !targetCapability) {
              throw new Error('LLM attempted to execute without device_id or capability');
@@ -823,7 +824,7 @@ function ApiLabPage() {
           const execRes = await fetch(`${cloudUrl}/v1/sessions/${currentSessionId}/execute`, {
             method: 'POST',
             headers: bearerHeaders(true),
-            body: JSON.stringify({ capability: targetCapability, params: targetParams })
+            body: JSON.stringify({ capability: targetCapability, params: targetParams, timeout_ms: 300000 })
           });
 
           const relayMode = execRes.headers.get('x-oahl-relay-mode') || 'unknown';
@@ -846,8 +847,14 @@ function ApiLabPage() {
           setRelayInfo({ mode: relayMode, requestId });
           setAiStepResults([...sequenceResults]);
 
-          // Feed result back into the Agent Orchestration Loop!
-          messages.push({ role: 'user', content: `Execution Result from device:\n${JSON.stringify(execData)}\nWhat is the next action?` });
+            // Feed result back into the Agent Orchestration Loop!
+            messages.push({ role: 'user', content: `Execution Result from device:\n${JSON.stringify(execData)}\nWhat is the next action?` });
+          } catch (stepErr: any) {
+            const errorMessage = stepErr?.message || 'Execution step failed unexpectedly';
+            sequenceResults.push({ step: stepCount, capability: String(actionPayload.capability || 'unknown'), relayMode: 'error', requestId: '', status: 'error', error: errorMessage });
+            setAiStepResults([...sequenceResults]);
+            messages.push({ role: 'user', content: `Execution step failed: ${errorMessage}\nAdjust your strategy, fix any incorrect parameters/device IDs, and try again.` });
+          }
         }
       }
       
@@ -1311,7 +1318,7 @@ function DashboardPage() {
         </div>
 
         <div className="panel p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <h3 className="text-lg font-semibold">Active Agent Wallets</h3>
             <div className="flex items-center gap-2">
               <span className="text-xs text-oahl-textMuted">Fund amount:</span>
@@ -1324,8 +1331,8 @@ function DashboardPage() {
             </div>
           </div>
           
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto pb-2">
+            <table className="w-full text-left text-sm min-w-[500px]">
               <thead>
                 <tr className="border-b border-oahl-border text-oahl-textMuted text-xs uppercase tracking-wider">
                   <th className="pb-3 font-medium">Agent</th>
