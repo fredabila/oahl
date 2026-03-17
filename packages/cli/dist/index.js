@@ -1025,22 +1025,29 @@ program
     console.log('5) Import devices in TUI: oahl tui -> Import detected devices.');
 });
 program
-    .command('conformance')
-    .description('Run OAHL core conformance checks')
+    .command('conformance [adapter]')
+    .description('Run OAHL core conformance checks against a specific adapter')
     .option('--workspace <path>', 'Path to OAHL workspace root', process.cwd())
-    .action((options) => {
-    const workspaceRoot = path.resolve(process.cwd(), options.workspace);
-    console.log(`🧪 Running OAHL conformance checks from: ${workspaceRoot}`);
-    try {
-        (0, child_process_1.execSync)('npm run test:conformance --workspace=@oahl/core', {
-            stdio: 'inherit',
-            cwd: workspaceRoot
-        });
-        console.log('\n✅ Conformance checks passed.');
+    .action(async (adapter, options) => {
+    if (adapter) {
+        const { runAdapterConformance } = require('./conformance');
+        const passed = await runAdapterConformance(adapter);
+        process.exit(passed ? 0 : 1);
     }
-    catch (err) {
-        console.error(`\n❌ Conformance checks failed: ${err.message}`);
-        process.exit(1);
+    else {
+        const workspaceRoot = path.resolve(process.cwd(), options.workspace);
+        console.log(`🧪 Running OAHL internal platform conformance from: ${workspaceRoot}`);
+        try {
+            (0, child_process_1.execSync)('npm run test:conformance --workspace=@oahl/core', {
+                stdio: 'inherit',
+                cwd: workspaceRoot
+            });
+            console.log('\n✅ Internal conformance checks passed.');
+        }
+        catch (err) {
+            console.error(`\n❌ Internal conformance checks failed: ${err.message}`);
+            process.exit(1);
+        }
     }
 });
 program

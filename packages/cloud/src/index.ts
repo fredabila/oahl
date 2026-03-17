@@ -7,6 +7,7 @@ import type { Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import rateLimit from 'express-rate-limit';
 import Ajv from 'ajv';
+import bcrypt from 'bcrypt';
 
 const ajv = new Ajv();
 
@@ -250,6 +251,11 @@ function configureProviderWebSocket(server: HttpServer) {
               redisClient.lPush(`result:${message.requestId}`, JSON.stringify(message.result)).catch(() => undefined);
               redisClient.expire(`result:${message.requestId}`, 60).catch(() => undefined);
             }
+          } else if (message?.type === 'event' && message?.event) {
+            const deviceId = message.event.device_id;
+            if (deviceId) {
+              redisClient.publish(`events:${nodeId}:${deviceId}`, JSON.stringify(message.event)).catch(() => undefined);
+            }
           }
         } catch (err: any) {
           console.error(`[Cloud WS] ❌ Invalid provider message: ${err.message}`);
@@ -442,9 +448,10 @@ app.post('/v1/portal/auth', async (req, res) => {
     let devStr = await redisClient.get(devKey);
     if (!devStr) {
       // Auto-register new developer
+      const hashedPin = await bcrypt.hash(pin, 10);
       const newDev = {
         email: emailKey,
-        pin: pin, // In production, hash this!
+        pin: hashedPin,
         org_id: `org_${randomUUID().split('-')[0]}`,
         created_at: Date.now()
       };
@@ -454,8 +461,20 @@ app.post('/v1/portal/auth', async (req, res) => {
 
     const devData = JSON.parse(devStr);
     
-    // Verify PIN
-    if (devData.pin !== pin) {
+    // Verify PIN with backward compatibility for plaintext
+    let isMatch = false;
+    if (devData.pin && devData.pin.startsWith('$2b$')) {
+      isMatch = await bcrypt.compare(pin, devData.pin);
+    } else {
+      isMatch = (devData.pin === pin);
+      // Auto-upgrade to hashed PIN on successful login
+      if (isMatch) {
+        devData.pin = await bcrypt.hash(pin, 10);
+        await redisClient.set(devKey, JSON.stringify(devData));
+      }
+    }
+
+    if (!isMatch) {
       return res.status(401).json({ error: "Invalid PIN" });
     }
 
