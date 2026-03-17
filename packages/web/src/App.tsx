@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   Bot,
@@ -1350,28 +1350,6 @@ function NavButton({ active, onClick, label }: { active: boolean; onClick: () =>
     </button>
   );
 }
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="stat-card">
-      <p className="stat-title">{label}</p>
-      <p className="stat-value">{value}</p>
-    </div>
-  );
-}
-
-function LandingFeatureCard({ icon, title, detail }: { icon: React.ReactNode; title: string; detail: string }) {
-  return (
-    <div className="landing-feature">
-      <div className="mb-2 inline-flex items-center justify-center rounded-lg border border-oahl-border/70 bg-black/40 p-1.5">
-        {icon}
-      </div>
-      <p className="text-xs font-semibold text-oahl-textMain">{title}</p>
-      <p className="mt-1 text-[11px] text-oahl-textMuted">{detail}</p>
-    </div>
-  );
-}
-
 
 function MiniInfo({ label, value }: { label: string; value: string }) {
   return (
