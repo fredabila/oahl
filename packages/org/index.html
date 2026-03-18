@@ -36,7 +36,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
     <link rel="stylesheet" href="/style.css" />
   </head>
@@ -168,7 +168,16 @@
           </div>
         </div>
 
-        <pre class="code-block"><code><span class="c">// Typical agent integration (TypeScript SDK)</span>
+        <div class="code-wrap">
+          <div class="code-header">
+            <span class="dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </span>
+            <span class="code-lang">TypeScript SDK</span>
+          </div>
+          <pre class="code-block"><code><span class="c">// Typical agent integration (TypeScript SDK)</span>
 <span class="k">import</span> { CloudClient } <span class="k">from</span> <span class="s">'@oahl/sdk'</span>;
 
 <span class="k">const</span> cloud = <span class="k">new</span> CloudClient(<span class="s">'https://oahl.onrender.com'</span>, AGENT_KEY);
@@ -176,6 +185,7 @@
 <span class="k">const</span> { session_id } = <span class="k">await</span> cloud.requestSession({ device_id: devices[0].id });
 <span class="k">const</span> result = <span class="k">await</span> cloud.execute(session_id, { capability: <span class="s">'screen.capture'</span> });
 <span class="k">await</span> cloud.stopSession(session_id);</code></pre>
+        </div>
       </section>
 
       <!-- ─── Contribute ─── -->
@@ -246,7 +256,16 @@
       <!-- ─── Getting started ─── -->
       <section class="section">
         <h2>Getting started as a contributor</h2>
-        <pre class="code-block"><code><span class="c"># Clone and set up</span>
+        <div class="code-wrap">
+          <div class="code-header">
+            <span class="dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </span>
+            <span class="code-lang">Shell</span>
+          </div>
+          <pre class="code-block"><code><span class="c"># Clone and set up</span>
 git clone https://github.com/fredabila/oahl.git
 cd oahl
 npm install
@@ -258,6 +277,7 @@ npm test
 <span class="c"># Start a local development node</span>
 cp oahl-config.example.json oahl-config.json
 npm start</code></pre>
+        </div>
 
         <p>
           <strong>Prerequisites:</strong> Node.js ≥ 18, npm ≥ 9, TypeScript ≥ 5, Git. 
@@ -306,9 +326,15 @@ npm start</code></pre>
     <!-- ─── Footer ─── -->
     <footer>
       <p>
-        OAHL is open-source software under the <a href="https://github.com/fredabila/oahl/blob/main/LICENSE" target="_blank" rel="noreferrer">MIT License</a>. 
-        Copyright © 2024–2026 Fred Abila and the OAHL Contributors.
+        Copyright &copy; 2024&ndash;2026 Fred Abila and the OAHL Contributors &mdash; MIT License.
       </p>
+      <nav class="footer-links">
+        <a href="https://github.com/fredabila/oahl" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://oahl.dev" target="_blank" rel="noreferrer">Platform</a>
+        <a href="https://github.com/fredabila/oahl/blob/main/docs/oahl-protocol-v1.md" target="_blank" rel="noreferrer">Protocol Spec</a>
+        <a href="https://github.com/fredabila/oahl/blob/main/CONTRIBUTING.md" target="_blank" rel="noreferrer">Contributing</a>
+        <a href="https://github.com/fredabila/oahl/blob/main/LICENSE" target="_blank" rel="noreferrer">MIT License</a>
+      </nav>
     </footer>
 
   </body>

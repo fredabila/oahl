@@ -1,360 +1,309 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" width="100%" height="100%">
   <defs>
-    <!-- Background gradient: deep space dark -->
+    <!-- Background -->
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%"   stop-color="#020510" />
-      <stop offset="55%"  stop-color="#0b0f23" />
-      <stop offset="100%" stop-color="#060d1f" />
+      <stop offset="0%"   stop-color="#070709"/>
+      <stop offset="50%"  stop-color="#0c0b09"/>
+      <stop offset="100%" stop-color="#07080b"/>
     </linearGradient>
 
-    <!-- Accent gradients -->
-    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%"   stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#0ea5e9" />
-    </linearGradient>
-    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%"   stop-color="#a78bfa" />
-      <stop offset="100%" stop-color="#7c3aed" />
-    </linearGradient>
-    <linearGradient id="pinkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%"   stop-color="#f472b6" />
-      <stop offset="100%" stop-color="#db2777" />
+    <!-- Hardware (orange) gradient -->
+    <linearGradient id="hwGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#e8956e"/>
+      <stop offset="100%" stop-color="#c46e45"/>
     </linearGradient>
 
-    <!-- Bridge / protocol gradient (hardware → protocol → agent) -->
+    <!-- Agent (green) gradient -->
+    <linearGradient id="aiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#90bb9a"/>
+      <stop offset="100%" stop-color="#6a9575"/>
+    </linearGradient>
+
+    <!-- Bridge gradient: orange → warm mid → green -->
     <linearGradient id="bridgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%"   stop-color="#38bdf8" />
-      <stop offset="48%"  stop-color="#a78bfa" />
-      <stop offset="100%" stop-color="#f472b6" />
-    </linearGradient>
-    <linearGradient id="bridgeGradV" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%"   stop-color="#a78bfa" stop-opacity="0.8" />
-      <stop offset="100%" stop-color="#a78bfa" stop-opacity="0" />
+      <stop offset="0%"   stop-color="#d47e5b"/>
+      <stop offset="48%"  stop-color="#b08e72"/>
+      <stop offset="100%" stop-color="#7ea787"/>
     </linearGradient>
 
-    <!-- Title text gradient -->
+    <!-- Title gradient -->
     <linearGradient id="titleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%"   stop-color="#38bdf8" />
-      <stop offset="40%"  stop-color="#a78bfa" />
-      <stop offset="100%" stop-color="#f472b6" />
+      <stop offset="0%"   stop-color="#e8956e"/>
+      <stop offset="45%"  stop-color="#c48a6a"/>
+      <stop offset="100%" stop-color="#90bb9a"/>
     </linearGradient>
+
+    <!-- Subtle dot grid -->
+    <pattern id="dotGrid" width="34" height="34" patternUnits="userSpaceOnUse">
+      <circle cx="17" cy="17" r="0.75" fill="#1e1b18" opacity="0.55"/>
+    </pattern>
 
     <!-- Glow filters -->
     <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
     </filter>
     <filter id="titleGlow" x="-10%" y="-40%" width="120%" height="180%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
     </filter>
     <filter id="nodeGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+      <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
     </filter>
     <filter id="dotGlow" x="-200%" y="-200%" width="500%" height="500%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
     </filter>
 
-    <!-- Hex grid pattern -->
-    <pattern id="hexGrid" width="60" height="52" patternUnits="userSpaceOnUse">
-      <path d="M30 0 L60 17 L60 35 L30 52 L0 35 L0 17 Z"
-            fill="none" stroke="#1e2a4a" stroke-width="0.6" opacity="0.5"/>
-    </pattern>
-
-    <!-- Grid dot pattern -->
-    <pattern id="dotPattern" width="40" height="40" patternUnits="userSpaceOnUse">
-      <circle cx="20" cy="20" r="1" fill="#1e3a5f" opacity="0.4"/>
-    </pattern>
-
-    <!-- Clip path for the entire canvas -->
-    <clipPath id="canvasClip">
-      <rect width="1200" height="420" rx="0"/>
+    <!-- Canvas clip -->
+    <clipPath id="clip">
+      <rect width="1200" height="420"/>
     </clipPath>
   </defs>
 
   <!-- ═══ BACKGROUND ═══ -->
-  <rect width="1200" height="420" fill="url(#bgGrad)" />
+  <rect width="1200" height="420" fill="url(#bgGrad)"/>
+  <rect width="1200" height="420" fill="url(#dotGrid)"/>
 
-  <!-- Layered background textures -->
-  <rect width="1200" height="420" fill="url(#dotPattern)" />
-  <rect width="1200" height="420" fill="url(#hexGrid)" />
+  <!-- Ambient colour glows -->
+  <ellipse cx="165"  cy="210" rx="260" ry="200" fill="#d47e5b" opacity="0.032"/>
+  <ellipse cx="1035" cy="210" rx="260" ry="200" fill="#7ea787" opacity="0.032"/>
+  <ellipse cx="600"  cy="380" rx="400" ry="120" fill="#b08e72" opacity="0.012"/>
 
-  <!-- Subtle radial centre vignette to push focus inward -->
-  <radialGradient id="centerFocus" cx="50%" cy="50%" r="65%">
-    <stop offset="0%"   stop-color="#0f1940" stop-opacity="0"/>
-    <stop offset="100%" stop-color="#000510" stop-opacity="0.7"/>
-  </radialGradient>
-  <rect width="1200" height="420" fill="url(#centerFocus)" />
-
-  <!-- Ambient glow orbs -->
-  <ellipse cx="180"  cy="210" rx="200" ry="140" fill="#0ea5e9" opacity="0.04" />
-  <ellipse cx="1020" cy="210" rx="200" ry="140" fill="#f472b6" opacity="0.04" />
-  <ellipse cx="600"  cy="210" rx="260" ry="160" fill="#7c3aed" opacity="0.05" />
-
-  <!-- ═══ BACKGROUND CIRCUIT LINES (decorative, behind everything) ═══ -->
-  <g clip-path="url(#canvasClip)" stroke="#1e3a5f" stroke-width="1" fill="none" opacity="0.5">
-    <!-- Horizontal rails -->
-    <line x1="0"    y1="80"  x2="340" y2="80" />
-    <line x1="860"  y1="80"  x2="1200" y2="80" />
-    <line x1="0"    y1="340" x2="340" y2="340" />
-    <line x1="860"  y1="340" x2="1200" y2="340" />
-    <!-- Corner bends -->
-    <path d="M340 80 L380 80 L380 120"  />
-    <path d="M860 80 L820 80 L820 120" />
-    <path d="M340 340 L380 340 L380 300" />
-    <path d="M860 340 L820 340 L820 300" />
-    <!-- Vertical side rails -->
-    <line x1="80"  y1="0"   x2="80"  y2="160" />
-    <line x1="80"  y1="260" x2="80"  y2="420" />
-    <line x1="1120" y1="0"  x2="1120" y2="160" />
-    <line x1="1120" y1="260" x2="1120" y2="420" />
-    <!-- Corner pads (small squares) -->
-    <rect x="74"   y="74"   width="12" height="12" rx="2" />
-    <rect x="74"   y="334"  width="12" height="12" rx="2" />
-    <rect x="1114" y="74"   width="12" height="12" rx="2" />
-    <rect x="1114" y="334"  width="12" height="12" rx="2" />
+  <!-- Subtle corner bracket decorations -->
+  <g clip-path="url(#clip)" stroke="#1e1b18" stroke-width="1" fill="none" opacity="0.7">
+    <polyline points="0,52 52,52 52,0"/>
+    <polyline points="1200,52 1148,52 1148,0"/>
+    <polyline points="0,368 52,368 52,420"/>
+    <polyline points="1200,368 1148,368 1148,420"/>
   </g>
 
-  <!-- ═══ MAIN PROTOCOL BRIDGE LINE ═══ -->
-  <!-- Glow backing -->
-  <path d="M 260 210 C 420 210, 780 210, 940 210"
-        stroke="url(#bridgeGrad)" stroke-width="6" fill="none" opacity="0.15" filter="url(#softGlow)"/>
-  <!-- Animated dashed signal line -->
-  <path d="M 260 210 C 420 210, 780 210, 940 210"
-        stroke="url(#bridgeGrad)" stroke-width="1.5" fill="none" opacity="0.7"
-        stroke-dasharray="6 14">
-    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="2.4s" repeatCount="indefinite"/>
-  </path>
+  <!-- ═══ PROTOCOL BRIDGE LINE ═══ -->
+  <!-- Wide glow backing -->
+  <line x1="265" y1="210" x2="935" y2="210"
+        stroke="url(#bridgeGrad)" stroke-width="10" opacity="0.055" filter="url(#softGlow)"/>
+  <!-- Animated dashed main line -->
+  <line x1="265" y1="210" x2="935" y2="210"
+        stroke="url(#bridgeGrad)" stroke-width="1.5" opacity="0.65"
+        stroke-dasharray="5 11">
+    <animate attributeName="stroke-dashoffset" from="16" to="0" dur="2s" repeatCount="indefinite"/>
+  </line>
 
-  <!-- Fork lines: hardware side -->
-  <g stroke="#38bdf8" stroke-width="1.2" fill="none" opacity="0.5" filter="url(#softGlow)">
-    <path d="M 260 210 L 170 145"/>
-    <path d="M 260 210 L 140 210"/>
-    <path d="M 260 210 L 170 275"/>
+  <!-- Fork lines: hardware side (orange) -->
+  <g stroke="#d47e5b" stroke-width="1.2" fill="none" opacity="0.42" filter="url(#softGlow)">
+    <line x1="265" y1="210" x2="183" y2="148"/>
+    <line x1="265" y1="210" x2="148" y2="210"/>
+    <line x1="265" y1="210" x2="183" y2="272"/>
   </g>
-  <!-- Fork lines: agent side -->
-  <g stroke="#f472b6" stroke-width="1.2" fill="none" opacity="0.5" filter="url(#softGlow)">
-    <path d="M 940 210 L 1030 145"/>
-    <path d="M 940 210 L 1060 210"/>
-    <path d="M 940 210 L 1030 275"/>
+  <!-- Fork lines: agent side (green) -->
+  <g stroke="#7ea787" stroke-width="1.2" fill="none" opacity="0.42" filter="url(#softGlow)">
+    <line x1="935" y1="210" x2="1017" y2="148"/>
+    <line x1="935" y1="210" x2="1052" y2="210"/>
+    <line x1="935" y1="210" x2="1017" y2="272"/>
   </g>
 
   <!-- ═══ ANIMATED DATA PACKETS ═══ -->
-  <!-- Left → Right (agent requesting hardware) -->
-  <circle r="5" fill="#a78bfa" filter="url(#dotGlow)">
-    <animateMotion path="M 260 210 C 420 210, 780 210, 940 210"
-                   dur="2.4s" repeatCount="indefinite" rotate="auto"/>
+  <!-- Hardware → Agent -->
+  <circle r="5" fill="#d47e5b" filter="url(#dotGlow)">
+    <animateMotion path="M 265,210 L 935,210" dur="2.1s" repeatCount="indefinite"/>
   </circle>
-  <!-- Right → Left (hardware result returning) -->
-  <circle r="4" fill="#38bdf8" filter="url(#dotGlow)">
-    <animateMotion path="M 940 210 C 780 210, 420 210, 260 210"
-                   dur="3.2s" repeatCount="indefinite" rotate="auto" begin="1.2s"/>
+  <!-- Agent → Hardware -->
+  <circle r="4" fill="#7ea787" filter="url(#dotGlow)" opacity="0.85">
+    <animateMotion path="M 935,210 L 265,210" dur="2.9s" repeatCount="indefinite" begin="1.05s"/>
   </circle>
-  <!-- A second result packet slightly delayed -->
-  <circle r="3" fill="#f472b6" filter="url(#dotGlow)" opacity="0.7">
-    <animateMotion path="M 260 210 C 420 210, 780 210, 940 210"
-                   dur="2.4s" repeatCount="indefinite" rotate="auto" begin="0.8s"/>
+  <!-- Second H→A packet, offset -->
+  <circle r="3" fill="#c4906a" filter="url(#dotGlow)" opacity="0.6">
+    <animateMotion path="M 265,210 L 935,210" dur="2.1s" repeatCount="indefinite" begin="0.65s"/>
   </circle>
 
-  <!-- ═══ HARDWARE CLUSTER (LEFT) ═══ -->
-  <g transform="translate(165, 210)">
+  <!-- ═══ HARDWARE CLUSTER (left, centred at 165,210) ═══ -->
+  <g transform="translate(165,210)">
     <!-- Outer glow ring -->
-    <circle r="68" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.12" filter="url(#nodeGlow)"/>
-    <circle r="52" fill="none" stroke="#38bdf8" stroke-width="0.8" opacity="0.2"/>
+    <circle r="72" fill="none" stroke="#d47e5b" stroke-width="1" opacity="0.1" filter="url(#nodeGlow)"/>
+    <circle r="54" fill="none" stroke="#d47e5b" stroke-width="0.7" opacity="0.16"/>
 
-    <!-- Hexagon node body -->
-    <path d="M0 -46 L40 -23 L40 23 L0 46 L-40 23 L-40 -23 Z"
-          fill="#060d1f" stroke="url(#cyanGrad)" stroke-width="2" filter="url(#softGlow)"/>
+    <!-- Hexagonal node body -->
+    <path d="M0,-44 L38,-22 L38,22 L0,44 L-38,22 L-38,-22 Z"
+          fill="#08070a" stroke="url(#hwGrad)" stroke-width="1.8" filter="url(#softGlow)"/>
+    <!-- Inner hex ring -->
+    <path d="M0,-27 L23,-13.5 L23,13.5 L0,27 L-23,13.5 L-23,-13.5 Z"
+          fill="none" stroke="#d47e5b" stroke-width="0.7" opacity="0.28"/>
 
-    <!-- Inner hex decoration -->
-    <path d="M0 -28 L24 -14 L24 14 L0 28 L-24 14 L-24 -14 Z"
-          fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.35"/>
-
-    <!-- CPU icon simplified: grid of small squares -->
-    <g fill="#38bdf8" opacity="0.7">
-      <rect x="-12" y="-12" width="7" height="7" rx="1"/>
-      <rect x="5"   y="-12" width="7" height="7" rx="1"/>
-      <rect x="-12" y="5"   width="7" height="7" rx="1"/>
-      <rect x="5"   y="5"   width="7" height="7" rx="1"/>
+    <!-- CPU grid icon (4 squares) -->
+    <g fill="#d47e5b" opacity="0.62">
+      <rect x="-11" y="-11" width="7" height="7" rx="1.5"/>
+      <rect x="4"   y="-11" width="7" height="7" rx="1.5"/>
+      <rect x="-11" y="4"   width="7" height="7" rx="1.5"/>
+      <rect x="4"   y="4"   width="7" height="7" rx="1.5"/>
     </g>
-    <!-- Center dot pulse -->
-    <circle r="3" fill="#38bdf8" filter="url(#dotGlow)">
-      <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>
+    <!-- Pulsing centre dot -->
+    <circle r="2.5" fill="#d47e5b" filter="url(#dotGlow)">
+      <animate attributeName="opacity" values="1;0.25;1" dur="2s" repeatCount="indefinite"/>
     </circle>
 
-    <!-- Satellite device nodes -->
-    <g transform="translate(-65, -60)">
-      <circle r="16" fill="#060d1f" stroke="#38bdf8" stroke-width="1.5" opacity="0.8"/>
-      <rect x="-7" y="-5" width="14" height="10" rx="1" fill="none" stroke="#38bdf8" stroke-width="1.2" opacity="0.7"/>
-      <line x1="-5" y1="5" x2="-5" y2="9"  stroke="#38bdf8" stroke-width="1" opacity="0.6"/>
-      <line x1="0"  y1="5" x2="0"  y2="9"  stroke="#38bdf8" stroke-width="1" opacity="0.6"/>
-      <line x1="5"  y1="5" x2="5"  y2="9"  stroke="#38bdf8" stroke-width="1" opacity="0.6"/>
+    <!-- Satellite: camera (top-left) -->
+    <g transform="translate(-63,-58)">
+      <circle r="16" fill="#08070a" stroke="#d47e5b" stroke-width="1.4" opacity="0.78"/>
+      <rect x="-7" y="-5" width="14" height="10" rx="1.5" fill="none" stroke="#d47e5b" stroke-width="1.2" opacity="0.62"/>
+      <line x1="-5" y1="5" x2="-5" y2="9" stroke="#d47e5b" stroke-width="1" opacity="0.5"/>
+      <line x1="0"  y1="5" x2="0"  y2="9" stroke="#d47e5b" stroke-width="1" opacity="0.5"/>
+      <line x1="5"  y1="5" x2="5"  y2="9" stroke="#d47e5b" stroke-width="1" opacity="0.5"/>
     </g>
-    <g transform="translate(-72, 0)">
-      <circle r="14" fill="#060d1f" stroke="#38bdf8" stroke-width="1.5" opacity="0.8"/>
-      <path d="M-6 0 L-2 -6 L2 -6 L6 0 L2 6 L-2 6Z" fill="none" stroke="#38bdf8" stroke-width="1.2" opacity="0.7"/>
+    <!-- Satellite: radio (left) -->
+    <g transform="translate(-72,0)">
+      <circle r="14" fill="#08070a" stroke="#d47e5b" stroke-width="1.4" opacity="0.78"/>
+      <path d="M-5,0 Q-2,-5 0,0 Q2,5 5,0"  fill="none" stroke="#d47e5b" stroke-width="1.5" opacity="0.68"/>
+      <path d="M-8,0 Q-3.5,-8 0,0 Q3.5,8 8,0" fill="none" stroke="#d47e5b" stroke-width="1" opacity="0.35"/>
     </g>
-    <g transform="translate(-65, 60)">
-      <circle r="16" fill="#060d1f" stroke="#38bdf8" stroke-width="1.5" opacity="0.8"/>
-      <!-- wave lines (sensor) -->
-      <path d="M-6 0 Q-3 -5 0 0 Q3 5 6 0" fill="none" stroke="#38bdf8" stroke-width="1.5" opacity="0.8"/>
-      <path d="M-9 0 Q-4.5 -8 0 0 Q4.5 8 9 0" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.45"/>
+    <!-- Satellite: sensor (bottom-left) -->
+    <g transform="translate(-63,58)">
+      <circle r="16" fill="#08070a" stroke="#d47e5b" stroke-width="1.4" opacity="0.78"/>
+      <path d="M-6,2 L-2,-4 L2,-4 L6,2 L2,7 L-2,7 Z" fill="none" stroke="#d47e5b" stroke-width="1.2" opacity="0.62"/>
     </g>
 
-    <!-- Label -->
-    <text y="80" font-family="'Courier New', Courier, monospace" font-size="11"
-          fill="#38bdf8" text-anchor="middle" letter-spacing="3" opacity="0.8">HARDWARE</text>
-    <text y="95" font-family="'Courier New', Courier, monospace" font-size="10"
-          fill="#38bdf8" text-anchor="middle" letter-spacing="2" opacity="0.5">NODE</text>
+    <!-- Labels -->
+    <text y="82" font-family="'Courier New', Courier, monospace" font-size="10"
+          fill="#d47e5b" text-anchor="middle" letter-spacing="3.5" opacity="0.72">HARDWARE</text>
+    <text y="96" font-family="'Courier New', Courier, monospace" font-size="9"
+          fill="#d47e5b" text-anchor="middle" letter-spacing="2.5" opacity="0.38">NODE</text>
   </g>
 
-  <!-- ═══ AI AGENT CLUSTER (RIGHT) ═══ -->
-  <g transform="translate(1035, 210)">
-    <!-- Outer glow ring (breathing) -->
-    <circle r="68" fill="none" stroke="#f472b6" stroke-width="1" opacity="0.1" filter="url(#nodeGlow)">
-      <animate attributeName="r" values="68;74;68" dur="3s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0.1;0.2;0.1" dur="3s" repeatCount="indefinite"/>
+  <!-- ═══ AI AGENT CLUSTER (right, centred at 1035,210) ═══ -->
+  <g transform="translate(1035,210)">
+    <!-- Breathing outer ring -->
+    <circle r="72" fill="none" stroke="#7ea787" stroke-width="1" opacity="0.1" filter="url(#nodeGlow)">
+      <animate attributeName="r"       values="72;78;72"       dur="3.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.1;0.19;0.1"   dur="3.6s" repeatCount="indefinite"/>
     </circle>
-    <circle r="52" fill="none" stroke="#f472b6" stroke-width="0.8" opacity="0.2"/>
+    <circle r="54" fill="none" stroke="#7ea787" stroke-width="0.7" opacity="0.16"/>
 
-    <!-- Brain body circle -->
-    <circle r="46" fill="#060d1f" stroke="url(#pinkGrad)" stroke-width="2" filter="url(#softGlow)"/>
-    <circle r="30" fill="none" stroke="#f472b6" stroke-width="1" opacity="0.3"/>
+    <!-- Circular body -->
+    <circle r="44" fill="#08070a" stroke="url(#aiGrad)" stroke-width="1.8" filter="url(#softGlow)"/>
+    <circle r="28" fill="none"    stroke="#7ea787"      stroke-width="0.7" opacity="0.22"/>
 
-    <!-- Neural network lines -->
-    <g stroke="#f472b6" stroke-width="1" opacity="0.4">
-      <line x1="-20" y1="-10" x2="0"   y2="0"/>
-      <line x1="20"  y1="-10" x2="0"   y2="0"/>
-      <line x1="-20" y1="10"  x2="0"   y2="0"/>
-      <line x1="20"  y1="10"  x2="0"   y2="0"/>
-      <line x1="0"   y1="-22" x2="0"   y2="0"/>
-      <line x1="0"   y1="22"  x2="0"   y2="0"/>
+    <!-- Neural network -->
+    <g stroke="#7ea787" stroke-width="0.85" opacity="0.32">
+      <line x1="-18" y1="-10" x2="0" y2="0"/>
+      <line x1="18"  y1="-10" x2="0" y2="0"/>
+      <line x1="-18" y1="10"  x2="0" y2="0"/>
+      <line x1="18"  y1="10"  x2="0" y2="0"/>
+      <line x1="0"   y1="-22" x2="0" y2="0"/>
+      <line x1="0"   y1="22"  x2="0" y2="0"/>
     </g>
-    <!-- Neural nodes -->
-    <g fill="#f472b6" opacity="0.8">
-      <circle cx="-20" cy="-10" r="3" filter="url(#dotGlow)">
-        <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.8s" repeatCount="indefinite" begin="0s"/>
-      </circle>
-      <circle cx="20"  cy="-10" r="3" filter="url(#dotGlow)">
-        <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.8s" repeatCount="indefinite" begin="0.3s"/>
-      </circle>
-      <circle cx="-20" cy="10"  r="3" filter="url(#dotGlow)">
-        <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.8s" repeatCount="indefinite" begin="0.6s"/>
-      </circle>
-      <circle cx="20"  cy="10"  r="3" filter="url(#dotGlow)">
-        <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.8s" repeatCount="indefinite" begin="0.9s"/>
-      </circle>
-    </g>
+    <!-- Pulsing neural nodes -->
+    <circle cx="-18" cy="-10" r="3" fill="#7ea787" filter="url(#dotGlow)">
+      <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1.9s" repeatCount="indefinite" begin="0s"/>
+    </circle>
+    <circle cx="18"  cy="-10" r="3" fill="#7ea787" filter="url(#dotGlow)">
+      <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1.9s" repeatCount="indefinite" begin="0.38s"/>
+    </circle>
+    <circle cx="-18" cy="10"  r="3" fill="#7ea787" filter="url(#dotGlow)">
+      <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1.9s" repeatCount="indefinite" begin="0.76s"/>
+    </circle>
+    <circle cx="18"  cy="10"  r="3" fill="#7ea787" filter="url(#dotGlow)">
+      <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1.9s" repeatCount="indefinite" begin="1.14s"/>
+    </circle>
     <!-- Central pulse -->
-    <circle r="5" fill="#f472b6" filter="url(#nodeGlow)">
-      <animate attributeName="opacity" values="1;0.4;1" dur="1.5s" repeatCount="indefinite"/>
+    <circle r="4.5" fill="#7ea787" filter="url(#nodeGlow)">
+      <animate attributeName="opacity" values="1;0.35;1" dur="1.7s" repeatCount="indefinite"/>
     </circle>
 
-    <!-- Floating capsule badges: prompt indicators -->
-    <g transform="translate(42, -40)">
-      <rect x="-18" y="-8" width="50" height="16" rx="8"
-            fill="#1a0630" stroke="#f472b6" stroke-width="0.8" opacity="0.7"/>
-      <text x="7" y="5" font-family="'Courier New', Courier, monospace" font-size="9"
-            fill="#f472b6" text-anchor="middle" opacity="0.9">TASK</text>
+    <!-- Floating task/result badges -->
+    <g transform="translate(44,-40)">
+      <rect x="-18" y="-9" width="52" height="18" rx="9"
+            fill="#08070a" stroke="#7ea787" stroke-width="0.8" opacity="0.62"/>
+      <text x="8" y="5.5" font-family="'Courier New', Courier, monospace" font-size="9"
+            fill="#7ea787" text-anchor="middle" opacity="0.88">TASK</text>
     </g>
-    <g transform="translate(54, 0)">
-      <rect x="-22" y="-8" width="58" height="16" rx="8"
-            fill="#1a0630" stroke="#a78bfa" stroke-width="0.8" opacity="0.7"/>
-      <text x="7" y="5" font-family="'Courier New', Courier, monospace" font-size="9"
-            fill="#a78bfa" text-anchor="middle" opacity="0.9">TOOL ›</text>
+    <g transform="translate(52,0)">
+      <rect x="-20" y="-9" width="62" height="18" rx="9"
+            fill="#08070a" stroke="#7ea787" stroke-width="0.8" opacity="0.62"/>
+      <text x="11" y="5.5" font-family="'Courier New', Courier, monospace" font-size="9"
+            fill="#7ea787" text-anchor="middle" opacity="0.88">TOOL ›</text>
     </g>
-    <g transform="translate(42, 40)">
-      <rect x="-20" y="-8" width="54" height="16" rx="8"
-            fill="#1a0630" stroke="#38bdf8" stroke-width="0.8" opacity="0.7"/>
-      <text x="7" y="5" font-family="'Courier New', Courier, monospace" font-size="9"
-            fill="#38bdf8" text-anchor="middle" opacity="0.9">RESULT</text>
+    <g transform="translate(44,40)">
+      <rect x="-20" y="-9" width="64" height="18" rx="9"
+            fill="#08070a" stroke="#d47e5b" stroke-width="0.8" opacity="0.62"/>
+      <text x="12" y="5.5" font-family="'Courier New', Courier, monospace" font-size="9"
+            fill="#d47e5b" text-anchor="middle" opacity="0.88">RESULT</text>
     </g>
 
-    <!-- Label -->
-    <text y="80" font-family="'Courier New', Courier, monospace" font-size="11"
-          fill="#f472b6" text-anchor="middle" letter-spacing="3" opacity="0.8">AI AGENT</text>
-    <text y="95" font-family="'Courier New', Courier, monospace" font-size="10"
-          fill="#f472b6" text-anchor="middle" letter-spacing="2" opacity="0.5">LAYER</text>
+    <!-- Labels -->
+    <text y="82" font-family="'Courier New', Courier, monospace" font-size="10"
+          fill="#7ea787" text-anchor="middle" letter-spacing="3.5" opacity="0.72">AI AGENT</text>
+    <text y="96" font-family="'Courier New', Courier, monospace" font-size="9"
+          fill="#7ea787" text-anchor="middle" letter-spacing="2.5" opacity="0.38">LAYER</text>
   </g>
 
-  <!-- ═══ OAHL PROTOCOL BRIDGE (CENTRE) ═══ -->
-  <g transform="translate(600, 210)">
-    <!-- Glass-morphism card -->
-    <rect x="-110" y="-52" width="220" height="104" rx="14"
-          fill="#0a0f2a" fill-opacity="0.85" stroke="none"/>
-    <!-- Gradient border rings -->
-    <rect x="-111" y="-53" width="222" height="106" rx="15"
-          fill="none" stroke="url(#bridgeGrad)" stroke-width="2" opacity="0.6" filter="url(#softGlow)">
-      <animate attributeName="opacity" values="0.6;0.9;0.6" dur="4s" repeatCount="indefinite"/>
+  <!-- ═══ CENTER OAHL PROTOCOL CARD ═══ -->
+  <g transform="translate(600,210)">
+    <!-- Glass card backing -->
+    <rect x="-118" y="-56" width="236" height="112" rx="16" fill="#08070a" fill-opacity="0.9"/>
+    <!-- Animated gradient border -->
+    <rect x="-119" y="-57" width="238" height="114" rx="17"
+          fill="none" stroke="url(#bridgeGrad)" stroke-width="1.5" opacity="0.48" filter="url(#softGlow)">
+      <animate attributeName="opacity" values="0.48;0.8;0.48" dur="4.2s" repeatCount="indefinite"/>
     </rect>
-    <rect x="-107" y="-49" width="214" height="98" rx="12"
-          fill="none" stroke="url(#bridgeGrad)" stroke-width="0.6" opacity="0.25"/>
+    <!-- Subtle inner border -->
+    <rect x="-115" y="-53" width="230" height="106" rx="14"
+          fill="none" stroke="url(#bridgeGrad)" stroke-width="0.5" opacity="0.18"/>
+    <!-- Shimmer band -->
+    <rect x="-118" y="-3" width="236" height="6" fill="url(#bridgeGrad)" fill-opacity="0.04"/>
 
-    <!-- Inner shimmer band -->
-    <rect x="-110" y="-4" width="220" height="8" rx="0"
-          fill="url(#bridgeGrad)" fill-opacity="0.06"/>
-
-    <!-- OAHL lettering -->
-    <text y="-62" font-family="'Arial Black', 'Arial', sans-serif" font-weight="900"
-          font-size="72" fill="url(#titleGrad)" text-anchor="middle"
+    <!-- OAHL wordmark -->
+    <text y="-64" font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
+          font-size="78" font-weight="900"
+          fill="url(#titleGrad)" text-anchor="middle"
           letter-spacing="10" filter="url(#titleGlow)">OAHL</text>
 
-    <!-- Sub-label: protocol version badge -->
-    <g transform="translate(0, -15)">
-      <rect x="-58" y="-10" width="116" height="20" rx="10"
-            fill="#0f172a" stroke="#a78bfa" stroke-width="0.8" opacity="0.7"/>
-      <text y="5" font-family="'Courier New', Courier, monospace" font-size="10"
-            fill="#a78bfa" text-anchor="middle" letter-spacing="2" opacity="0.9">PROTOCOL v1.0</text>
+    <!-- Protocol version badge -->
+    <g transform="translate(0,-15)">
+      <rect x="-58" y="-9" width="116" height="18" rx="9"
+            fill="#0e0d0c" stroke="#b08e72" stroke-width="0.7" opacity="0.58"/>
+      <text y="5.5" font-family="'Courier New', Courier, monospace" font-size="9.5"
+            fill="#b08e72" text-anchor="middle" letter-spacing="2.5" opacity="0.85">PROTOCOL v1.0</text>
     </g>
 
     <!-- Feature pills row -->
-    <g transform="translate(0, 22)">
-      <!-- Left pill -->
-      <rect x="-104" y="-9" width="64" height="18" rx="9"
-            fill="#0f172a" stroke="#38bdf8" stroke-width="0.7" opacity="0.6"/>
-      <text x="-72" y="5" font-family="'Courier New', Courier, monospace" font-size="8.5"
-            fill="#38bdf8" text-anchor="middle" letter-spacing="1" opacity="0.85">ADAPTERS</text>
-      <!-- Centre pill -->
-      <rect x="-30" y="-9" width="60" height="18" rx="9"
-            fill="#0f172a" stroke="#a78bfa" stroke-width="0.7" opacity="0.6"/>
-      <text x="0" y="5" font-family="'Courier New', Courier, monospace" font-size="8.5"
-            fill="#a78bfa" text-anchor="middle" letter-spacing="1" opacity="0.85">SESSIONS</text>
-      <!-- Right pill -->
-      <rect x="40" y="-9" width="64" height="18" rx="9"
-            fill="#0f172a" stroke="#f472b6" stroke-width="0.7" opacity="0.6"/>
-      <text x="72" y="5" font-family="'Courier New', Courier, monospace" font-size="8.5"
-            fill="#f472b6" text-anchor="middle" letter-spacing="1" opacity="0.85">POLICY</text>
+    <g transform="translate(0,20)">
+      <rect x="-110" y="-9" width="70" height="18" rx="9"
+            fill="#0e0d0c" stroke="#d47e5b" stroke-width="0.6" opacity="0.52"/>
+      <text x="-75" y="5.5" font-family="'Courier New', Courier, monospace" font-size="8.5"
+            fill="#d47e5b" text-anchor="middle" letter-spacing="1" opacity="0.82">ADAPTERS</text>
+
+      <rect x="-33" y="-9" width="66" height="18" rx="9"
+            fill="#0e0d0c" stroke="#b08e72" stroke-width="0.6" opacity="0.52"/>
+      <text x="0" y="5.5" font-family="'Courier New', Courier, monospace" font-size="8.5"
+            fill="#b08e72" text-anchor="middle" letter-spacing="1" opacity="0.82">SESSIONS</text>
+
+      <rect x="41" y="-9" width="70" height="18" rx="9"
+            fill="#0e0d0c" stroke="#7ea787" stroke-width="0.6" opacity="0.52"/>
+      <text x="76" y="5.5" font-family="'Courier New', Courier, monospace" font-size="8.5"
+            fill="#7ea787" text-anchor="middle" letter-spacing="1" opacity="0.82">POLICY</text>
     </g>
   </g>
 
   <!-- ═══ BOTTOM TAGLINE ═══ -->
-  <g transform="translate(600, 380)">
-    <text font-family="'Courier New', Courier, monospace" font-size="14"
-          fill="#475569" text-anchor="middle" letter-spacing="3">
-      <tspan fill="#38bdf8" opacity="0.85">HARDWARE LAYER</tspan>
-      <tspan fill="#334155" opacity="0.6">  ──  </tspan>
-      <tspan fill="#a78bfa" opacity="0.85">OPEN PROTOCOL</tspan>
-      <tspan fill="#334155" opacity="0.6">  ──  </tspan>
-      <tspan fill="#f472b6" opacity="0.85">ANY AGENT</tspan>
-    </text>
-  </g>
+  <text x="600" y="387" font-family="'Courier New', Courier, monospace" font-size="11"
+        text-anchor="middle" letter-spacing="4">
+    <tspan fill="#d47e5b" opacity="0.65">ANY HARDWARE</tspan>
+    <tspan fill="#272420" opacity="0.7">  ·  </tspan>
+    <tspan fill="#b08e72" opacity="0.65">ONE PROTOCOL</tspan>
+    <tspan fill="#272420" opacity="0.7">  ·  </tspan>
+    <tspan fill="#7ea787" opacity="0.65">ANY AGENT</tspan>
+  </text>
 
-  <!-- ═══ TOP-LEFT BADGE ═══ -->
-  <g transform="translate(30, 30)">
-    <rect x="0" y="0" width="80" height="24" rx="12"
-          fill="#0f172a" stroke="#1e3a5f" stroke-width="1" opacity="0.8"/>
-    <text x="40" y="16" font-family="'Courier New', Courier, monospace" font-size="9"
-          fill="#64748b" text-anchor="middle" letter-spacing="2">OPEN SOURCE</text>
+  <!-- ═══ CORNER BADGES ═══ -->
+  <g transform="translate(28,26)">
+    <rect width="88" height="22" rx="11" fill="#0e0d0c" stroke="#1e1b18" stroke-width="1"/>
+    <text x="44" y="15" font-family="'Courier New', Courier, monospace" font-size="9"
+          fill="#3a3630" text-anchor="middle" letter-spacing="2">OPEN SOURCE</text>
   </g>
-
-  <!-- ═══ TOP-RIGHT BADGE ═══ -->
-  <g transform="translate(1090, 30)">
-    <rect x="0" y="0" width="80" height="24" rx="12"
-          fill="#0f172a" stroke="#1e3a5f" stroke-width="1" opacity="0.8"/>
-    <text x="40" y="16" font-family="'Courier New', Courier, monospace" font-size="9"
-          fill="#64748b" text-anchor="middle" letter-spacing="2">MIT LICENSE</text>
+  <g transform="translate(1084,26)">
+    <rect width="88" height="22" rx="11" fill="#0e0d0c" stroke="#1e1b18" stroke-width="1"/>
+    <text x="44" y="15" font-family="'Courier New', Courier, monospace" font-size="9"
+          fill="#3a3630" text-anchor="middle" letter-spacing="2">MIT LICENSE</text>
   </g>
 
 </svg>

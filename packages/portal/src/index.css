@@ -1,14 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  --color-oahl-bg: #0a0a0a;
-  --color-oahl-surface: #121212;
-  --color-oahl-border: #2a2a2a;
-  --color-oahl-text-main: #ffffff;
-  --color-oahl-text-muted: #8a8a8a;
+  --color-oahl-bg: #07080c;
+  --color-oahl-surface: #0c0d16;
+  --color-oahl-surface-raised: #111320;
+  --color-oahl-border: #1a1c2a;
+  --color-oahl-border-strong: #262840;
+  --color-oahl-text-main: #e4e6f2;
+  --color-oahl-text-muted: #505268;
+  --color-oahl-text-faint: #2e3045;
   --color-oahl-accent: #d47e5b;
-  --color-oahl-accent-hover: #bf6c4b;
-  --color-oahl-tech: #739580;
+  --color-oahl-accent-hover: #bf6c4a;
+  --color-oahl-tech: #7daa87;
 
   --font-sans: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
@@ -16,17 +19,116 @@
 
 @layer base {
   body {
-    @apply bg-oahl-bg text-oahl-text-main font-sans;
+    @apply bg-oahl-bg text-oahl-text-main font-sans antialiased;
     margin: 0;
+  }
+
+  ::selection {
+    background: rgba(212, 126, 91, 0.2);
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #1a1c2a;
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #262840;
   }
 }
 
 @layer utilities {
   .panel {
-    @apply rounded-3xl border border-oahl-border bg-oahl-surface/40 backdrop-blur-md shadow-2xl;
+    @apply rounded-2xl border border-oahl-border bg-oahl-surface/60 backdrop-blur-sm;
   }
-  
+
+  .panel-raised {
+    @apply rounded-2xl border border-oahl-border-strong bg-oahl-surface-raised/80 backdrop-blur-sm shadow-2xl shadow-black/40;
+  }
+
   .input-field {
-    @apply bg-black/40 border border-oahl-border text-oahl-text-main placeholder:text-oahl-border focus:border-oahl-accent focus:outline-none focus:ring-1 focus:ring-oahl-accent/50 transition-all;
+    @apply w-full rounded-lg bg-oahl-bg border border-oahl-border px-3.5 py-2.5 text-sm text-oahl-text-main
+           placeholder:text-oahl-text-faint
+           focus:border-oahl-accent/50 focus:outline-none focus:ring-2 focus:ring-oahl-accent/10
+           transition-all duration-150;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 h-10 px-5 rounded-lg
+           bg-oahl-accent hover:bg-oahl-accent-hover
+           text-white text-sm font-semibold
+           transition-all duration-150 active:scale-[0.99]
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-lg
+           bg-white/5 hover:bg-white/10 border border-oahl-border hover:border-oahl-border-strong
+           text-oahl-text-muted hover:text-oahl-text-main text-sm
+           transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150;
+  }
+
+  .nav-link-active {
+    @apply text-oahl-accent bg-oahl-accent/8 border-l-2 border-oahl-accent;
+    padding-left: calc(0.75rem - 2px);
+  }
+
+  .nav-link-inactive {
+    @apply text-oahl-text-muted hover:text-oahl-text-main hover:bg-white/[0.03];
+  }
+
+  .nav-link-active-tech {
+    @apply text-oahl-tech bg-oahl-tech/8 border-l-2 border-oahl-tech;
+    padding-left: calc(0.75rem - 2px);
+  }
+
+  .nav-link-inactive-tech {
+    @apply text-oahl-text-muted hover:text-oahl-text-main hover:bg-white/[0.03];
+  }
+
+  .stat-label {
+    @apply text-[10px] font-mono uppercase tracking-widest text-oahl-text-muted mb-1.5;
+  }
+
+  .stat-value {
+    @apply text-3xl font-mono font-semibold text-oahl-text-main;
+  }
+
+  .badge-accent {
+    @apply inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono uppercase font-semibold tracking-wide bg-oahl-accent/10 border border-oahl-accent/20 text-oahl-accent;
+  }
+
+  .badge-tech {
+    @apply inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono uppercase font-semibold tracking-wide bg-oahl-tech/10 border border-oahl-tech/20 text-oahl-tech;
+  }
+
+  .badge-neutral {
+    @apply inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono uppercase font-semibold tracking-wide bg-white/5 border border-oahl-border text-oahl-text-muted;
+  }
+
+  .capability-tag {
+    @apply px-2 py-1 rounded-md bg-oahl-bg border border-oahl-border text-[11px] font-mono text-oahl-text-muted;
+  }
+
+  .table-header {
+    @apply px-5 py-3.5 text-left text-[10px] font-mono uppercase tracking-widest text-oahl-text-muted font-medium;
+  }
+
+  .table-cell {
+    @apply px-5 py-4;
   }
 }
