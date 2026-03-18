@@ -8,7 +8,7 @@
     "adapters/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build --workspace=@oahl/core && npm run build --workspace=@oahl/cloud --workspace=@oahl/server --workspace=@oahl/cli --workspace=@oahl/sdk --workspace=@oahl/admin --workspace=@oahl/web --workspace=@oahl/portal --workspace=@oahl/marketplace --workspace=@oahl/org --workspace=@oahl/adapter-mock --workspace=@oahl/adapter-rtl-sdr --workspace=@oahl/adapter-usb-camera --if-present",
     "test": "npm run test --workspaces --if-present",
     "start": "npm run start --workspace=@oahl/server",
     "dev:admin": "npm run dev --workspace=@oahl/admin",

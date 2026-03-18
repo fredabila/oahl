@@ -1,6 +1,6 @@
 {
   "name": "@fredabila/oahl",
-  "version": "0.1.8",
+  "version": "1.0.1",
   "description": "Open Agent Hardware Layer (OAHL) - All-in-one Toolkit",
   "main": "bin/oahl.js",
   "bin": {

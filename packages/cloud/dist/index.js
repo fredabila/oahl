@@ -9,6 +9,22 @@ const redis_1 = require("redis");
 const dotenv_1 = __importDefault(require("dotenv"));
 const crypto_1 = require("crypto");
 const ws_1 = require("ws");
+const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
+const ajv_1 = __importDefault(require("ajv"));
+const bcrypt_1 = __importDefault(require("bcrypt"));
+const ajv = new ajv_1.default();
+// 120 execute requests per minute by default
+const executeRateLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 60 * 1000,
+    max: parseInt(process.env.OAHL_EXECUTE_RATE_LIMIT || '120', 10),
+    message: { error: 'Too many execute requests, policy rate limit exceeded.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => {
+        const agentId = req.headers['x-agent-id'];
+        return (typeof agentId === 'string' && agentId.trim().length > 0) ? agentId.trim() : (req.ip || 'unknown');
+    }
+});
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)({
@@ -187,6 +203,12 @@ function configureProviderWebSocket(server) {
                             redisClient.expire(`result:${message.requestId}`, 60).catch(() => undefined);
                         }
                     }
+                    else if (message?.type === 'event' && message?.event) {
+                        const deviceId = message.event.device_id;
+                        if (deviceId) {
+                            redisClient.publish(`events:${nodeId}:${deviceId}`, JSON.stringify(message.event)).catch(() => undefined);
+                        }
+                    }
                 }
                 catch (err) {
                     console.error(`[Cloud WS] ❌ Invalid provider message: ${err.message}`);
@@ -359,9 +381,10 @@ app.post('/v1/portal/auth', async (req, res) => {
         let devStr = await redisClient.get(devKey);
         if (!devStr) {
             // Auto-register new developer
+            const hashedPin = await bcrypt_1.default.hash(pin, 10);
             const newDev = {
                 email: emailKey,
-                pin: pin, // In production, hash this!
+                pin: hashedPin,
                 org_id: `org_${(0, crypto_1.randomUUID)().split('-')[0]}`,
                 created_at: Date.now()
             };
@@ -369,8 +392,20 @@ app.post('/v1/portal/auth', async (req, res) => {
             devStr = JSON.stringify(newDev);
         }
         const devData = JSON.parse(devStr);
-        // Verify PIN
-        if (devData.pin !== pin) {
+        // Verify PIN with backward compatibility for plaintext
+        let isMatch = false;
+        if (devData.pin && devData.pin.startsWith('$2b$')) {
+            isMatch = await bcrypt_1.default.compare(pin, devData.pin);
+        }
+        else {
+            isMatch = (devData.pin === pin);
+            // Auto-upgrade to hashed PIN on successful login
+            if (isMatch) {
+                devData.pin = await bcrypt_1.default.hash(pin, 10);
+                await redisClient.set(devKey, JSON.stringify(devData));
+            }
+        }
+        if (!isMatch) {
             return res.status(401).json({ error: "Invalid PIN" });
         }
         // Create session token
@@ -763,6 +798,122 @@ app.get('/v1/capabilities', authAgent, async (req, res) => {
     });
 });
 /**
+ * 2b. W3C WoT THING DESCRIPTION
+ * Renders a WoT-compatible Thing Description for a device.
+ * See: docs/wot-alignment.md — Forward Interoperability Path
+ */
+app.get('/v1/things/:device_id', authAgent, async (req, res) => {
+    const deviceId = req.params.device_id;
+    const agent = extractAgentIdentity(req);
+    const keys = await redisClient.keys('node:*');
+    let foundDevice = null;
+    let foundNode = null;
+    for (const key of keys) {
+        const nodeStr = await redisClient.get(key);
+        if (!nodeStr)
+            continue;
+        const node = JSON.parse(nodeStr);
+        if (!node.devices)
+            continue;
+        for (const device of node.devices) {
+            if (device.id === deviceId && isDeviceAccessibleToAgent(node, device, agent)) {
+                foundDevice = device;
+                foundNode = node;
+                break;
+            }
+        }
+        if (foundDevice)
+            break;
+    }
+    if (!foundDevice) {
+        return res.status(404).json({ error: 'Device not found or not accessible' });
+    }
+    const capabilities = Array.isArray(foundDevice.capabilities) ? foundDevice.capabilities : [];
+    const actions = {};
+    for (const cap of capabilities) {
+        const capName = typeof cap === 'string' ? cap : cap.name;
+        if (!capName)
+            continue;
+        const action = {
+            title: capName,
+            description: typeof cap === 'object' ? (cap.description || '') : '',
+            safe: false,
+            idempotent: false,
+            forms: [{
+                    href: `/v1/sessions/{session_id}/execute`,
+                    contentType: 'application/json',
+                    op: ['invokeaction'],
+                    'oahl:relay': true
+                }]
+        };
+        if (typeof cap === 'object' && cap.schema) {
+            action.input = cap.schema;
+        }
+        if (typeof cap === 'object' && cap.semantic_type) {
+            action['@type'] = cap.semantic_type;
+        }
+        actions[capName] = action;
+    }
+    const td = {
+        '@context': [
+            'https://www.w3.org/2019/wot/td/v1',
+            { oahl: 'https://oahl.org/ns/v1' }
+        ],
+        '@type': 'Thing',
+        id: `urn:oahl:device:${foundDevice.id}`,
+        title: foundDevice.name || foundDevice.id,
+        description: `OAHL-managed ${foundDevice.type || 'device'} on node ${foundNode.node_id}`,
+        securityDefinitions: {
+            bearer_sc: {
+                scheme: 'bearer',
+                in: 'header',
+                name: 'Authorization'
+            }
+        },
+        security: ['bearer_sc'],
+        properties: {},
+        actions,
+        events: {},
+        links: [
+            { rel: 'alternate', href: `/v1/capabilities?node_id=${foundNode.node_id}`, type: 'application/json' }
+        ],
+        'oahl:node_id': foundNode.node_id,
+        'oahl:device_type': foundDevice.type,
+        'oahl:manufacturer': foundDevice.manufacturer,
+        'oahl:model': foundDevice.model
+    };
+    if (Array.isArray(foundDevice.semantic_context) && foundDevice.semantic_context.length > 0) {
+        td['@context'] = [
+            ...td['@context'],
+            ...foundDevice.semantic_context.filter((c) => c !== 'https://www.w3.org/2019/wot/td/v1')
+        ];
+    }
+    res.setHeader('Content-Type', 'application/td+json');
+    res.json(td);
+});
+/**
+ * 2c. PER-NODE QUOTA ENFORCEMENT
+ * Tracks execution counts per node_id within a sliding window
+ * and returns 429 when a node is overloaded.
+ */
+const nodeExecuteCounts = new Map();
+const NODE_EXECUTE_WINDOW_MS = 60_000;
+const NODE_EXECUTE_MAX = parseInt(process.env.OAHL_NODE_RATE_LIMIT || '200', 10);
+function checkNodeQuota(nodeId) {
+    const now = Date.now();
+    const entry = nodeExecuteCounts.get(nodeId);
+    if (!entry || (now - entry.windowStart) >= NODE_EXECUTE_WINDOW_MS) {
+        nodeExecuteCounts.set(nodeId, { count: 1, windowStart: now });
+        return true;
+    }
+    if (entry.count >= NODE_EXECUTE_MAX) {
+        return false;
+    }
+    entry.count++;
+    return true;
+}
+/**
+
  * 3. AGENT REQUEST (START SESSION)
  */
 app.post('/v1/requests', authAgent, async (req, res) => {
@@ -845,13 +996,47 @@ app.post('/v1/requests', authAgent, async (req, res) => {
 /**
  * 4. AGENT EXECUTE (COMMAND RELAY)
  */
-app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
+app.post('/v1/sessions/:id/execute', authAgent, executeRateLimiter, async (req, res) => {
     const sessionId = req.params.id;
     const command = req.body;
     const sessionStr = await redisClient.get(`session:${sessionId}`);
     if (!sessionStr)
         return res.status(404).json({ error: "Session not found" });
     const session = JSON.parse(sessionStr);
+    // Per-node quota enforcement
+    if (!checkNodeQuota(session.node_id)) {
+        return res.status(429).json({
+            error: `Node ${session.node_id} has exceeded its execution quota (${NODE_EXECUTE_MAX}/min). Try again shortly.`,
+            retry_after_ms: NODE_EXECUTE_WINDOW_MS
+        });
+    }
+    // Cloud-side JSON Schema parameter validation
+    if (command.capability) {
+        const nodeStr = await redisClient.get(`node:${session.node_id}`);
+        if (nodeStr) {
+            const node = JSON.parse(nodeStr);
+            const devices = Array.isArray(node.devices) ? node.devices : [];
+            const device = devices.find((d) => d.id === session.device_id);
+            if (device && Array.isArray(device.capabilities)) {
+                const capabilityDef = device.capabilities.find((c) => c === command.capability || (c && c.name === command.capability));
+                if (capabilityDef && typeof capabilityDef === 'object' && capabilityDef.schema) {
+                    try {
+                        const validate = ajv.compile(capabilityDef.schema);
+                        const valid = validate(command.params || {});
+                        if (!valid) {
+                            return res.status(400).json({
+                                error: "Parameter validation failed",
+                                details: validate.errors
+                            });
+                        }
+                    }
+                    catch (schemaErr) {
+                        console.warn(`[Cloud] ⚠️ Failed to compile JSON Schema for ${command.capability}`);
+                    }
+                }
+            }
+        }
+    }
     const requestId = `cmd-${(0, crypto_1.randomUUID)()}`;
     const requestedTimeoutMs = typeof command.timeout_ms === 'number' ? command.timeout_ms : undefined;
     const fastPathTimeout = requestedTimeoutMs || WS_FASTPATH_TIMEOUT_MS;
@@ -930,7 +1115,7 @@ app.post('/v1/sessions/:id/execute', authAgent, async (req, res) => {
 /**
  * 4b. AGENT EXECUTE BATCH (COMMAND RELAY)
  */
-app.post('/v1/sessions/:id/execute-batch', authAgent, async (req, res) => {
+app.post('/v1/sessions/:id/execute-batch', authAgent, executeRateLimiter, async (req, res) => {
     const sessionId = req.params.id;
     const { commands, timeout_ms } = req.body;
     if (!Array.isArray(commands)) {

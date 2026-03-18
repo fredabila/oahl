@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oahl"
-version = "0.1.2"
+version = "1.0.1"
 description = "Python SDK for Open Agent Hardware Layer (OAHL)"
 readme = "README.md"
 authors = [

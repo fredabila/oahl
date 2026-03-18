@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: oahl
-Version: 0.1.2
+Version: 1.0.1
 Summary: Python SDK for Open Agent Hardware Layer (OAHL)
 Author-email: Fred Abila <fred@oahl.org>
 Project-URL: Homepage, https://github.com/fredabila/oahl

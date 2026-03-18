@@ -6,7 +6,7 @@ import {
   TransportHealth,
   TransportCommand,
   TransportResult
-} from '@oahl/core';
+} from '../transport';
 
 /**
  * BLE Transport Stub — Testing & Development
