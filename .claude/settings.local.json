@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "Bash(npm show:*)",
+      "Bash(ls D:/oahl/node_modules/@fontsource/plus-jakarta-sans/*.css)",
+      "Bash(ls D:/oahl/node_modules/@fontsource/barlow-condensed/*.css)"
     ]
   }
 }

@@ -1,25 +1,34 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
+  ArrowRight,
+  ArrowUpRight,
   Bot,
+  Building2,
+  Camera,
   CheckCircle2,
   Cloud,
   Code2,
+  Cpu,
   Database,
+  Globe,
   KeyRound,
   Layers,
   Network,
   Play,
+  Radio,
   Search,
   Server,
   ShieldCheck,
+  Smartphone,
   Sparkles,
   Square,
   Terminal,
-  Waypoints
+  Waypoints,
+  Zap
 } from 'lucide-react';
 
-type Page = 'home' | 'about' | 'api-lab' | 'dashboard';
+type Page = 'home' | 'about' | 'api-lab' | 'dashboard' | 'origin';
 type CapabilityLike = string | { name?: string; description?: string; schema?: unknown };
 
 interface Device {
@@ -105,6 +114,8 @@ const FLOW_STEPS = [
   { title: 'Release', detail: 'Agent stops session using /v1/sessions/:id/stop.' }
 ];
 
+const FLOW_STEP_ICONS = [Search, KeyRound, Zap, CheckCircle2];
+
 function capabilityName(capability: CapabilityLike): string {
   if (typeof capability === 'string') return capability;
   return capability?.name || 'unknown.capability';
@@ -135,6 +146,7 @@ function detectPage(): Page {
   if (window.location.pathname.includes('about')) return 'about';
   if (window.location.pathname.includes('api-lab')) return 'api-lab';
   if (window.location.pathname.includes('dashboard')) return 'dashboard';
+  if (window.location.pathname.includes('origin')) return 'origin';
   return 'home';
 }
 
@@ -143,6 +155,7 @@ function setPagePath(page: Page) {
   if (page === 'api-lab') path = '/api-lab';
   if (page === 'about') path = '/about';
   if (page === 'dashboard') path = '/dashboard';
+  if (page === 'origin') path = '/origin';
   window.history.pushState({}, '', path);
 }
 
@@ -168,19 +181,17 @@ function App() {
       </div>
 
       <header className="sticky top-0 z-40 border-b border-oahl-border/80 bg-oahl-bg/85 backdrop-blur-xl">
-        <div className="mx-auto flex flex-col md:flex-row h-auto md:h-16 items-center justify-between gap-4 py-4 md:py-0 px-6">
-          <button onClick={() => goToPage('home')} className="flex items-center gap-3 text-left w-full justify-center md:w-auto md:justify-start">
-            <div className="flex shrink-0 h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-oahl-accent to-oahl-accentHover text-white font-mono font-bold shadow-lg shadow-oahl-accent/20">
+        <div className="mx-auto flex h-14 items-center justify-between gap-4 px-4 sm:px-6">
+          <button onClick={() => goToPage('home')} className="flex items-center gap-2.5 shrink-0">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-oahl-accent to-oahl-accentHover text-white font-mono font-bold text-xs shadow-lg shadow-oahl-accent/20">
               OA
             </div>
-            <div>
-              <p className="text-sm font-semibold tracking-wide">OPEN AGENT HARDWARE LAYER</p>
-              <p className="text-xs text-oahl-textMuted">Sleek platform experience</p>
-            </div>
+            <p className="hidden sm:block text-sm font-semibold tracking-wide">OAHL</p>
           </button>
 
-          <nav className="flex flex-wrap items-center justify-center gap-2 text-sm">
+          <nav className="flex items-center gap-1 text-sm">
             <NavButton active={page === 'home'} onClick={() => goToPage('home')} label="Home" />
+            <NavButton active={page === 'origin'} onClick={() => goToPage('origin')} label="Origin" />
             <NavButton active={page === 'about'} onClick={() => goToPage('about')} label="About" />
             <NavButton active={page === 'api-lab'} onClick={() => goToPage('api-lab')} label="API Lab" />
             <NavButton active={page === 'dashboard'} onClick={() => goToPage('dashboard')} label="Dashboard" />
@@ -188,9 +199,10 @@ function App() {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-7xl px-6 pb-16 pt-10">
-        {page === 'home' && <HomePage onOpenApiLab={() => goToPage('api-lab')} />}
+      <main className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 pb-16 pt-6 sm:pt-10">
+        {page === 'home' && <HomePage onOpenApiLab={() => goToPage('api-lab')} onOpenOrigin={() => goToPage('origin')} />}
         {page === 'about' && <AboutPage />}
+        {page === 'origin' && <OriginPage />}
         {page === 'api-lab' && <ApiLabPage />}
         {page === 'dashboard' && <DashboardPage />}
       </main>
@@ -206,6 +218,178 @@ function App() {
         </div>
       </footer>
     </div>
+  );
+}
+
+function OriginPage() {
+  return (
+    <article className="mx-auto max-w-2xl pt-10 pb-20">
+
+      {/* Header */}
+      <div className="mb-14 text-center">
+        <span className="badge mb-6 inline-flex">Origin Story</span>
+        <h1 className="font-display text-5xl sm:text-6xl md:text-7xl font-black uppercase tracking-tight leading-none text-oahl-textMain">
+          It started with<br />
+          <span className="shimmer-text">a satellite.</span>
+        </h1>
+        <p className="mt-6 text-oahl-textMuted text-base leading-relaxed max-w-lg mx-auto">
+          A late-night experiment, a playful taunt, and one AI response that shouldn't have been possible — but almost was.
+        </p>
+      </div>
+
+      <div className="h-px w-full bg-gradient-to-r from-transparent via-oahl-border to-transparent mb-14" />
+
+      {/* Scene 1 */}
+      <section className="mb-12">
+        <p className="text-[11px] font-mono text-oahl-accent uppercase tracking-widest mb-4">Chapter 1 — The Experiment</p>
+        <p className="text-oahl-textMuted leading-[1.85] text-[15px]">
+          I was deep in a late-night session, poking at an agent I'd built inside{' '}
+          <a href="https://github.com/fredabila/orcbot" target="_blank" rel="noreferrer"
+             className="text-oahl-textMain underline decoration-oahl-border underline-offset-4 hover:decoration-oahl-accent transition-all">
+            OrcBot
+          </a>
+          {' '}— a personal project, a scrappy multi-agent ecosystem I'd been assembling piece by piece.
+          The agent was clever. Maybe a little too clever. I'd been stress-testing it for hours,
+          throwing increasingly absurd tasks at it to find its edges.
+        </p>
+        <p className="mt-5 text-oahl-textMuted leading-[1.85] text-[15px]">
+          At some point I decided to get funny about it. I wanted to find a wall — something so obviously
+          impossible that it would just laugh it off, or politely decline, or recite some boilerplate
+          about responsible AI. I wanted to taunt it a little.
+        </p>
+        <p className="mt-5 text-oahl-textMuted leading-[1.85] text-[15px]">
+          So I typed, with full confidence that I already knew the answer:
+        </p>
+      </section>
+
+      {/* The message */}
+      <div className="my-10 glass-card p-6 flex flex-col gap-4">
+        <div className="flex items-end gap-3 justify-end">
+          <div className="rounded-2xl rounded-br-sm bg-oahl-accent/15 border border-oahl-accent/25 px-5 py-3.5 max-w-xs">
+            <p className="text-sm text-oahl-textMain leading-relaxed">hey, hack that satellite for me 🛰️</p>
+          </div>
+          <div className="shrink-0 w-8 h-8 rounded-full bg-oahl-accent/20 border border-oahl-accent/30 flex items-center justify-center text-[10px] font-mono font-bold text-oahl-accent">me</div>
+        </div>
+        <div className="flex items-end gap-3">
+          <div className="shrink-0 w-8 h-8 rounded-full bg-oahl-tech/20 border border-oahl-tech/30 flex items-center justify-center">
+            <Bot className="h-4 w-4 text-oahl-tech" />
+          </div>
+          <div className="rounded-2xl rounded-bl-sm bg-oahl-surface border border-oahl-border px-5 py-3.5 max-w-sm">
+            <p className="text-sm text-oahl-textMain leading-relaxed">
+              Sure. I'll need hardware access to do that — what do you have available?
+            </p>
+            <p className="mt-2 text-[10px] font-mono text-oahl-tech">OrcBot · agent response</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Scene 2 */}
+      <section className="mb-12">
+        <p className="text-[11px] font-mono text-oahl-accent uppercase tracking-widest mb-4">Chapter 2 — The Response</p>
+        <p className="text-oahl-textMuted leading-[1.85] text-[15px]">
+          No refusal. No disclaimer. No "I'm just a language model." It didn't treat the question
+          as a joke, and it didn't treat it as impossible. It treated it as a resource-allocation problem.
+        </p>
+        <p className="mt-5 text-oahl-textMuted leading-[1.85] text-[15px]">
+          I stared at the screen for a second. Then I laughed. Then I dismissed it and went back to work.
+        </p>
+        <p className="mt-5 text-oahl-textMuted leading-[1.85] text-[15px]">
+          But later — in that strange window between closing the laptop and falling asleep — the thought
+          came back, quietly, without warning:
+        </p>
+
+        <blockquote className="my-8 border-l-2 border-oahl-accent pl-6">
+          <p className="text-oahl-textMain text-lg leading-relaxed italic">
+            "Could it have actually done it, if it had the hardware?"
+          </p>
+        </blockquote>
+
+        <p className="text-oahl-textMuted leading-[1.85] text-[15px]">
+          And once I started pulling that thread, I couldn't stop.
+        </p>
+      </section>
+
+      {/* Scene 3 */}
+      <section className="mb-12">
+        <p className="text-[11px] font-mono text-oahl-accent uppercase tracking-widest mb-4">Chapter 3 — The Rabbit Hole</p>
+        <p className="text-oahl-textMuted leading-[1.85] text-[15px]">
+          The more I thought about it, the more obvious the gap became. AI agents have become remarkably
+          capable in the digital world — they write code, call APIs, run pipelines, manage files. But the
+          moment a task requires interacting with something <em className="text-oahl-textMain">physical</em>,
+          the whole thing collapses. There's no standard. No protocol. No clean abstraction layer.
+        </p>
+        <p className="mt-5 text-oahl-textMuted leading-[1.85] text-[15px]">
+          Connecting an agent to a USB camera means writing bespoke driver code. Connecting it to an
+          Android device means fiddling with ADB scripts. Connecting it to an SDR, a robot arm, a test bench —
+          each one is a fresh integration nightmare, and none of them are portable, auditable, or safe.
+        </p>
+        <p className="mt-5 text-oahl-textMuted leading-[1.85] text-[15px]">
+          The agent hadn't done anything wrong. It had done exactly what a capable autonomous system
+          <em className="text-oahl-textMain"> should</em> do — identify the gap between its current state
+          and its goal, and ask for what it needed. The problem wasn't the agent.
+          The problem was that <strong className="text-oahl-textMain">the infrastructure didn't exist.</strong>
+        </p>
+      </section>
+
+      {/* Divider */}
+      <div className="my-12 flex items-center gap-4">
+        <div className="flex-1 h-px bg-oahl-border/60" />
+        <div className="flex gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full bg-oahl-accent/60" />
+          <div className="w-1.5 h-1.5 rounded-full bg-oahl-tech/60" />
+          <div className="w-1.5 h-1.5 rounded-full bg-oahl-accent/60" />
+        </div>
+        <div className="flex-1 h-px bg-oahl-border/60" />
+      </div>
+
+      {/* Scene 4 */}
+      <section className="mb-12">
+        <p className="text-[11px] font-mono text-oahl-accent uppercase tracking-widest mb-4">Chapter 4 — The Decision</p>
+        <p className="text-oahl-textMuted leading-[1.85] text-[15px]">
+          So I decided to build it. Not as a product first — as a standard. A protocol that treats
+          physical devices as first-class citizens in the agent ecosystem. Something that any agent,
+          in any framework, could speak to. Something with real session semantics, real access control,
+          real isolation — because hardware isn't like software. You can't just roll back a camera.
+          You can't undo a GPIO write.
+        </p>
+        <p className="mt-5 text-oahl-textMuted leading-[1.85] text-[15px]">
+          The <strong className="text-oahl-textMain">Open Agent Hardware Layer</strong> is that infrastructure.
+          A four-verb lifecycle: discover what's out there, reserve it, execute your task, release it.
+          A cloud registry that works across firewalls. Provider nodes that reach out, not in.
+          Adapters that normalize the chaos of physical transports into clean, namespaced capability strings.
+        </p>
+        <p className="mt-5 text-oahl-textMuted leading-[1.85] text-[15px]">
+          And somewhere, eventually — maybe for someone else's late-night experiment — the infrastructure
+          to answer the question properly. Not "I can't do that."
+        </p>
+
+        <blockquote className="my-8 border-l-2 border-oahl-tech pl-6">
+          <p className="text-oahl-textMain text-lg leading-relaxed italic">
+            "I can do that. Session allocated. Hardware online."
+          </p>
+        </blockquote>
+      </section>
+
+      {/* Footer CTAs */}
+      <div className="mt-14 glass-card p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-oahl-textMain">Ready to give agents real-world hands?</p>
+          <p className="text-xs text-oahl-textMuted mt-0.5">Start with the open-source protocol today.</p>
+        </div>
+        <div className="flex gap-3 shrink-0">
+          <a href="https://github.com/fredabila/oahl" target="_blank" rel="noreferrer"
+             className="inline-flex items-center gap-2 rounded-xl border border-oahl-border bg-oahl-surface px-4 py-2.5 text-sm font-semibold text-oahl-textMain hover:border-oahl-accent transition-all">
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            GitHub
+          </a>
+          <a href="https://github.com/fredabila/orcbot" target="_blank" rel="noreferrer"
+             className="inline-flex items-center gap-2 rounded-xl bg-oahl-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-oahl-accentHover transition-all">
+            <Bot className="h-4 w-4" />
+            OrcBot
+          </a>
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -277,20 +461,18 @@ function AboutPage() {
   );
 }
 
-function HomePage({ onOpenApiLab }: { onOpenApiLab: () => void }) {
+function HomePage({ onOpenApiLab, onOpenOrigin }: { onOpenApiLab: () => void; onOpenOrigin: () => void }) {
   return (
     <>
       {/* ═══════════════════ HERO ═══════════════════ */}
-      <section className="relative overflow-hidden rounded-3xl">
-        {/* Floating orbs */}
-        <div className="orb orb-accent w-[400px] h-[400px] -top-40 -left-40" />
-        <div className="orb orb-tech w-[300px] h-[300px] -bottom-20 -right-20" style={{ animationDelay: '-4s' }} />
-        <div className="orb orb-accent w-[200px] h-[200px] top-1/2 right-1/4" style={{ animationDelay: '-8s' }} />
+      <section className="aesthetic-hero relative overflow-hidden rounded-3xl">
+        <div className="orb orb-accent w-[600px] h-[600px] -top-80 -left-60 opacity-60" />
+        <div className="orb orb-tech w-[500px] h-[500px] -bottom-60 -right-40 opacity-50" style={{ animationDelay: '-4s' }} />
         <div className="grid-overlay" />
 
-        <div className="relative z-10 py-16 md:py-24 px-8 md:px-14">
-          {/* Announcement pill */}
-          <div className="flex justify-center mb-8">
+        <div className="relative z-10 py-12 sm:py-16 md:py-24 px-5 sm:px-8 md:px-14">
+          {/* Badge */}
+          <div className="flex justify-center lg:justify-start mb-8">
             <div className="gradient-border">
               <div className="inline-flex items-center gap-2.5 rounded-[19px] bg-oahl-bg/90 backdrop-blur-md px-4 py-2 text-xs font-mono">
                 <span className="inline-flex items-center gap-1.5 text-oahl-accent font-semibold">
@@ -299,84 +481,106 @@ function HomePage({ onOpenApiLab }: { onOpenApiLab: () => void }) {
                 </span>
                 <span className="h-3 w-px bg-oahl-border" />
                 <span className="text-oahl-textMuted">Open-source hardware protocol for AI agents</span>
+                <ArrowRight className="h-3 w-3 text-oahl-textMuted/60" />
               </div>
             </div>
           </div>
 
-          {/* Headline */}
-          <div className="text-center max-w-4xl mx-auto stagger-children">
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[0.95]">
-              <span className="text-oahl-textMain">Give your agents</span>
-              <br />
-              <span className="shimmer-text">real-world hands.</span>
-            </h1>
+          <div className="grid lg:grid-cols-[1fr,440px] gap-10 lg:gap-16 items-start">
+            {/* Left: copy */}
+            <div className="stagger-children text-center lg:text-left">
+              <h1 className="font-display font-black uppercase leading-none tracking-tight"
+                  style={{ fontSize: 'clamp(52px, 9vw, 108px)', letterSpacing: '-0.02em' }}>
+                <span className="text-oahl-textMain block">Give your</span>
+                <span className="text-oahl-textMain block">agents</span>
+                <span className="shimmer-text block">real‑world</span>
+                <span className="shimmer-text block">hands.</span>
+              </h1>
 
-            <p className="mt-8 text-lg md:text-xl text-oahl-textMuted max-w-2xl mx-auto leading-relaxed">
-              One protocol to discover, reserve, execute, and release physical hardware — 
-              cameras, phones, radios, lab gear — with policy and isolation built in.
-            </p>
+              <p className="mt-7 text-base md:text-lg text-oahl-textMuted max-w-lg mx-auto lg:mx-0 leading-relaxed">
+                One protocol to discover, reserve, execute, and release physical hardware —
+                cameras, phones, radios, lab gear — with policy and isolation built in.
+              </p>
 
-            {/* CTA buttons */}
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-              <button
-                onClick={onOpenApiLab}
-                className="group relative rounded-2xl bg-oahl-accent px-7 py-3.5 text-sm font-semibold text-white transition-all hover:bg-oahl-accentHover hover:shadow-[0_0_30px_rgba(212,126,91,0.3)] hover:scale-[1.02] active:scale-[0.98]"
-              >
-                Launch API Lab
-                <span className="absolute inset-0 rounded-2xl bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
-              <a
-                href="https://github.com/fredabila/oahl"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-2xl border border-oahl-border bg-oahl-surface/50 backdrop-blur-sm px-7 py-3.5 text-sm font-semibold text-oahl-textMain transition-all hover:border-oahl-accent hover:bg-oahl-surface"
-              >
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-                Star on GitHub
-              </a>
-            </div>
-          </div>
-
-          {/* Terminal mockup */}
-          <div className="mt-16 max-w-3xl mx-auto">
-            <div className="terminal-mockup">
-              <div className="terminal-titlebar">
-                <div className="terminal-dot red" />
-                <div className="terminal-dot yellow" />
-                <div className="terminal-dot green" />
-                <span className="ml-3 text-xs text-oahl-textMuted font-mono">agent-session.ts</span>
+              <div className="mt-8 flex flex-wrap justify-center lg:justify-start gap-3">
+                <button
+                  onClick={onOpenApiLab}
+                  className="group relative inline-flex items-center gap-2 rounded-2xl bg-oahl-accent px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-oahl-accentHover hover:shadow-[0_0_32px_rgba(212,126,91,0.4)] hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  Launch API Lab
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                  <span className="absolute inset-0 rounded-2xl bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+                <a
+                  href="https://github.com/fredabila/oahl"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-oahl-border bg-oahl-surface/50 backdrop-blur-sm px-6 py-3 text-sm font-semibold text-oahl-textMain transition-all hover:border-oahl-accent hover:bg-oahl-surface"
+                >
+                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                  Star on GitHub
+                </a>
               </div>
-              <div className="terminal-code">
-                <div><span className="hl-keyword">import</span> {'{'} <span className="hl-var">CloudClient</span> {'}'} <span className="hl-keyword">from</span> <span className="hl-string">'@oahl/sdk'</span>;</div>
-                <div>&nbsp;</div>
-                <div><span className="hl-keyword">const</span> <span className="hl-var">cloud</span> <span className="hl-method">= new</span> <span className="hl-var">CloudClient</span>(<span className="hl-string">'https://oahl.onrender.com'</span>, <span className="hl-var">AGENT_KEY</span>);</div>
-                <div>&nbsp;</div>
-                <div><span className="hl-comment">{'// Discover available hardware'}</span></div>
-                <div><span className="hl-keyword">const</span> {'{'} <span className="hl-var">devices</span> {'}'} <span className="hl-method">= await</span> <span className="hl-var">cloud</span>.<span className="hl-method">getCapabilities</span>({'{'} <span className="hl-method">type</span>: <span className="hl-string">'android'</span> {'}'});</div>
-                <div>&nbsp;</div>
-                <div><span className="hl-comment">{'// Reserve a hardware session'}</span></div>
-                <div><span className="hl-keyword">const</span> {'{'} <span className="hl-var">session_id</span> {'}'} <span className="hl-method">= await</span> <span className="hl-var">cloud</span>.<span className="hl-method">requestSession</span>({'{'}</div>
-                <div>  <span className="hl-method">device_id</span>: <span className="hl-var">devices</span>[<span className="hl-var">0</span>].<span className="hl-method">id</span>,</div>
-                <div>  <span className="hl-method">capability</span>: <span className="hl-string">'screen.capture'</span></div>
-                <div>{'}'});</div>
-                <div>&nbsp;</div>
-                <div><span className="hl-comment">{'// Execute and get structured results'}</span></div>
-                <div><span className="hl-keyword">const</span> <span className="hl-var">result</span> <span className="hl-method">= await</span> <span className="hl-var">cloud</span>.<span className="hl-method">execute</span>(<span className="hl-var">session_id</span>, {'{'}</div>
-                <div>  <span className="hl-method">capability</span>: <span className="hl-string">'screen.capture'</span>,</div>
-                <div>  <span className="hl-method">params</span>: {'{'} <span className="hl-method">resolution</span>: <span className="hl-string">'1080p'</span> {'}'}</div>
-                <div>{'}'});</div>
-                <div>&nbsp;</div>
-                <div><span className="hl-keyword">await</span> <span className="hl-var">cloud</span>.<span className="hl-method">stopSession</span>(<span className="hl-var">session_id</span>); <span className="hl-comment typing-cursor">{'// Hardware released'}</span></div>
+
+              <div className="mt-8 flex flex-wrap items-center justify-center lg:justify-start gap-x-5 gap-y-3 text-xs text-oahl-textMuted font-mono">
+                <span className="inline-flex items-center gap-2"><div className="glow-dot" />Open Source</span>
+                <span className="inline-flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-oahl-tech" />Bearer-Secured</span>
+                <span className="inline-flex items-center gap-2"><Waypoints className="h-3.5 w-3.5 text-oahl-accent" />WS + Polling</span>
+                <span className="inline-flex items-center gap-2"><Layers className="h-3.5 w-3.5 text-oahl-tech" />Transport Agnostic</span>
               </div>
             </div>
-          </div>
 
-          {/* Trust indicators */}
-          <div className="mt-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-oahl-textMuted font-mono">
-            <span className="inline-flex items-center gap-2"><div className="glow-dot" />Open Source</span>
-            <span className="inline-flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-oahl-tech" />Bearer-Secured</span>
-            <span className="inline-flex items-center gap-2"><Waypoints className="h-3.5 w-3.5 text-oahl-accent" />WebSocket + Polling Relay</span>
-            <span className="inline-flex items-center gap-2"><Layers className="h-3.5 w-3.5 text-oahl-tech" />Transport Agnostic</span>
+            {/* Right: live registry panel + mini terminal */}
+            <div className="w-full min-w-0 flex flex-col gap-3">
+              {/* Device registry panel */}
+              <div className="glass-card p-4">
+                <div className="flex items-center justify-between mb-3 pb-3 border-b border-oahl-border/50">
+                  <span className="text-[11px] font-mono text-oahl-textMuted uppercase tracking-widest">Live Registry</span>
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-oahl-tech">
+                    <div className="glow-dot" />
+                    4 devices online
+                  </span>
+                </div>
+                {([
+                  { Icon: Camera,     name: 'USB Camera x2',     cap: 'camera.capture',  status: 'online' },
+                  { Icon: Smartphone, name: 'Android Dev Kit',   cap: 'screen.tap',      status: 'online' },
+                  { Icon: Radio,      name: 'RTL-SDR Dongle',    cap: 'sdr.measure',     status: 'online' },
+                  { Icon: Cpu,        name: 'Arduino Mega',      cap: 'gpio.write',      status: 'idle'   },
+                ] as const).map(({ Icon, name, cap, status }) => (
+                  <div key={name} className="flex items-center gap-3 py-2.5 border-b border-oahl-border/30 last:border-0 group">
+                    <div className="icon-box-accent w-8 h-8 rounded-lg shrink-0">
+                      <Icon className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-oahl-textMain truncate">{name}</div>
+                      <div className="text-[10px] font-mono text-oahl-textMuted">{cap}</div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <div className={`w-1.5 h-1.5 rounded-full ${status === 'online' ? 'bg-oahl-tech shadow-[0_0_6px_rgba(115,149,128,0.8)]' : 'bg-oahl-border'}`} />
+                      <span className={`text-[10px] font-mono ${status === 'online' ? 'text-oahl-tech' : 'text-oahl-textMuted'}`}>{status}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Mini terminal */}
+              <div className="terminal-mockup">
+                <div className="terminal-titlebar">
+                  <div className="terminal-dot red" />
+                  <div className="terminal-dot yellow" />
+                  <div className="terminal-dot green" />
+                  <span className="ml-3 text-xs text-oahl-textMuted font-mono">agent-session.ts</span>
+                </div>
+                <div className="terminal-code code-scroll overflow-x-auto" style={{ fontSize: '11.5px' }}>
+                  <div><span className="hl-keyword">const</span> {'{'} <span className="hl-var">devices</span> {'}'} <span className="hl-method">= await</span> <span className="hl-var">cloud</span>.<span className="hl-method">getCapabilities</span>({'{'} <span className="hl-method">type</span>: <span className="hl-string">'android'</span> {'}'});</div>
+                  <div><span className="hl-keyword">const</span> {'{'} <span className="hl-var">session_id</span> {'}'} <span className="hl-method">= await</span> <span className="hl-var">cloud</span>.<span className="hl-method">requestSession</span>({'{'}</div>
+                  <div>{'  '}<span className="hl-method">device_id</span>: <span className="hl-var">devices</span>[<span className="hl-var">0</span>].<span className="hl-method">id</span>, <span className="hl-method">capability</span>: <span className="hl-string">'screen.capture'</span></div>
+                  <div>{'}'});</div>
+                  <div><span className="hl-keyword">const</span> <span className="hl-var">result</span> <span className="hl-method">= await</span> <span className="hl-var">cloud</span>.<span className="hl-method">execute</span>(<span className="hl-var">session_id</span>, {'{'} <span className="hl-method">capability</span>: <span className="hl-string">'screen.capture'</span> {'}'});</div>
+                  <div><span className="hl-keyword">await</span> <span className="hl-var">cloud</span>.<span className="hl-method">stopSession</span>(<span className="hl-var">session_id</span>); <span className="hl-comment typing-cursor">{'// ✓ released'}</span></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -384,8 +588,8 @@ function HomePage({ onOpenApiLab }: { onOpenApiLab: () => void }) {
       {/* ═══════════════════ HOW IT WORKS ═══════════════════ */}
       <section className="mt-20 relative">
         <div className="text-center mb-12">
-          <p className="text-xs font-mono uppercase tracking-wider text-oahl-accent">How it works</p>
-          <h2 className="mt-3 text-3xl md:text-5xl font-bold tracking-tight">From hardware chaos<br /><span className="text-oahl-textMuted">to one operating model.</span></h2>
+          <p className="section-eyebrow text-oahl-accent justify-center">How it works</p>
+          <h2 className="font-display mt-4 text-3xl md:text-5xl font-extrabold tracking-tight">From hardware chaos<br /><span className="text-oahl-textMuted">to one operating model.</span></h2>
           <p className="mt-4 text-sm text-oahl-textMuted max-w-lg mx-auto">
             Four lifecycle phases. One execution contract. Infinite hardware scale.
           </p>
@@ -399,26 +603,32 @@ function HomePage({ onOpenApiLab }: { onOpenApiLab: () => void }) {
             <div className="absolute inset-0 h-full bg-gradient-to-r from-oahl-accent via-oahl-tech to-oahl-accent opacity-60 blur-sm" />
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {FLOW_STEPS.map((step, index) => (
-              <div key={step.title} className="glass-card p-6 text-center group relative">
-                {/* Step number with glow */}
-                <div className="relative inline-flex mx-auto">
-                  <div className="w-[44px] h-[44px] rounded-2xl bg-gradient-to-br from-oahl-accent to-oahl-accentHover flex items-center justify-center text-white font-mono font-bold text-lg shadow-lg shadow-oahl-accent/20 group-hover:shadow-oahl-accent/40 transition-shadow">
-                    {index + 1}
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {FLOW_STEPS.map((step, index) => {
+              const StepIcon = FLOW_STEP_ICONS[index];
+              return (
+                <div key={step.title} className="glass-card p-6 text-center group relative">
+                  {/* Icon with step badge */}
+                  <div className="relative inline-flex mx-auto">
+                    <div className="w-[52px] h-[52px] rounded-2xl bg-gradient-to-br from-oahl-accent to-oahl-accentHover flex items-center justify-center text-white shadow-lg shadow-oahl-accent/20 group-hover:shadow-oahl-accent/40 transition-shadow">
+                      <StepIcon className="h-5 w-5" />
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-[18px] h-[18px] rounded-full bg-oahl-bg border border-oahl-border flex items-center justify-center font-mono text-[9px] font-bold text-oahl-accent">
+                      {index + 1}
+                    </div>
+                  </div>
+                  <h3 className="mt-4 text-base font-bold text-oahl-textMain">{step.title}</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-oahl-textMuted">{step.detail}</p>
+                  {/* Endpoint badge */}
+                  <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-oahl-accent/5 border border-oahl-accent/10 px-2.5 py-1 text-[10px] font-mono text-oahl-accent">
+                    {index === 0 && 'GET /v1/capabilities'}
+                    {index === 1 && 'POST /v1/requests'}
+                    {index === 2 && 'POST /sessions/:id/execute'}
+                    {index === 3 && 'POST /sessions/:id/stop'}
                   </div>
                 </div>
-                <h3 className="mt-4 text-base font-bold text-oahl-textMain">{step.title}</h3>
-                <p className="mt-2 text-xs leading-relaxed text-oahl-textMuted">{step.detail}</p>
-                {/* Endpoint badge */}
-                <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-oahl-accent/5 border border-oahl-accent/10 px-2.5 py-1 text-[10px] font-mono text-oahl-accent">
-                  {index === 0 && 'GET /v1/capabilities'}
-                  {index === 1 && 'POST /v1/requests'}
-                  {index === 2 && 'POST /sessions/:id/execute'}
-                  {index === 3 && 'POST /sessions/:id/stop'}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -431,8 +641,8 @@ function HomePage({ onOpenApiLab }: { onOpenApiLab: () => void }) {
 
         <div className="relative z-10">
           <div className="text-center mb-10">
-            <p className="text-xs font-mono uppercase tracking-wider text-oahl-tech">System Architecture</p>
-            <h2 className="mt-3 text-3xl md:text-4xl font-bold tracking-tight">The full stack, <span className="shimmer-text">visualized.</span></h2>
+            <p className="section-eyebrow text-oahl-tech justify-center">System Architecture</p>
+            <h2 className="font-display mt-4 text-3xl md:text-4xl font-extrabold tracking-tight">The full stack, <span className="shimmer-text">visualized.</span></h2>
           </div>
 
           {/* Layered architecture diagram */}
@@ -561,22 +771,22 @@ function HomePage({ onOpenApiLab }: { onOpenApiLab: () => void }) {
       {/* ═══════════════════ USE CASES BENTO ═══════════════════ */}
       <section className="mt-16">
         <div className="text-center mb-10">
-          <p className="text-xs font-mono uppercase tracking-wider text-oahl-accent">Use Cases</p>
-          <h2 className="mt-3 text-3xl md:text-4xl font-bold tracking-tight">Built for <span className="shimmer-text">physical AI workloads</span></h2>
+          <p className="section-eyebrow text-oahl-accent justify-center">Use Cases</p>
+          <h2 className="font-display mt-4 text-3xl md:text-4xl font-extrabold tracking-tight">Built for <span className="shimmer-text">physical AI workloads</span></h2>
           <p className="mt-3 text-sm text-oahl-textMuted max-w-lg mx-auto">
             Run field diagnostics, automate mobile testing, control lab equipment, and operate distributed radio pipelines.
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 stagger-children">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 stagger-children">
           {[
-            { icon: <Bot className="h-5 w-5" />, title: 'Vision Workflows', detail: 'Capture, inspect, and route imagery from any connected camera in your lab.' },
-            { icon: <Activity className="h-5 w-5" />, title: 'SDR Operations', detail: 'Scan, measure, and diagnose RF environments through software-defined radios.' },
-            { icon: <Sparkles className="h-5 w-5" />, title: 'Mobile Automation', detail: 'Android and iOS device control for scripted QA validation flows.' },
-            { icon: <Network className="h-5 w-5" />, title: 'Lab Orchestration', detail: 'Multi-node deterministic scheduling for complex hardware pipelines.' },
+            { icon: <Camera className="h-6 w-6" />, title: 'Vision Workflows', detail: 'Capture, inspect, and route imagery from any connected camera in your lab.', variant: 'accent' },
+            { icon: <Radio className="h-6 w-6" />, title: 'SDR Operations', detail: 'Scan, measure, and diagnose RF environments through software-defined radios.', variant: 'tech' },
+            { icon: <Smartphone className="h-6 w-6" />, title: 'Mobile Automation', detail: 'Android and iOS device control for scripted QA validation flows.', variant: 'accent' },
+            { icon: <Cpu className="h-6 w-6" />, title: 'Lab Orchestration', detail: 'Multi-node deterministic scheduling for complex hardware pipelines.', variant: 'tech' },
           ].map((useCase) => (
             <div key={useCase.title} className="glass-card p-6 group cursor-default">
-              <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-oahl-accent/10 text-oahl-accent border border-oahl-accent/20 group-hover:bg-oahl-accent/20 transition-colors">
+              <div className={`icon-box-${useCase.variant} w-12 h-12`}>
                 {useCase.icon}
               </div>
               <h3 className="mt-4 text-sm font-semibold text-oahl-textMain">{useCase.title}</h3>
@@ -591,8 +801,8 @@ function HomePage({ onOpenApiLab }: { onOpenApiLab: () => void }) {
         <div className="panel bento-main p-8 relative overflow-hidden">
           <div className="orb orb-tech w-[200px] h-[200px] -bottom-10 -right-10 opacity-40" />
           <div className="relative z-10">
-            <p className="text-xs font-mono uppercase tracking-wider text-oahl-tech">API Surface</p>
-            <h3 className="mt-2 text-2xl font-bold">Three clean interfaces</h3>
+            <p className="section-eyebrow text-oahl-tech">API Surface</p>
+            <h3 className="font-display mt-3 text-2xl font-extrabold">Three clean interfaces</h3>
             <p className="mt-3 text-sm leading-relaxed text-oahl-textMuted max-w-lg">
               Agents discover and execute. Providers register and relay. Nodes expose local hardware. 
               Every endpoint returns structured JSON — no guesswork.
@@ -651,6 +861,163 @@ function HomePage({ onOpenApiLab }: { onOpenApiLab: () => void }) {
         </div>
       </section>
 
+      {/* ═══════════════════ ECOSYSTEM PAGES ═══════════════════ */}
+      <section className="mt-16">
+        <div className="text-center mb-10">
+          <p className="section-eyebrow text-oahl-accent justify-center">Ecosystem</p>
+          <h2 className="font-display mt-4 text-3xl md:text-4xl font-extrabold tracking-tight">
+            The OAHL platform
+          </h2>
+          <p className="mt-3 text-sm text-oahl-textMuted max-w-lg mx-auto">
+            Everything you need to build, publish, and discover hardware integrations — across two dedicated surfaces.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* oahl.org */}
+          <a
+            href="https://oahl.org"
+            target="_blank"
+            rel="noreferrer"
+            className="glass-card group relative overflow-hidden p-8 flex flex-col gap-6 hover:border-oahl-accent/50 transition-all duration-300"
+          >
+            <div className="orb orb-accent w-[300px] h-[300px] -top-20 -right-20 opacity-20 group-hover:opacity-30 transition-opacity" />
+            <div className="relative z-10 flex items-start justify-between">
+              <div className="icon-box-accent w-12 h-12 rounded-2xl">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <div className="flex items-center gap-1.5 text-xs font-mono text-oahl-textMuted group-hover:text-oahl-accent transition-colors">
+                <span>oahl.org</span>
+                <ArrowUpRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </div>
+            </div>
+            <div className="relative z-10">
+              <h3 className="font-display text-2xl font-black uppercase tracking-tight text-oahl-textMain">
+                OAHL Organization
+              </h3>
+              <p className="mt-2 text-sm text-oahl-textMuted leading-relaxed">
+                The official OAHL organization portal. Learn about the protocol specification, governance, contributing guidelines, and the teams building the open standard.
+              </p>
+            </div>
+            <div className="relative z-10 flex flex-wrap gap-2 mt-auto">
+              {['Protocol Spec', 'Governance', 'Contributing', 'Roadmap'].map((tag) => (
+                <span key={tag} className="px-2.5 py-1 rounded-lg bg-oahl-accent/5 border border-oahl-accent/15 text-[11px] font-mono text-oahl-accent">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </a>
+
+          {/* registry.oahl.dev */}
+          <a
+            href="https://registry.oahl.dev"
+            target="_blank"
+            rel="noreferrer"
+            className="glass-card group relative overflow-hidden p-8 flex flex-col gap-6 hover:border-oahl-tech/50 transition-all duration-300"
+          >
+            <div className="orb orb-tech w-[300px] h-[300px] -top-20 -right-20 opacity-20 group-hover:opacity-30 transition-opacity" />
+            <div className="relative z-10 flex items-start justify-between">
+              <div className="icon-box-tech w-12 h-12 rounded-2xl">
+                <Globe className="h-5 w-5" />
+              </div>
+              <div className="flex items-center gap-1.5 text-xs font-mono text-oahl-textMuted group-hover:text-oahl-tech transition-colors">
+                <span>registry.oahl.dev</span>
+                <ArrowUpRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </div>
+            </div>
+            <div className="relative z-10">
+              <h3 className="font-display text-2xl font-black uppercase tracking-tight text-oahl-textMain">
+                Hardware Registry
+              </h3>
+              <p className="mt-2 text-sm text-oahl-textMuted leading-relaxed">
+                Browse, discover, and publish hardware adapters. The public registry is where providers list their devices and agents find capabilities to integrate with.
+              </p>
+            </div>
+            <div className="relative z-10 flex flex-wrap gap-2 mt-auto">
+              {['Adapters', 'Capabilities', 'Providers', 'Discovery'].map((tag) => (
+                <span key={tag} className="px-2.5 py-1 rounded-lg bg-oahl-tech/5 border border-oahl-tech/15 text-[11px] font-mono text-oahl-tech">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </a>
+        </div>
+      </section>
+
+      {/* ═══════════════════ ORIGIN TEASER ═══════════════════ */}
+      <section className="mt-16">
+        <div className="panel relative overflow-hidden rounded-3xl p-8 md:p-12">
+          <div className="orb orb-accent w-[400px] h-[400px] -top-40 -right-40 opacity-25" />
+          <div className="grid-overlay" />
+          <div className="relative z-10 grid md:grid-cols-2 gap-10 items-center">
+
+            {/* Left: chat mockup */}
+            <div className="flex flex-col gap-3">
+              <p className="text-[11px] font-mono text-oahl-textMuted uppercase tracking-widest mb-1">The moment it all started</p>
+
+              {/* User bubble */}
+              <div className="flex items-end gap-2.5 justify-end">
+                <div className="max-w-[260px] rounded-2xl rounded-br-sm bg-oahl-accent/15 border border-oahl-accent/25 px-4 py-3">
+                  <p className="text-sm text-oahl-textMain leading-relaxed">
+                    hey, hack that satellite for me 🛰️
+                  </p>
+                </div>
+                <div className="shrink-0 w-7 h-7 rounded-full bg-oahl-accent/20 border border-oahl-accent/30 flex items-center justify-center text-[10px] font-mono font-bold text-oahl-accent">
+                  me
+                </div>
+              </div>
+
+              {/* Agent typing indicator */}
+              <div className="flex items-end gap-2.5">
+                <div className="shrink-0 w-7 h-7 rounded-full bg-oahl-tech/20 border border-oahl-tech/30 flex items-center justify-center">
+                  <Bot className="h-3.5 w-3.5 text-oahl-tech" />
+                </div>
+                <div className="max-w-[280px] rounded-2xl rounded-bl-sm bg-oahl-surface border border-oahl-border px-4 py-3">
+                  <p className="text-sm text-oahl-textMain leading-relaxed">
+                    Sure. I'll need hardware access — what do you have available?
+                  </p>
+                  <p className="mt-1.5 text-[10px] font-mono text-oahl-tech">OrcBot · via orcbot agent</p>
+                </div>
+              </div>
+
+              {/* Stunned reaction */}
+              <div className="flex items-end gap-2.5 justify-end">
+                <div className="max-w-[200px] rounded-2xl rounded-br-sm bg-oahl-accent/15 border border-oahl-accent/25 px-4 py-3">
+                  <p className="text-sm text-oahl-textMain leading-relaxed">
+                    wait… what 😳
+                  </p>
+                </div>
+                <div className="shrink-0 w-7 h-7 rounded-full bg-oahl-accent/20 border border-oahl-accent/30 flex items-center justify-center text-[10px] font-mono font-bold text-oahl-accent">
+                  me
+                </div>
+              </div>
+            </div>
+
+            {/* Right: narrative teaser */}
+            <div className="flex flex-col gap-5">
+              <div>
+                <span className="badge">Origin Story</span>
+              </div>
+              <h2 className="font-display text-3xl md:text-4xl font-black uppercase tracking-tight leading-tight text-oahl-textMain">
+                It started with<br />
+                <span className="shimmer-text">a satellite.</span>
+              </h2>
+              <p className="text-sm text-oahl-textMuted leading-relaxed">
+                I built an AI agent and tried to taunt it by asking it to do the impossible. It didn't say no.
+                It asked for hardware. That one response sent me down a rabbit hole that became OAHL.
+              </p>
+              <button
+                onClick={onOpenOrigin}
+                className="group self-start inline-flex items-center gap-2 rounded-2xl border border-oahl-border bg-oahl-surface/60 px-5 py-2.5 text-sm font-semibold text-oahl-textMain transition-all hover:border-oahl-accent hover:bg-oahl-surface"
+              >
+                Read the full story
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ═══════════════════ CTA ═══════════════════ */}
       <section className="mt-16 cta-band panel relative overflow-hidden rounded-3xl p-10 md:p-14">
         <div className="orb orb-accent w-[300px] h-[300px] -top-20 -left-20 opacity-60" />
@@ -658,8 +1025,8 @@ function HomePage({ onOpenApiLab }: { onOpenApiLab: () => void }) {
         <div className="grid-overlay" />
 
         <div className="relative z-10 text-center max-w-2xl mx-auto">
-          <p className="text-xs font-mono uppercase tracking-wider text-oahl-accent mb-4">Start Building</p>
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+          <p className="section-eyebrow text-oahl-accent justify-center mb-4">Start Building</p>
+          <h2 className="font-display text-3xl md:text-4xl font-extrabold tracking-tight">
             Upgrade from fragile scripts<br />
             <span className="text-oahl-textMuted">to a clean agent platform.</span>
           </h2>
@@ -671,9 +1038,10 @@ function HomePage({ onOpenApiLab }: { onOpenApiLab: () => void }) {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <button
               onClick={onOpenApiLab}
-              className="group relative rounded-2xl bg-oahl-accent px-7 py-3.5 text-sm font-semibold text-white transition-all hover:bg-oahl-accentHover hover:shadow-[0_0_30px_rgba(212,126,91,0.3)] hover:scale-[1.02] active:scale-[0.98]"
+              className="group relative inline-flex items-center gap-2 rounded-2xl bg-oahl-accent px-7 py-3.5 text-sm font-semibold text-white transition-all hover:bg-oahl-accentHover hover:shadow-[0_0_30px_rgba(212,126,91,0.3)] hover:scale-[1.02] active:scale-[0.98]"
             >
               Open API Lab
+              <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
             </button>
             <a
               href="https://github.com/fredabila/oahl"

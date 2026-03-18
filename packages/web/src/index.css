@@ -1,7 +1,7 @@
-@import '@fontsource/space-grotesk/400.css';
-@import '@fontsource/space-grotesk/500.css';
-@import '@fontsource/space-grotesk/600.css';
-@import '@fontsource/space-grotesk/700.css';
+@import '@fontsource-variable/outfit/index.css';
+@import '@fontsource/barlow-condensed/700.css';
+@import '@fontsource/barlow-condensed/800.css';
+@import '@fontsource/barlow-condensed/900.css';
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/700.css';
 
@@ -272,23 +272,84 @@ body::before {
   transform: translateY(-1px);
 }
 
+/* ─── Icon glow utilities ─── */
+.icon-box-accent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: rgba(212, 126, 91, 0.1);
+  border: 1px solid rgba(212, 126, 91, 0.2);
+  color: #D47E5B;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+.icon-box-accent:hover,
+.group:hover .icon-box-accent {
+  background: rgba(212, 126, 91, 0.18);
+  box-shadow: 0 0 24px rgba(212, 126, 91, 0.18), 0 0 8px rgba(212, 126, 91, 0.1);
+}
+.icon-box-tech {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: rgba(115, 149, 128, 0.1);
+  border: 1px solid rgba(115, 149, 128, 0.2);
+  color: #739580;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+.icon-box-tech:hover,
+.group:hover .icon-box-tech {
+  background: rgba(115, 149, 128, 0.18);
+  box-shadow: 0 0 24px rgba(115, 149, 128, 0.18), 0 0 8px rgba(115, 149, 128, 0.1);
+}
+
+/* ─── Section eyebrow label ─── */
+.section-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.section-eyebrow::before,
+.section-eyebrow::after {
+  content: "";
+  display: block;
+  width: 28px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.45;
+}
+
 /* ─── Hero section ─── */
 .aesthetic-hero {
   border: 1px solid rgba(48, 46, 43, 0.6);
   border-radius: 24px;
-  background: linear-gradient(180deg, rgba(20, 19, 18, 0.9) 0%, rgba(13, 12, 11, 0.8) 100%);
+  background: linear-gradient(160deg, rgba(22, 20, 18, 0.95) 0%, rgba(13, 12, 11, 0.9) 100%);
   position: relative;
   overflow: hidden;
 }
 .aesthetic-hero::before {
   content: "";
   position: absolute;
-  top: -100px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 600px;
+  top: -80px;
+  left: -80px;
+  width: 700px;
+  height: 500px;
+  background: radial-gradient(ellipse, rgba(212, 126, 91, 0.11) 0%, transparent 65%);
+  pointer-events: none;
+}
+.aesthetic-hero::after {
+  content: "";
+  position: absolute;
+  bottom: -60px;
+  right: -60px;
+  width: 500px;
   height: 400px;
-  background: radial-gradient(ellipse, rgba(212, 126, 91, 0.1) 0%, transparent 70%);
+  background: radial-gradient(ellipse, rgba(115, 149, 128, 0.08) 0%, transparent 60%);
   pointer-events: none;
 }
 
