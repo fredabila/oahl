@@ -2,185 +2,92 @@
   <img src="./assets/oahl-banner.svg" alt="OAHL Banner" width="100%" />
 </p>
 
-# Open Agent Hardware Layer (OAHL)
+# OAHL — MCP for hardware — connect any AI agent to any physical device.
 
-Open Agent Hardware Layer is an open-source framework for exposing real hardware capabilities to AI agents through standardized APIs.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![NPM Version](https://img.shields.io/npm/v/@fredabila/oahl)](https://www.npmjs.com/package/@fredabila/oahl)
+[![Contributors](https://img.shields.io/github/contributors/fredabila/oahl)](https://github.com/fredabila/oahl/graphs/contributors)
+[![Last Commit](https://img.shields.io/github/last-commit/fredabila/oahl)](https://github.com/fredabila/oahl/commits/main)
+[![Star History Chart](https://api.star-history.com/svg?repos=fredabila/oahl&type=Date)](https://star-history.com/#fredabila/oahl&Date)
 
-It allows hardware owners to connect physical devices such as cameras, SDRs, sensors, phones, and robots to a node, declare supported capabilities, and make them accessible to agent systems in a safe and consistent way. 
+![OAHL Demo](./assets/demo.gif)
+*(Demo: AI agent discovering a TECNO phone, reserving it, executing an ADB command, and getting results back)*
 
-## Why this exists
+## Why OAHL?
+- AI agents can call APIs and write code, but they can't reliably control physical hardware.
+- Every hardware integration today is bespoke, brittle, and non-composable.
+- OAHL gives agents a standard lifecycle: **discover → reserve → execute → release**.
+- One protocol for Android phones, cameras, SDR radios, sensors, robots, and anything with a transport plugin.
 
-AI agents today can use software, web tools, and cloud APIs, but they usually cannot interact with physical hardware without custom integration work.
+## Quick Start
+You don't need to write any code to connect common hardware.
 
-This project provides a common layer for:
-- **hardware providers** who want to expose devices.
-- **developers** who want agents to use physical-world capabilities.
-- **platforms** that want to build agent-to-hardware marketplaces (Agent Hardware Cloud).
-
-## Core concepts
-
-- **Node:** A service installed on a machine connected to hardware.
-- **Adapter:** A device-specific integration that translates hardware commands into standard capabilities.
-- **Capability:** A standardized action such as `camera.capture` or `radio.scan`. 
-- **Session:** A controlled allocation of a hardware resource for a specific request.
-- **Policy:** Rules that limit what can be done with a device or capability.
-- **Cloud Registry:** The central hub where local nodes register themselves so remote agents can discover and request hardware globally.
-
-## Quick start (For Hardware Owners)
-
-You don't need to write any code to connect common hardware (like webcams or standard SDRs). 
-
-### 1. Install the CLI & Node Server
-Install the OAHL toolkit globally via npm:
 ```bash
+# 1. Install globally
 npm install -g @fredabila/oahl
-```
 
-### 2. Run the Setup Wizard
-```bash
+# 2. Run the interactive setup
 oahl init
-```
-This interactive tool will ask you a few simple questions (like your lab name and what type of hardware you are plugging in) and automatically generate your `oahl-config.json` file with the correct safety policies and pre-built adapters.
 
-### 3. Start your Node
-
-**Option A: Using NPM (Recommended for beginners)**
-If you have Node.js installed, simply run:
-```bash
+# 3. Start the node
 oahl start
 ```
-*(This starts the local daemon, loads your configuration, and connects to the Cloud Registry).*
 
-### 4. Scan Connected Ports (USB/Serial)
+## Features
+- **Hardware Abstraction:** Expose any physical device as standardized Capabilities to AI Agents.
+- **Access Policies:** Declarative policies to strictly regulate which agent can use which device.
+- **Session Exclusivity:** Ensure multiple AI agents don't conflict using device reservations.
+- **Transport Plugins:** Native support for Serial (UART/USB), ADB, MQTT, TCP/IP, and more.
+- See the [API Reference](docs/api-reference.md) and [Security Guide](docs/security-guide.md).
 
-To detect connected hardware and get adapter creation guidance:
+## Registry
+- Visit **[registry.oahl.dev](https://registry.oahl.dev)** — discover and share hardware capabilities, adapters, and transport plugins.
 
-```bash
-oahl scan-ports
-```
+## Research Paper
+- Read the full technical paper: **[Open Agent Hardware Layer: A Protocol for AI-Hardware Interoperability](docs/oahl-protocol-v1.md)** 
+- ![System Topology Diagram](./assets/system-topology-diagram.png) *(System Topology Diagram)*
 
-For machine-readable output:
+## Contributing
+- See **[CONTRIBUTING.md](CONTRIBUTING.md)** for step-by-step setup instructions, development workflow, and adaptation guides.
+- Ready to help? Check out our list of **["good first issues"](docs/good_first_issues.md)** to get started!
 
-```bash
-oahl scan-ports --json
-```
+## Community
+- [Join our Discord](#)
+- [Follow us on X/Twitter](#)
 
-This command helps you discover connected devices, suggests likely adapters, and prints config snippets you can use during adapter setup.
+---
 
-**Option B: Using Docker**
-If you prefer running isolated containers:
-```bash
-docker run -d \
-  --name oahl-node \
-  -p 8080:8080 \
-  -v $(pwd)/oahl-config.json:/app/oahl-config.json \
-  --device=/dev/video0 \
-  oahl/node:latest
-```
+## SDKs & Documentation
 
-## Cloud Infrastructure
+### Official SDKs
+- **[JavaScript/TypeScript SDK](./packages/sdk-js)** ([@oahl/sdk](https://www.npmjs.com/package/@oahl/sdk))
+- **[Python SDK](./sdk-python)** ([oahl](https://pypi.org/project/oahl/))
 
-The `@oahl/cloud` package contains the hosted infrastructure that connects agents and nodes. 
-
-When your node starts up, it securely registers itself with the Cloud Registry. AI Agents connect to this Cloud Registry (not your node directly) to request access to capabilities.
-
-## Documentation
-
+### Further Reading
 See the `docs/` folder for:
 - [Architecture Overview](docs/architecture.md)
 - [Hardware Owner Guide](docs/hardware-owner-guide.md)
 - [Adapter Guide](docs/adapter-guide.md)
-- [Security and Policy Guide](docs/security-guide.md)
 - [Agent Integration Guide](docs/agent-integration-guide.md)
-- [API Reference](docs/api-reference.md)
-- [SDK Strategy](docs/sdk-strategy.md)
-- [OAHL Protocol v1](docs/oahl-protocol-v1.md)
-- [Transport & Attachment Profiles](docs/transport-attachment-profiles.md)
-- [Transport Plugin Architecture](docs/transport-plugin-architecture.md)
-- [Standardization Roadmap](docs/oahl-standardization-roadmap.md)
 - [W3C WoT Alignment](docs/wot-alignment.md)
 
-## Repository layout
-
-- `packages/` → platform packages (`cli`, `cloud`, `core`, `server`, `sdk-js`, `web`)
-- `adapters/` → hardware adapter packages (`adapter-*`)
-- `sdk-python/` → lightweight Python client
-
-This separation keeps core platform development distinct from adapter ecosystem development.
-
-## SDKs
-
-OAHL provides official SDKs to integrate hardware capabilities into your AI agents:
-
-- **[JavaScript/TypeScript SDK](./packages/sdk-js)** ([@oahl/sdk](https://www.npmjs.com/package/@oahl/sdk))  
-  Full-featured SDK for Node.js and Web. Supports both local node and cloud relay.
-- **[Python SDK](./sdk-python)** ([oahl](https://pypi.org/project/oahl/))  
-  Lightweight Python client for AI agents. Supports local node and cloud relay.
-
-- **[Adapter Marketplace](https://oahl.org/marketplace)**  
-  Browse community-contributed hardware adapters.
-- **[Adapter Registry](./registry)**  
-  Publish your adapter to NPM with an `oahl-manifest.json` to get listed automatically.
-
-Both SDKs provide:
-- `OahlClient`: For direct interaction with a local hardware node.
-- `CloudClient`: For discovering and executing capabilities via the OAHL Cloud relay.
-
-## Publishing packages
-
-Use the root scripts to publish all public OAHL packages (including `@oahl/sdk`):
-
-```bash
-npm run publish:all:dry-run
-npm run publish:all
-```
-
-To avoid publish failures from duplicate versions, use auto-bump + publish:
-
-```bash
-npm run version:bump:preview
-npm run publish:all:auto
-```
-
-Release variants are also available:
-- `npm run publish:all:auto:minor`
-- `npm run publish:all:auto:major`
-- `npm run publish:all:auto:prerelease`
+## Cloud Infrastructure
+The `@oahl/cloud` package contains the hosted infrastructure that connects agents and nodes. When your node starts up, it securely registers itself with the Cloud Registry. AI Agents connect to this Cloud Registry (not your node directly) to request access to capabilities.
 
 ## Frequently Asked Questions (FAQ)
 
 <details>
 <summary><strong>Why should I use Docker instead of running via npm start?</strong></summary>
 
-Docker is highly recommended because it **avoids host machine pollution**. Many hardware adapters (especially those communicating over serial or BLE) require native C++ bindings to be compiled during installation (e.g., `serialport`). 
+Docker is highly recommended because it **avoids host machine pollution**. Many hardware adapters (especially those communicating over serial or BLE) require native C++ bindings to be compiled during installation (e.g., `serialport`).
 
-If you use `npm start`, you may need to install heavy dependencies like Visual Studio C++ Build Tools or `python`/`make` on your host machine. By using Docker, the node runs in a pre-configured Linux container with all build tools already installed. The adapter safely accesses the hardware via the `--device` flag without touching your host OS.
+If you use `npm start`, you may need to install heavy dependencies like Visual Studio C++ Build Tools or `python`/`make` on your host machine. By using Docker, the node runs in a pre-configured Linux container with all build tools already installed.
 </details>
 
 <details>
 <summary><strong>Can I run OAHL completely offline / locally without the Cloud Registry?</strong></summary>
 
-**Yes, absolutely.** The Cloud Registry is strictly optional and used for global discovery. To run a 100% private, local-only node, simply open your `oahl-config.json` file and remove or empty the `cloud_url` property:
-
-```json
-{
-  "node_id": "my-local-lab",
-  "cloud_url": "",
-  "devices": [ ... ]
-}
-```
-
-When you do this, the node will skip the cloud heartbeat and relay. Your local Express server will still start, and local AI agents can interact with your hardware directly on your LAN (usually via `http://localhost:3000`), but your devices will not be broadcast to the internet.
-</details>
-
-<details>
-<summary><strong>Which hardware transport layers are supported?</strong></summary>
-
-OAHL adapters can be written to support almost anything, but we provide first-party reference "transport plugins" to handle the messy connection logic for common protocols:
-- **Serial (UART/USB):** `transport-serial`
-- **Android Debug Bridge:** `transport-adb`
-- **Bluetooth Low Energy (BLE):** `transport-ble` (Planned)
-- **MQTT & TCP/IP:** Available for networked IoT devices
+**Yes, absolutely.** The Cloud Registry is strictly optional and used for global discovery. To run a 100% private, local-only node, simply open your `oahl-config.json` file and remove or empty the `cloud_url` property.
 </details>
 
 <details>
@@ -192,12 +99,5 @@ OAHL is designed specifically to make this safe:
 3. **Session Exclusivity:** An agent must request a "session" to use a device. While an agent holds a session, no other agent can interrupt or send contradictory commands to your hardware.
 </details>
 
-## Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. It covers the development workflow, adapter authoring rules, PR checklist, and the RFC process for protocol-level changes.
-
-## License
-
-MIT — see [LICENSE](LICENSE) for the full text.
-
+---
 Copyright © 2024–2026 Fred Abila and the OAHL Contributors.
