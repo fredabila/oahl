@@ -10,7 +10,7 @@
 [![Last Commit](https://img.shields.io/github/last-commit/fredabila/oahl)](https://github.com/fredabila/oahl/commits/main)
 [![Star History Chart](https://api.star-history.com/svg?repos=fredabila/oahl&type=Date)](https://star-history.com/#fredabila/oahl&Date)
 
-![OAHL Demo](./assets/demo.gif)
+![OAHL Demo](./assets/demo.svg)
 *(Demo: AI agent discovering a TECNO phone, reserving it, executing an ADB command, and getting results back)*
 
 ## Why OAHL?
