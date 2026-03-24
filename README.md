@@ -52,7 +52,27 @@ oahl start
 
 ## Research Paper
 - Read the full technical paper: **[Open Agent Hardware Layer: A Protocol for AI-Hardware Interoperability](docs/oahl-protocol-v1.md)** 
-- ![System Topology Diagram](./assets/system-topology-diagram.png) *(System Topology Diagram)*
+
+### System Topology Diagram
+```mermaid
+graph TD
+    classDef highlight fill:#e3b341,stroke:#333,stroke-width:2px,color:#000;
+    classDef core fill:#2d3748,stroke:#4a5568,stroke-width:2px,color:#fff;
+    classDef hardware fill:#2f855a,stroke:#276749,stroke-width:2px,color:#fff;
+
+    subgraph "Agent Layer"
+        A[AI Agent / LLM]:::highlight -- "@oahl/sdk" --> B{Cloud Registry / Relay}
+        A -. "Local LAN (Optional)" .-> C
+    end
+    
+    subgraph "Hardware Node Environment"
+        B -- "Secure WebSocket" --> C[OAHL Node Server]:::core
+        C --> D[Policy & Auth Engine]:::core
+        D --> E[Session Manager]:::core
+        E --> F[Hardware Adapters]:::core
+        F -- "Transport Plugins<br/>(Serial, BLE, ADB)" --> G((Physical Devices)):::hardware
+    end
+```
 
 ## Contributing
 - See **[CONTRIBUTING.md](CONTRIBUTING.md)** for step-by-step setup instructions, development workflow, and adaptation guides.
