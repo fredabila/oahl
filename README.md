@@ -2,16 +2,23 @@
   <img src="./assets/oahl-banner.svg" alt="OAHL Banner" width="100%" />
 </p>
 
-# OAHL — MCP for hardware — connect any AI agent to any physical device.
+# OAHL — MCP for hardware (connect any AI agent to any physical device)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![NPM Version](https://img.shields.io/npm/v/@fredabila/oahl)](https://www.npmjs.com/package/@fredabila/oahl)
-[![Contributors](https://img.shields.io/github/contributors/fredabila/oahl)](https://github.com/fredabila/oahl/graphs/contributors)
-[![Last Commit](https://img.shields.io/github/last-commit/fredabila/oahl)](https://github.com/fredabila/oahl/commits/main)
-[![Star History Chart](https://api.star-history.com/svg?repos=fredabila/oahl&type=Date)](https://star-history.com/#fredabila/oahl&Date)
+<p align="left">
+  <a href="https://github.com/fredabila/oahl/stargazers"><img src="https://img.shields.io/github/stars/fredabila/oahl?style=flat-square&color=e3b341" alt="Stars"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License"></a>
+  <a href="https://www.npmjs.com/package/@fredabila/oahl"><img src="https://img.shields.io/npm/v/@fredabila/oahl?style=flat-square" alt="NPM Version"></a>
+  <a href="https://github.com/fredabila/oahl/graphs/contributors"><img src="https://img.shields.io/github/contributors/fredabila/oahl?style=flat-square" alt="Contributors"></a>
+  <a href="https://github.com/fredabila/oahl/commits/main"><img src="https://img.shields.io/github/last-commit/fredabila/oahl?style=flat-square" alt="Last Commit"></a>
+</p>
 
-![OAHL Demo](./assets/demo.svg)
-*(Demo: AI agent discovering a TECNO phone, reserving it, executing an ADB command, and getting results back)*
+<p align="center">
+  <br/>
+  <img src="./assets/demo.svg" alt="OAHL Demo" width="100%" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
+  <br/>
+  <em><strong>Demo</strong>: AI agent discovering a TECNO phone, reserving it, executing an ADB command, and getting results back.</em>
+  <br/><br/>
+</p>
 
 ## Why OAHL?
 - AI agents can call APIs and write code, but they can't reliably control physical hardware.
