@@ -51,7 +51,7 @@ oahl start
 - Visit **[registry.oahl.dev](https://registry.oahl.dev)** — discover and share hardware capabilities, adapters, and transport plugins.
 
 ## Research Paper
-- Read the full technical paper: **[Open Agent Hardware Layer: A Protocol for AI-Hardware Interoperability](docs/oahl-protocol-v1.md)** 
+- Read the full technical paper: **[Open Agent Hardware Layer: A Protocol for AI-Hardware Interoperability](https://www.researchgate.net/publication/403296718_OAHL_-Open_Agent_Hardware_Layer_A_standards-first_control_plane_for_agent-to-hardware_interoperability)** 
 
 ### System Topology Diagram
 ```mermaid
